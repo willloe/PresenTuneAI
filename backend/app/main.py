@@ -10,7 +10,9 @@ from app.api.v1.endpoints.health import router as health_router
 from app.api.v1.endpoints.upload import router as upload_router
 from app.api.v1.endpoints.outline import router as outline_router
 from app.api.v1.endpoints.export import router as export_router
+from app.api.v1.endpoints.schema import router as schema_router
 from app.api.v1.endpoints import ops as ops_router  # manual retention sweep
+from app.middleware.observability import ObservabilityMiddleware
 from app.services.storage_service import purge_old_files
 
 logger = logging.getLogger("retention")
@@ -33,6 +35,7 @@ def create_app() -> FastAPI:
         allow_methods=["*"],
         allow_headers=["*"],
     )
+    app.add_middleware(ObservabilityMiddleware)
 
     # Ensure local storage exists
     @app.on_event("startup")
@@ -45,6 +48,7 @@ def create_app() -> FastAPI:
     app.include_router(upload_router,  prefix=API_PREFIX)
     app.include_router(outline_router, prefix=API_PREFIX)
     app.include_router(export_router,  prefix=API_PREFIX)
+    app.include_router(schema_router, prefix=API_PREFIX)
     app.include_router(ops_router.router, prefix=API_PREFIX)
 
     # Background retention loop
