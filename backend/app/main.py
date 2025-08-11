@@ -9,12 +9,9 @@ from app.api.v1.endpoints.export import router as export_router
 
 def create_app() -> FastAPI:
     setup_logging()
-    app = FastAPI(
-        title="PresenTuneAI API",
-        version="0.1.0",
-        docs_url="/docs",
-        openapi_url="/openapi.json"
-    )
+    app = FastAPI(title="PresenTuneAI API", version="0.1.0", docs_url="/docs", openapi_url="/openapi.json")
+
+    # CORS
     app.add_middleware(
         CORSMiddleware,
         allow_origins=settings.CORS_ALLOW_ORIGINS,
@@ -23,11 +20,18 @@ def create_app() -> FastAPI:
         allow_headers=["*"],
     )
 
-    # v1 routes
-    app.include_router(health_router, prefix="/v1")
-    app.include_router(upload_router, prefix="/v1")
-    app.include_router(outline_router, prefix="/v1")
-    app.include_router(export_router, prefix="/v1")
+    # Ensure local storage exists
+    @app.on_event("startup")
+    def _ensure_storage():
+        settings.STORAGE_DIR.mkdir(parents=True, exist_ok=True)
+
+    # Mount v1 routes under a single, configurable prefix
+    API_PREFIX = settings.API_BASE
+    app.include_router(health_router,  prefix=API_PREFIX)
+    app.include_router(upload_router,  prefix=API_PREFIX)
+    app.include_router(outline_router, prefix=API_PREFIX)
+    app.include_router(export_router,  prefix=API_PREFIX)
+
     return app
 
 app = create_app()
