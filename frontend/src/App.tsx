@@ -1,42 +1,30 @@
 import { useEffect, useState } from "react";
-import { api } from "./lib/api";
+import { api, ApiError } from "./lib/api";
 import { uploadFile } from "./lib/upload";
 import type { Deck, Slide } from "./types/deck";
 
 export default function App() {
+  // Health
   const [health, setHealth] = useState<"checking" | "ok" | "error">("checking");
 
-  // Outline inputs
+  // Inputs
   const [topic, setTopic] = useState("AI Hackathon");
   const [count, setCount] = useState(5);
-
-  // Results
-  const [deck, setDeck] = useState<Deck | null>(null);  // full response
-  const [slides, setSlides] = useState<Slide[] | null>(null); // convenience for rendering
-  const [err, setErr] = useState<string | null>(null);
-  const [generating, setGenerating] = useState(false);
 
   // Upload state
   const [uploadMeta, setUploadMeta] = useState<any>(null);
   const [uploadErr, setUploadErr] = useState<string | null>(null);
 
-  // Upload handler
-  const onPick = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const f = e.target.files?.[0];
-    if (!f) return;
-    setUploadErr(null);
-    setUploadMeta(null);
-    try {
-      const meta = await uploadFile(f);
-      setUploadMeta(meta);
-      setTopic(meta.filename.replace(/\.[^.]+$/, "")); // seed topic
-      // allow re-selecting the same file next time
-      e.currentTarget.value = "";
-    } catch (err: any) {
-      setUploadErr(err.message || "upload failed");
-    }
-  };
+  // Results
+  const [deck, setDeck] = useState<Deck | null>(null);
+  const [slides, setSlides] = useState<Slide[] | null>(null);
+  const [err, setErr] = useState<string | null>(null);
+  const [generating, setGenerating] = useState(false);
+  const [lastReqId, setLastReqId] = useState<string | null>(null);
+  const displayTopic = deck?.topic || topic || (uploadMeta?.filename ?? "Untitled");
+  const pretty = (s: string) => s.replace(/[_-]+/g, " ").replace(/\s+/g, " ").trim();
 
+  // Health check
   useEffect(() => {
     api
       .health()
@@ -44,10 +32,33 @@ export default function App() {
       .catch(() => setHealth("error"));
   }, []);
 
+// Upload handler (safe reset after await)
+const onPick = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const input = e.currentTarget;           // capture before any await
+  const f = input.files?.[0];
+  if (!f) return;
+
+  setUploadErr(null);
+  setUploadMeta(null);
+
+  try {
+    const meta = await uploadFile(f);      // don't touch `e` after this
+    setUploadMeta(meta);
+    setTopic(meta.filename.replace(/\.[^.]+$/, "")); // seed topic
+  } catch (err: any) {
+    setUploadErr(err.message || "upload failed");
+  } finally {
+    // allow re-selecting the same file later
+    if (input) input.value = "";
+  }
+};
+
+  // Generate outline (shows req id)
   const runOutline = async () => {
     setErr(null);
     setDeck(null);
     setSlides(null);
+    setLastReqId(null);
     setGenerating(true);
     try {
       const body: { topic?: string; text?: string; slide_count?: number } = {
@@ -56,11 +67,17 @@ export default function App() {
       };
       if (uploadMeta?.parsed?.text) body.text = uploadMeta.parsed.text;
 
-      const data = await api.outline(body); // Deck
+      const { data, meta } = await api.outlineWithMeta(body);
       setDeck(data);
       setSlides(data.slides);
+      setLastReqId(meta.requestId ?? null);
     } catch (e: any) {
-      setErr(e.message || "failed");
+      if (e instanceof ApiError) {
+        setLastReqId(e.meta.requestId ?? null);
+        setErr(e.message);
+      } else {
+        setErr(e?.message || "failed");
+      }
     } finally {
       setGenerating(false);
     }
@@ -136,19 +153,32 @@ export default function App() {
           >
             {generating ? "Generating…" : "Generate"}
           </button>
-          {err && <p className="mt-3 text-sm text-red-600">{err}</p>}
+
+          {err && (
+            <p className="mt-3 text-sm text-red-600">
+              {err}
+              {lastReqId && (
+                <span className="ml-2 inline-block rounded bg-red-50 text-red-700 px-2 py-0.5">
+                  req: {lastReqId}
+                </span>
+              )}
+            </p>
+          )}
         </section>
 
         {/* Preview */}
-        {!!slides && (
+       {!!slides && (
           <section className="rounded-2xl bg-white shadow-sm p-6">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-base font-medium">Preview</h3>
-              {deck && (
-                <div className="text-sm text-gray-600">
-                  {deck.topic ?? "Untitled"} • {deck.slide_count} slides
-                </div>
-              )}
+              <div className="text-sm text-gray-600">
+                {pretty(displayTopic)} • {deck?.slide_count ?? slides.length} slides   {/* <— use displayTopic */}
+                {lastReqId && (
+                  <span className="ml-2 inline-block rounded bg-gray-100 text-gray-700 px-2 py-0.5">
+                    req: {lastReqId}
+                  </span>
+                )}
+              </div>
             </div>
             <ul className="space-y-3">
               {slides.map((s, i) => (
