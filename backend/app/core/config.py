@@ -14,6 +14,7 @@ class Settings(BaseSettings):
     API_BASE: str = "/v1"
 
     # CORS for Vite + fallback ports
+    ALLOW_ALL_CORS: bool = False
     CORS_ALLOW_ORIGINS: List[str] = [
         "http://localhost:5173", "http://127.0.0.1:5173",
         "http://localhost:3000", "http://127.0.0.1:3000",
