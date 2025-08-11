@@ -1,14 +1,12 @@
 name: CI
 on:
   pull_request:
-  push:
     branches: [dev, main]
-
+  push:
+    branches: [dev]
 jobs:
-  noop:
+  verify:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-      - name: Bootstrap check
-        run: echo "Bootstrapped CI — add real checks in Week 1 Day 5–7"
+      - uses: actions/checkout@v4
+      - run: echo "CI placeholder – expand in Week 1 Day 6"
