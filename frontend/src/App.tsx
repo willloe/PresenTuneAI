@@ -1,24 +1,38 @@
-// frontend/src/App.tsx
 import { useEffect, useState } from "react";
-import { api, type ExportResp } from "./lib/api";
+import { api, type ExportResp, API_BASE } from "./lib/api";
 import { uploadFile, type UploadResponse } from "./lib/upload";
 import type { Deck } from "./types/deck";
 import { useOutline, type OutlineRequest } from "./hooks/useOutline";
+
+import { useLocalStorage } from "./hooks/useLocalStorage";
+import HeaderBar from "./components/HeaderBar";
+import UploadSection from "./components/UploadSection";
+import OutlineControls from "./components/OutlineControls";
+import Preview from "./components/Preview";
+import Settings from "./components/Settings";
+
+function clamp(n: number, lo: number, hi: number) {
+  return Math.max(lo, Math.min(hi, n));
+}
 
 export default function App() {
   // Health
   const [health, setHealth] = useState<"checking" | "ok" | "error">("checking");
 
-  // Inputs
+  // Inputs (persist)
   const [topic, setTopic] = useState("AI Hackathon");
-  const [count, setCount] = useState(5);
-  const [theme, setTheme] = useState("default");
+  const [count, setCount] = useLocalStorage<number>("slideCount", 5);
+  const [theme, setTheme] = useLocalStorage<string>("exportTheme", "default");
+  const [showImages, setShowImages] = useLocalStorage<boolean>("showImages", true);
+
+  // Settings modal
+  const [settingsOpen, setSettingsOpen] = useState(false);
 
   // Upload
   const [uploadMeta, setUploadMeta] = useState<UploadResponse | null>(null);
   const [uploadErr, setUploadErr] = useState<string | null>(null);
 
-  // Outline via hook (deck, loading, errors, meta, actions)
+  // Outline via hook
   const { deck, loading, error, meta, generate, regenerate, clearError } = useOutline();
 
   // Export
@@ -30,7 +44,6 @@ export default function App() {
   const [regenIndex, setRegenIndex] = useState<number | null>(null);
 
   const displayTopic = (deck?.topic || topic || uploadMeta?.filename || "Untitled") as string;
-  const pretty = (s: string) => s.replace(/[_-]+/g, " ").replace(/\s+/g, " ").trim();
 
   // Health check
   useEffect(() => {
@@ -45,9 +58,9 @@ export default function App() {
 
     setUploadErr(null);
     setUploadMeta(null);
-    setExportInfo(null);     // clear export on new input
+    setExportInfo(null);
     setExportErr(null);
-    clearError();            // clear outline errors
+    clearError();
 
     try {
       const meta = await uploadFile(f);
@@ -60,7 +73,7 @@ export default function App() {
     }
   };
 
-  // Generate outline (uses hook)
+  // Generate outline
   const runOutline = async () => {
     setExportInfo(null);
     setExportErr(null);
@@ -68,14 +81,14 @@ export default function App() {
 
     const body: OutlineRequest = {
       topic,
-      slide_count: count,
+      slide_count: clamp(count, 1, 15),
       text: uploadMeta?.parsed?.text ?? undefined,
     };
 
-    await generate(body); // deck + meta are set by the hook
+    await generate(body);
   };
 
-  // Per-slide regenerate (uses hook)
+  // Per-slide regenerate
   const runRegen = async (i: number) => {
     if (!deck) return;
     setRegenIndex(i);
@@ -83,7 +96,7 @@ export default function App() {
       await regenerate(i, {
         topic: deck.topic ?? topic,
         text: uploadMeta?.parsed?.text ?? undefined,
-        slide_count: deck.slide_count ?? count,
+        slide_count: deck.slide_count ?? clamp(count, 1, 15),
       });
     } finally {
       setRegenIndex(null);
@@ -114,180 +127,51 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-gray-50 text-gray-900">
-      <header className="mx-auto max-w-4xl px-6 py-8">
-        <h1 className="text-2xl font-semibold">PresenTuneAI</h1>
-        <p className="text-sm text-gray-600">
-          API:{" "}
-          <span className={health === "ok" ? "text-green-600" : "text-amber-600"}>
-            {health === "checking" ? "checking..." : health}
-          </span>
-        </p>
-      </header>
+      <HeaderBar health={health} onOpenSettings={() => setSettingsOpen(true)} />
 
       <main className="mx-auto max-w-4xl px-6">
-        {/* Upload */}
-        <section className="rounded-2xl bg-white shadow-sm p-6 mb-6">
-          <h2 className="text-lg font-medium mb-4">Upload</h2>
-          <input
-            type="file"
-            accept=".pdf,.docx,.txt"
-            onChange={onPick}
-            className="block w-full rounded-xl border px-3 py-2"
-          />
-          {uploadErr && <p className="mt-2 text-sm text-red-600">{uploadErr}</p>}
-          {uploadMeta && (
-            <div className="mt-3 text-sm">
-              <div className="font-medium">{uploadMeta.filename}</div>
-              <div className="text-gray-600">
-                {Math.round(uploadMeta.size / 1024)} KB • {uploadMeta.content_type} • kind:{" "}
-                {uploadMeta.parsed.kind} • pages: {uploadMeta.parsed.pages}
-              </div>
-              <pre className="mt-2 whitespace-pre-wrap rounded-lg bg-gray-50 p-3 border">
-                {uploadMeta.parsed.text_preview}
-              </pre>
-            </div>
-          )}
-        </section>
+        <UploadSection uploadErr={uploadErr} uploadMeta={uploadMeta} onPick={onPick} />
 
-        {/* Outline */}
-        <section className="rounded-2xl bg-white shadow-sm p-6 mb-6">
-          <h2 className="text-lg font-medium mb-4">Generate Outline</h2>
-          <div className="grid gap-4 sm:grid-cols-3">
-            <label className="sm:col-span-2">
-              <span className="block text-sm mb-1">Topic</span>
-              <input
-                value={topic}
-                onChange={(e) => setTopic(e.target.value)}
-                className="w-full rounded-xl border px-3 py-2 outline-none focus:ring"
-              />
-            </label>
-            <label>
-              <span className="block text-sm mb-1">Slide count</span>
-              <input
-                type="number"
-                min={1}
-                max={15}
-                value={count}
-                onChange={(e) => setCount(Number(e.target.value))}
-                className="w-full rounded-xl border px-3 py-2 outline-none focus:ring"
-              />
-            </label>
-          </div>
+        <OutlineControls
+          topic={topic}
+          setTopic={setTopic}
+          loading={loading}
+          onGenerate={runOutline}
+          hasSlides={slides.length > 0}
+          onOpenSettings={() => setSettingsOpen(true)}
+          exporting={exporting}
+          exportInfo={exportInfo}
+          exportErr={exportErr || error}
+          onExport={runExport}
+          meta={meta}
+          copyToClipboard={copy}
+        />
 
-          {/* Export controls (theme + buttons) */}
-          <div className="flex items-center gap-3 mt-4">
-            <button
-              onClick={runOutline}
-              disabled={loading}
-              className={`rounded-xl px-4 py-2 text-white ${
-                loading ? "bg-gray-400 cursor-not-allowed" : "bg-black hover:opacity-90"
-              }`}
-            >
-              {loading ? "Generating…" : "Generate"}
-            </button>
-
-            {!!slides.length && (
-              <>
-                <label className="text-sm text-gray-700 flex items-center gap-2">
-                  Theme
-                  <input
-                    value={theme}
-                    onChange={(e) => setTheme(e.target.value)}
-                    className="rounded-lg border px-2 py-1"
-                  />
-                </label>
-
-                <button
-                  onClick={runExport}
-                  disabled={exporting}
-                  className={`rounded-xl px-4 py-2 border ${
-                    exporting ? "opacity-50 cursor-not-allowed" : "hover:bg-gray-50"
-                  }`}
-                >
-                  {exporting ? "Exporting…" : `Export (.${exportInfo?.format ?? "txt"})`}
-                </button>
-              </>
-            )}
-          </div>
-
-          {/* Errors + meta */}
-          {(error || exportErr) && (
-            <p className="mt-3 text-sm text-red-600">
-              {error || exportErr}
-              {meta?.requestId && (
-                <span className="ml-2 inline-block rounded bg-red-50 text-red-700 px-2 py-0.5">
-                  req: {meta.requestId}
-                </span>
-              )}
-            </p>
-          )}
-
-          {meta?.serverTiming && (
-            <p className="mt-2 text-xs text-gray-500">server-timing: {meta.serverTiming}</p>
-          )}
-
-          {exportInfo && (
-            <p className="mt-3 text-sm text-gray-700 flex items-center gap-2 flex-wrap">
-              <span>
-                Exported <strong>.{exportInfo.format}</strong>
-                {exportInfo.theme ? ` (theme: ${exportInfo.theme})` : ""} —
-                {Math.max(1, Math.round(exportInfo.bytes / 1024))} KB
-              </span>
-              <code className="bg-gray-50 px-2 py-0.5 rounded">{exportInfo.path}</code>
-              <button
-                onClick={() => copy(exportInfo.path)}
-                className="text-xs border rounded px-2 py-1 hover:bg-gray-50"
-                title="Copy path"
-              >
-                Copy
-              </button>
-            </p>
-          )}
-        </section>
-
-        {/* Preview */}
-        {!!slides.length && (
-          <section className="rounded-2xl bg-white shadow-sm p-6">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-base font-medium">Preview</h3>
-              <div className="text-sm text-gray-600">
-                {pretty(displayTopic)} • {deck?.slide_count ?? slides.length} slides
-                {meta?.requestId && (
-                  <span className="ml-2 inline-block rounded bg-gray-100 text-gray-700 px-2 py-0.5">
-                    req: {meta.requestId}
-                  </span>
-                )}
-              </div>
-            </div>
-            <ul className="space-y-3">
-              {slides.map((s, i) => (
-                <li key={s.id ?? i} className="border rounded-xl p-4">
-                  <div className="font-semibold">{s.title}</div>
-                  {!!s.bullets?.length && (
-                    <ul className="list-disc ml-6">
-                      {s.bullets.map((b, j) => (
-                        <li key={j}>{b}</li>
-                      ))}
-                    </ul>
-                  )}
-                  <div className="mt-3">
-                    <button
-                      onClick={() => runRegen(i)}
-                      disabled={regenIndex === i}
-                      className={`rounded-lg px-3 py-1 border ${
-                        regenIndex === i ? "opacity-60 cursor-not-allowed" : "hover:bg-gray-50"
-                      }`}
-                      title="Regenerate this slide"
-                    >
-                      {regenIndex === i ? "Regenerating…" : "Regenerate"}
-                    </button>
-                  </div>
-                </li>
-              ))}
-            </ul>
-          </section>
-        )}
+        <Preview
+          deck={deck}
+          slides={slides}
+          displayTopic={displayTopic}
+          loading={loading}
+          meta={meta}
+          theme={theme}
+          showImages={showImages}
+          regenIndex={regenIndex}
+          onRegenerate={runRegen}
+        />
       </main>
+
+      {/* Settings modal */}
+      <Settings
+        open={settingsOpen}
+        onClose={() => setSettingsOpen(false)}
+        theme={theme}
+        setTheme={setTheme}
+        count={count}
+        setCount={(n) => setCount(clamp(n, 1, 15))}
+        showImages={showImages}
+        setShowImages={setShowImages}
+        apiBase={API_BASE}
+      />
     </div>
   );
 }
