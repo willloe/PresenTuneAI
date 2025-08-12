@@ -1,9 +1,19 @@
+# backend/app/models/schemas/outline.py
 from pydantic import BaseModel, Field
-from app.models.schemas.common import Slide
+from typing import Optional
 
 class OutlineRequest(BaseModel):
-    text: str = Field(..., description="Raw text extracted from document or user input")
-    slide_count: int = 8
+    topic: Optional[str] = Field(
+        default=None, description="Optional topic provided by user"
+    )
+    text: Optional[str] = Field(
+        default=None, description="Raw text extracted from document or user input"
+    )
+    slide_count: int = Field(
+        default=5, ge=1, le=15, description="How many slides to generate (1–15)"
+    )
 
-class OutlineResponse(BaseModel):
-    slides: list[Slide]
+# (Optional) keep for reference; endpoint currently returns Deck instead
+# from app.models.schemas.common import Slide
+# class OutlineResponse(BaseModel):
+#     slides: list[Slide]

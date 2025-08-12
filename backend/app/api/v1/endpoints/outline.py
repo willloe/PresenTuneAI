@@ -4,15 +4,12 @@ from datetime import datetime
 import re, uuid, logging
 
 from app.models.schemas.slide import Deck, Slide
+from app.models.schemas.outline import OutlineRequest
 from app.core.version import SCHEMA_VERSION
+
 
 router = APIRouter(tags=["outline"])
 log = logging.getLogger("app")
-
-class OutlineRequestModel:
-    topic: str | None = None
-    text: str | None = None
-    slide_count: int = 5
 
 # lines to ignore as titles
 _BAD_LINES = {"n", "contents", "table of contents", "toc", "index"}
@@ -44,7 +41,7 @@ def _seed_lines(txt: str) -> List[str]:
     return seeds
 
 @router.post("/outline", response_model=Deck, summary="Return placeholder deck")
-def outline(req: OutlineRequestModel, request: Request) -> Deck:
+def outline(req: OutlineRequest, request: Request) -> Deck:
     # accept either parsed text or topic
     source = (req.text or "").strip()
     if not source and not req.topic:
