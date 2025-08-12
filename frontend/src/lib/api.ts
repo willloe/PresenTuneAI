@@ -1,3 +1,4 @@
+// frontend/src/lib/api.ts
 import type { Deck } from "../types/deck";
 
 /** Narrow Slide type from Deck for convenience */
@@ -27,6 +28,13 @@ function join(base: string, path: string) {
   if (base.endsWith("/") && path.startsWith("/")) return base + path.slice(1);
   if (!base.endsWith("/") && !path.startsWith("/")) return base + "/" + path;
   return base + path;
+}
+
+/** Turn the server's absolute file path into a GET /export/{filename} URL */
+export function exportDownloadUrl(serverPath: string) {
+  // Works for Unix/Windows paths
+  const name = serverPath.split(/[\\/]/).pop()!;
+  return join(API_BASE, `/export/${encodeURIComponent(name)}`);
 }
 
 async function requestWithMeta<T>(path: string, init: RequestInit = {}) {
@@ -71,7 +79,6 @@ async function request<T>(path: string, init: RequestInit = {}) {
   return data;
 }
 
-/** Shared API response types you can import in App.tsx if desired */
 export type HealthResp = { status: string; schema_version?: string; time?: string };
 export type ExportResp = { path: string; format: string; theme?: string | null; bytes: number };
 

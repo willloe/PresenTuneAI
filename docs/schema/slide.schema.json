@@ -12,12 +12,16 @@
           "type": "string"
         },
         "url": {
+          "format": "uri",
+          "maxLength": 2083,
+          "minLength": 1,
           "title": "Url",
           "type": "string"
         },
         "alt": {
           "anyOf": [
             {
+              "maxLength": 160,
               "type": "string"
             },
             {
@@ -52,12 +56,14 @@
       "items": {
         "type": "string"
       },
+      "maxItems": 12,
       "title": "Bullets",
       "type": "array"
     },
     "notes": {
       "anyOf": [
         {
+          "maxLength": 4000,
           "type": "string"
         },
         {
@@ -90,5 +96,8 @@
     "title"
   ],
   "title": "Slide",
-  "type": "object"
+  "type": "object",
+  "$id": "https://presen-tune-ai.local/schema/slide.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "x-schema-version": "1.0"
 }

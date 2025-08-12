@@ -21,3 +21,13 @@
 ### Gotchas handled
 - Avoid logging field names that collide with LogRecord (e.g., use `file_name` instead of `filename`)
 - ContextVars set/reset once per request to avoid Token reuse errors
+
+## Typical spans
+- `outline_placeholder_generate` / `outline_placeholder_regenerate`
+- `outline_generate` / `outline_generate_fallback`
+- `agent_outline_request` / `agent_outline_response` (when FEATURE_USE_MODEL=true)
+- `agent_regen_request` / `agent_regen_response`
+- `image_enrich_deck` / `image_enrich_slide` (when FEATURE_IMAGE_API=true)
+- `export_txt`
+
+Use `with span("name", key=value)` or `async with aspan("name", key=value)`.
