@@ -22,6 +22,7 @@ from app.services.storage_service import purge_old_files
 
 logger = logging.getLogger("retention")
 
+
 def create_app() -> FastAPI:
     setup_logging()
     app = FastAPI(
@@ -42,7 +43,7 @@ def create_app() -> FastAPI:
         expose_headers=["x-request-id", "x-response-time-ms", "Server-Timing"],
     )
     app.add_middleware(ObservabilityMiddleware)
-    
+
     @app.exception_handler(StarletteHTTPException)
     async def http_exc_handler(request: Request, exc: StarletteHTTPException):
         rid = getattr(getattr(request, "state", None), "request_id", None)
@@ -80,10 +81,10 @@ def create_app() -> FastAPI:
 
     # Mount v1 routes under a single, configurable prefix
     API_PREFIX = settings.API_BASE
-    app.include_router(health_router,  prefix=API_PREFIX)
-    app.include_router(upload_router,  prefix=API_PREFIX)
+    app.include_router(health_router, prefix=API_PREFIX)
+    app.include_router(upload_router, prefix=API_PREFIX)
     app.include_router(outline_router, prefix=API_PREFIX)
-    app.include_router(export_router,  prefix=API_PREFIX)
+    app.include_router(export_router, prefix=API_PREFIX)
     app.include_router(schema_router, prefix=API_PREFIX)
     app.include_router(ops_router, prefix=API_PREFIX)
 
@@ -114,5 +115,6 @@ def create_app() -> FastAPI:
                 await task
 
     return app
+
 
 app = create_app()

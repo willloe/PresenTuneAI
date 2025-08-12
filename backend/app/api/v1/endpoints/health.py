@@ -4,6 +4,7 @@ from app.core.version import SCHEMA_VERSION
 
 router = APIRouter(tags=["health"])
 
+
 @router.get("/health")
 def health():
     return {

@@ -5,6 +5,7 @@ from app.core.telemetry import aspan
 from app.models.schemas.slide import Slide
 from app.models.schemas.export import ExportResponse
 
+
 async def export_to_pptx(slides: list[Slide], theme: str = "default") -> ExportResponse:
     out_dir = Path("data/exports")
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -15,7 +16,7 @@ async def export_to_pptx(slides: list[Slide], theme: str = "default") -> ExportR
         with out_path.open("w", encoding="utf-8") as f:
             for idx, s in enumerate(slides, start=1):
                 f.write(f"Slide {idx}: {s.title}\n")
-                for b in (s.bullets or []):
+                for b in s.bullets or []:
                     f.write(f"  - {b}\n")
                 if getattr(s, "notes", None):
                     f.write(f"  [notes] {s.notes}\n")

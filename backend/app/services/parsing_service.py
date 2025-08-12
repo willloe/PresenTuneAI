@@ -5,8 +5,10 @@ from docx import Document
 from app.core.telemetry import span
 from app.models.schemas.upload import ParsedPreview
 
+
 def _read_pdf(path: Path) -> Tuple[str, int]:
     import pdfplumber
+
     with span("read_pdf", file=str(path)):
         text_parts = []
         pages = 0
@@ -16,11 +18,13 @@ def _read_pdf(path: Path) -> Tuple[str, int]:
                 text_parts.append(p.extract_text() or "")
         return "\n".join(text_parts), pages
 
+
 def _read_docx(path: Path) -> Tuple[str, int]:
     with span("read_docx", file=str(path)):
         doc = Document(str(path))
         text = "\n".join(p.text for p in doc.paragraphs if p.text)
         return text, 0  # pages unknown from docx
+
 
 def parse_file(path: Path, content_type: str | None) -> ParsedPreview:
     with span("parse_file", file=str(path), content_type=content_type or "unknown"):

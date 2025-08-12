@@ -12,6 +12,7 @@ from app.models.schemas.upload import UploadMeta, ParsedPreview
 
 log = logging.getLogger("retention")
 
+
 def purge_old_files(base_dir: Path, older_than: timedelta) -> list[Path]:
     deleted: list[Path] = []
     with span("retention_sweep", logger=log, base=str(base_dir), days=older_than.days):
@@ -33,11 +34,16 @@ def purge_old_files(base_dir: Path, older_than: timedelta) -> list[Path]:
             log.error("retention scan failed in %s: %s", base_dir, e)
     return deleted
 
+
 async def save_upload(file: UploadFile) -> UploadMeta:
     os.makedirs(settings.STORAGE_DIR, exist_ok=True)
     dest = Path(settings.STORAGE_DIR) / file.filename
 
-    async with aspan("save_upload", filename=file.filename, content_type=file.content_type or "unknown"):
+    async with aspan(
+        "save_upload",
+        filename=file.filename,
+        content_type=file.content_type or "unknown",
+    ):
         content = await file.read()
         size = len(content)
         with dest.open("wb") as f:
@@ -46,7 +52,9 @@ async def save_upload(file: UploadFile) -> UploadMeta:
 
     # parse + wrap into schema
     parsed_dict = parse_file(dest, file.content_type)
-    parsed = ParsedPreview(**parsed_dict) if isinstance(parsed_dict, dict) else parsed_dict
+    parsed = (
+        ParsedPreview(**parsed_dict) if isinstance(parsed_dict, dict) else parsed_dict
+    )
 
     return UploadMeta(
         filename=file.filename,

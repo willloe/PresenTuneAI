@@ -19,9 +19,11 @@ _WS = re.compile(r"\s+")
 _ARTIFACT = re.compile(r"\(cid:\d+\)")
 _LEAD_NUM = re.compile(r"^[\s]*(?:\d+[\.\)]|[IVXLCM]+\.)\s+", re.IGNORECASE)
 
+
 def _clip(s: str, n: int = 80) -> str:
     s = s.strip()
     return s if len(s) <= n else (s[: n - 1].rstrip() + "…")
+
 
 def _seed_lines(txt: str) -> List[str]:
     seeds: List[str] = []
@@ -40,7 +42,12 @@ def _seed_lines(txt: str) -> List[str]:
         seeds.append(s)
     return seeds
 
-@router.post("/outline", response_model=Deck, summary="Generate a placeholder deck from topic/text")
+
+@router.post(
+    "/outline",
+    response_model=Deck,
+    summary="Generate a placeholder deck from topic/text",
+)
 def outline(req: OutlineRequest, request: Request) -> Deck:
     source = (req.text or "").strip()
     if not source and not req.topic:
@@ -54,8 +61,10 @@ def outline(req: OutlineRequest, request: Request) -> Deck:
         slides: List[Slide] = []
         for i in range(n):
             seed = seeds[i % len(seeds)] if seeds else topic
-            title = f"Slide {i+1}: {_clip(seed)}"
-            slides.append(Slide(id=uuid.uuid4().hex, title=title, bullets=["placeholder bullet"]))
+            title = f"Slide {i + 1}: {_clip(seed)}"
+            slides.append(
+                Slide(id=uuid.uuid4().hex, title=title, bullets=["placeholder bullet"])
+            )
 
         deck = Deck(
             version=SCHEMA_VERSION,

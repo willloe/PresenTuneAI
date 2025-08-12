@@ -1,6 +1,7 @@
 from typing import Literal, Optional
 from pydantic import BaseModel, Field, model_validator
 
+
 class ParsedPreview(BaseModel):
     kind: Literal["pdf", "docx", "text"] = "text"
     pages: int = 0
@@ -15,12 +16,14 @@ class ParsedPreview(BaseModel):
         self.text_length = len(self.text or "")
         return self
 
+
 class UploadMeta(BaseModel):
     filename: str
     size: int = Field(..., ge=0, description="bytes")
     content_type: str = "application/octet-stream"
     path: Optional[str] = Field(None, description="Absolute path on server (dev only)")
     parsed: ParsedPreview
+
 
 class UploadResponse(UploadMeta):
     pass

@@ -10,7 +10,12 @@ router = APIRouter(tags=["upload"])
 
 CHUNK = 1024 * 1024  # 1MB
 
-@router.post("/upload", response_model=UploadResponse, summary="Upload a document and return parsed preview")
+
+@router.post(
+    "/upload",
+    response_model=UploadResponse,
+    summary="Upload a document and return parsed preview",
+)
 async def upload(request: Request, file: UploadFile = File(...)) -> UploadResponse:
     if not file.filename:
         raise HTTPException(400, "Missing filename")
@@ -24,7 +29,11 @@ async def upload(request: Request, file: UploadFile = File(...)) -> UploadRespon
 
     # Stream to disk with size cap
     size = 0
-    async with aspan("upload_stream", file_name=file.filename, content_type=file.content_type or "application/octet-stream"):
+    async with aspan(
+        "upload_stream",
+        file_name=file.filename,
+        content_type=file.content_type or "application/octet-stream",
+    ):
         with dest_path.open("wb") as f:
             while True:
                 chunk = await file.read(CHUNK)
@@ -33,12 +42,18 @@ async def upload(request: Request, file: UploadFile = File(...)) -> UploadRespon
                 size += len(chunk)
                 if size > limit:
                     dest_path.unlink(missing_ok=True)
-                    raise HTTPException(413, f"File too large (> {settings.MAX_UPLOAD_MB} MB)")
+                    raise HTTPException(
+                        413, f"File too large (> {settings.MAX_UPLOAD_MB} MB)"
+                    )
                 f.write(chunk)
         await file.seek(0)
 
     # Parse
-    with span("parse_file_endpoint", file=str(dest_path), content_type=file.content_type or "unknown"):
+    with span(
+        "parse_file_endpoint",
+        file=str(dest_path),
+        content_type=file.content_type or "unknown",
+    ):
         raw = parse_file(dest_path, file.content_type)
 
     # Normalize to ParsedPreview without double-wrapping

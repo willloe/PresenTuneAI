@@ -7,11 +7,13 @@ from app.core.telemetry import aspan
 
 router = APIRouter(prefix="/export", tags=["export"])
 
+
 @router.post("", response_model=ExportResponse, summary="Export slides to text")
 async def export(req: ExportRequest) -> ExportResponse:
     theme = req.theme or "default"
     async with aspan("export_endpoint", theme=theme, slide_count=len(req.slides)):
         return await export_to_pptx(req.slides, theme=theme)
+
 
 @router.get("/{filename}", response_class=FileResponse)
 def download(filename: str):
