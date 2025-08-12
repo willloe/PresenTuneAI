@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, HTTPException, Request, Path
 from typing import List
 from datetime import datetime
 import logging
@@ -77,3 +77,38 @@ def outline(req: OutlineRequest, request: Request) -> Deck:
 
     log.info("outline_stub_complete", extra={"slide_count": len(slides)})
     return deck
+
+@router.post(
+    "/outline/{index}/regenerate",
+    response_model=Slide,
+    summary="Regenerate a single slide (placeholder)",
+)
+def regenerate_slide(
+    index: int = Path(..., ge=0, description="0-based slide index"),
+    req: OutlineRequest = None,
+    request: Request = None,
+) -> Slide:
+    if req is None:
+        raise HTTPException(400, "Missing request body")
+    if not (req.topic or req.text):
+        raise HTTPException(400, "Provide either 'text' or 'topic'")
+
+    n = max(1, min(req.slide_count, 15))
+    if index >= n:
+        raise HTTPException(400, f"index {index} out of range for slide_count={n}")
+
+    seeds = _seed_lines((req.text or "").strip())
+    topic = (req.topic or (seeds[0] if seeds else "Untitled")).strip()
+    seed = seeds[index % len(seeds)] if seeds else topic
+
+    with span("outline_slide_regenerate", topic=topic, index=index):
+        new_slide = Slide(
+            id=uuid.uuid4().hex,
+            title=f"Slide {index + 1}: {_clip(seed)}",
+            bullets=[
+                "placeholder bullet",  # deterministic stub
+            ],
+        )
+
+    log.info("outline_slide_regenerate_complete", extra={"index": index})
+    return new_slide
