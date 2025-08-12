@@ -1,7 +1,9 @@
+// frontend/src/App.tsx
 import { useEffect, useState } from "react";
-import { api, ApiError } from "./lib/api";
+import { api, type ExportResp } from "./lib/api";
 import { uploadFile, type UploadResponse } from "./lib/upload";
 import type { Deck } from "./types/deck";
+import { useOutline, type OutlineRequest } from "./hooks/useOutline";
 
 export default function App() {
   // Health
@@ -10,25 +12,24 @@ export default function App() {
   // Inputs
   const [topic, setTopic] = useState("AI Hackathon");
   const [count, setCount] = useState(5);
-  const [theme, setTheme] = useState("default"); // <-- export theme
+  const [theme, setTheme] = useState("default");
 
   // Upload
   const [uploadMeta, setUploadMeta] = useState<UploadResponse | null>(null);
   const [uploadErr, setUploadErr] = useState<string | null>(null);
 
-  // Results
-  const [deck, setDeck] = useState<Deck | null>(null);
-  const [err, setErr] = useState<string | null>(null);
-  const [generating, setGenerating] = useState(false);
-  const [lastReqId, setLastReqId] = useState<string | null>(null);
-  const [lastServerTiming, setLastServerTiming] = useState<string | null | undefined>(null);
+  // Outline via hook (deck, loading, errors, meta, actions)
+  const { deck, loading, error, meta, generate, regenerate, clearError } = useOutline();
 
   // Export
-  type ExportResp = { path: string; format: string; theme?: string | null; bytes: number };
   const [exportInfo, setExportInfo] = useState<ExportResp | null>(null);
   const [exporting, setExporting] = useState(false);
+  const [exportErr, setExportErr] = useState<string | null>(null);
 
-  const displayTopic = deck?.topic || topic || (uploadMeta?.filename ?? "Untitled");
+  // Per-slide regenerate UI state
+  const [regenIndex, setRegenIndex] = useState<number | null>(null);
+
+  const displayTopic = (deck?.topic || topic || uploadMeta?.filename || "Untitled") as string;
   const pretty = (s: string) => s.replace(/[_-]+/g, " ").replace(/\s+/g, " ").trim();
 
   // Health check
@@ -44,7 +45,9 @@ export default function App() {
 
     setUploadErr(null);
     setUploadMeta(null);
-    setExportInfo(null); // clear any old export since input changed
+    setExportInfo(null);     // clear export on new input
+    setExportErr(null);
+    clearError();            // clear outline errors
 
     try {
       const meta = await uploadFile(f);
@@ -57,35 +60,33 @@ export default function App() {
     }
   };
 
-  // Generate outline
+  // Generate outline (uses hook)
   const runOutline = async () => {
-    setErr(null);
-    setDeck(null);
-    setLastReqId(null);
-    setLastServerTiming(null);
-    setExportInfo(null); // new outline -> previous export is stale
-    setGenerating(true);
+    setExportInfo(null);
+    setExportErr(null);
+    clearError();
 
+    const body: OutlineRequest = {
+      topic,
+      slide_count: count,
+      text: uploadMeta?.parsed?.text ?? undefined,
+    };
+
+    await generate(body); // deck + meta are set by the hook
+  };
+
+  // Per-slide regenerate (uses hook)
+  const runRegen = async (i: number) => {
+    if (!deck) return;
+    setRegenIndex(i);
     try {
-      const body: { topic?: string; text?: string; slide_count?: number } = {
-        topic,
-        slide_count: count,
-      };
-      if (uploadMeta?.parsed?.text) body.text = uploadMeta.parsed.text;
-
-      const { data, meta } = await api.outlineWithMeta(body);
-      setDeck(data);
-      setLastReqId(meta.requestId ?? null);
-      setLastServerTiming(meta.serverTiming);
-    } catch (e: any) {
-      if (e instanceof ApiError) {
-        setLastReqId(e.meta.requestId ?? null);
-        setErr(e.message);
-      } else {
-        setErr(e?.message || "failed");
-      }
+      await regenerate(i, {
+        topic: deck.topic ?? topic,
+        text: uploadMeta?.parsed?.text ?? undefined,
+        slide_count: deck.slide_count ?? count,
+      });
     } finally {
-      setGenerating(false);
+      setRegenIndex(null);
     }
   };
 
@@ -98,17 +99,18 @@ export default function App() {
     if (!deck) return;
     setExporting(true);
     setExportInfo(null);
+    setExportErr(null);
     try {
       const { data } = await api.exportDeck({ slides: deck.slides, theme });
       setExportInfo(data);
     } catch (e: any) {
-      setErr(e?.message || "export failed");
+      setExportErr(e?.message || "export failed");
     } finally {
       setExporting(false);
     }
   };
 
-  const slides = deck?.slides ?? [];
+  const slides: Deck["slides"] = deck?.slides ?? [];
 
   return (
     <div className="min-h-screen bg-gray-50 text-gray-900">
@@ -176,12 +178,12 @@ export default function App() {
           <div className="flex items-center gap-3 mt-4">
             <button
               onClick={runOutline}
-              disabled={generating}
+              disabled={loading}
               className={`rounded-xl px-4 py-2 text-white ${
-                generating ? "bg-gray-400 cursor-not-allowed" : "bg-black hover:opacity-90"
+                loading ? "bg-gray-400 cursor-not-allowed" : "bg-black hover:opacity-90"
               }`}
             >
-              {generating ? "Generating…" : "Generate"}
+              {loading ? "Generating…" : "Generate"}
             </button>
 
             {!!slides.length && (
@@ -208,19 +210,20 @@ export default function App() {
             )}
           </div>
 
-          {err && (
+          {/* Errors + meta */}
+          {(error || exportErr) && (
             <p className="mt-3 text-sm text-red-600">
-              {err}
-              {lastReqId && (
+              {error || exportErr}
+              {meta?.requestId && (
                 <span className="ml-2 inline-block rounded bg-red-50 text-red-700 px-2 py-0.5">
-                  req: {lastReqId}
+                  req: {meta.requestId}
                 </span>
               )}
             </p>
           )}
 
-          {lastServerTiming && (
-            <p className="mt-2 text-xs text-gray-500">server-timing: {lastServerTiming}</p>
+          {meta?.serverTiming && (
+            <p className="mt-2 text-xs text-gray-500">server-timing: {meta.serverTiming}</p>
           )}
 
           {exportInfo && (
@@ -249,9 +252,9 @@ export default function App() {
               <h3 className="text-base font-medium">Preview</h3>
               <div className="text-sm text-gray-600">
                 {pretty(displayTopic)} • {deck?.slide_count ?? slides.length} slides
-                {lastReqId && (
+                {meta?.requestId && (
                   <span className="ml-2 inline-block rounded bg-gray-100 text-gray-700 px-2 py-0.5">
-                    req: {lastReqId}
+                    req: {meta.requestId}
                   </span>
                 )}
               </div>
@@ -267,6 +270,18 @@ export default function App() {
                       ))}
                     </ul>
                   )}
+                  <div className="mt-3">
+                    <button
+                      onClick={() => runRegen(i)}
+                      disabled={regenIndex === i}
+                      className={`rounded-lg px-3 py-1 border ${
+                        regenIndex === i ? "opacity-60 cursor-not-allowed" : "hover:bg-gray-50"
+                      }`}
+                      title="Regenerate this slide"
+                    >
+                      {regenIndex === i ? "Regenerating…" : "Regenerate"}
+                    </button>
+                  </div>
                 </li>
               ))}
             </ul>
