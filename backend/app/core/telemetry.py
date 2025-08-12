@@ -1,5 +1,6 @@
 from __future__ import annotations
-import time, logging
+import time
+import logging
 from contextlib import contextmanager, asynccontextmanager
 from contextvars import ContextVar
 from typing import Optional

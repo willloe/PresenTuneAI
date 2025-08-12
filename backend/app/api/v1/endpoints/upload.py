@@ -1,10 +1,8 @@
 from fastapi import APIRouter, UploadFile, File, HTTPException, Request
 from uuid import uuid4
-from pathlib import Path
 from pydantic import BaseModel as PydModel
 from app.core.config import settings
 from app.core.telemetry import aspan, span
-from app.services.storage_service import save_upload
 from app.services.parsing_service import parse_file
 from app.models.schemas.upload import UploadResponse, ParsedPreview
 

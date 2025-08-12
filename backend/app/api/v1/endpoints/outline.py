@@ -1,7 +1,9 @@
 from fastapi import APIRouter, HTTPException, Request
 from typing import List
 from datetime import datetime
-import re, uuid, logging
+import logging
+import re
+import uuid
 
 from app.models.schemas.slide import Deck, Slide
 from app.models.schemas.outline import OutlineRequest
