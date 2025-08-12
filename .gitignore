@@ -1,19 +1,59 @@
-# Node / React
+# Node / React build artifacts
 node_modules/
 dist/
+build/
 .next/
+.vite/
 *.log
+npm-debug.log*
+yarn-debug.log*
+pnpm-debug.log*
+**/.cache
+**/.parcel-cache
 
-# Python
+# Vite/React env files (never commit real envs)
+# Ignore ALL envs, then re-allow template examples
+.env
+.env.*
+!.env.example
+frontend/.env
+frontend/.env.*
+!frontend/.env.example
+backend/.env
+backend/.env.*
+!backend/.env.example
+
+# Python bytecode & venvs
 __pycache__/
-*.pyc
-.venv/
-.env/
+*.py[cod]
+*.pyo
 .pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.ipynb_checkpoints
+.venv/
+venv/
+env/
+
+# Coverage & test outputs
+.coverage*
+htmlcov/
+coverage/
+pytestdebug.log
 
 # OS & editors
 .DS_Store
 Thumbs.db
-.vscode/
+*.swp
 .idea/
-backend/data/uploads/**frontend/.env.production.local
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json.sample
+
+# App data / uploads (keep folder, ignore contents)
+backend/data/uploads/**
+!backend/data/uploads/.gitkeep
+
+# Docker (optional – if you generate locals)
+.docker/
+docker-compose.override.yml
