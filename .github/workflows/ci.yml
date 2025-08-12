@@ -2,66 +2,119 @@ name: CI
 
 on:
   push:
-    branches: [ "main", "week-*", "dev" ]
+    branches: ["main", "week-*", "dev"]
   pull_request:
-    branches: [ "main", "dev" ]
+    branches: ["main", "dev"]
 
+# Avoid running duplicate CI on the same ref
 concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
 
+permissions:
+  contents: read
+
 jobs:
   api:
-    name: Backend (lint/typecheck + schemas)
+    name: Backend • lint / types / tests / schemas
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     defaults:
       run:
         working-directory: backend
+
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
         with:
           python-version: "3.11"
           cache: "pip"
-      - name: Install deps
+
+      - name: Install dependencies
         run: |
           python -m pip install -U pip
           pip install -r requirements.txt ruff mypy pytest
+
+      # Fail on style issues but also produce inline GitHub annotations
       - name: Ruff (lint)
-        run: ruff check app
-      - name: Mypy (types)
-        run: mypy app || true   # keep lenient in Week 1
-      - name: Smoke tests (pytest placeholder)
         run: |
-          echo "from fastapi.testclient import TestClient; from app.main import app; c=TestClient(app); assert c.get('/v1/health').status_code==200" > tests/test_smoke.py
-          pytest -q
+          ruff check --output-format=github app
+          ruff format --check app
+
+      # Keep mypy non-blocking for Week 1; flip to strict later
+      - name: Mypy (types)
+        run: mypy app || true
+
+      # Ensure we always have at least one test (creates a tiny smoke test if repo has none)
+      - name: Ensure smoke test exists (if none found)
+        run: |
+          mkdir -p tests
+          if ! ls tests/test_*.py 1>/dev/null 2>&1; then
+            cat > tests/test_ci_smoke.py <<'PY'
+            from fastapi.testclient import TestClient
+            from app.main import app
+
+            def test_health_ok():
+                c = TestClient(app)
+                r = c.get("/v1/health")
+                assert r.status_code == 200
+                j = r.json()
+                assert j.get("status") == "ok"
+            PY
+          fi
+
+      - name: Pytest
+        env:
+          PYTHONPATH: backend
+          # Keep warnings out of the summary; tighten later as needed
+          PYTEST_ADDOPTS: "-q -ra -W ignore::DeprecationWarning"
+        run: pytest
+
       - name: Generate JSON Schemas
         env:
           PYTHONPATH: .
-        run: |
-          python -m app.utils.generate_schema
+        run: python -m app.utils.generate_schema
+
       - name: Upload schema artifact
         uses: actions/upload-artifact@v4
         with:
           name: schemas-json
           path: backend/docs/schema/*.json
+          if-no-files-found: warn
 
   ui:
-    name: Frontend (typecheck + build)
+    name: Frontend • typecheck / build
+    needs: api
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     defaults:
       run:
         working-directory: frontend
+
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
         with:
           node-version: "20"
           cache: "npm"
           cache-dependency-path: frontend/package-lock.json
+
       - name: Install
         run: npm ci
+
       - name: Typecheck
         run: npx tsc --noEmit
+
       - name: Build
         run: npm run build
+
+      - name: Upload UI build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-dist
+          path: frontend/dist
+          if-no-files-found: warn
