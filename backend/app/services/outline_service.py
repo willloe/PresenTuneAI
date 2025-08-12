@@ -1,16 +1,17 @@
 from __future__ import annotations
 import os, uuid, logging, re
 from dataclasses import dataclass
-from typing import List, Optional
+from typing import List
 from datetime import datetime
 
 import httpx
 from fastapi import HTTPException
 
 from app.core.version import SCHEMA_VERSION
-from app.core.telemetry import aspan
+from app.core.telemetry import aspan, span  # ⬅ added span for small response events
 from app.models.schemas.outline import OutlineRequest
-from app.models.schemas.slide import Deck, Slide
+from app.models.schemas.slide import Deck, Slide, Media
+from app.services.image_service import build_image_provider
 
 log = logging.getLogger("app")
 
@@ -113,7 +114,11 @@ class AgentStrategy(OutlineStrategy):
     async def generate_deck(self, req: OutlineRequest) -> Deck:
         payload = req.model_dump()
         async with httpx.AsyncClient(timeout=self.timeout_ms / 1000) as client:
-            r = await client.post(self.url.rstrip("/") + "/outline", json=payload)
+            async with aspan("agent_outline_request", url=self.url, timeout_ms=self.timeout_ms):
+                r = await client.post(self.url.rstrip("/") + "/outline", json=payload)
+            # tiny response span to capture metadata
+            with span("agent_outline_response", status=r.status_code, bytes=len(r.content)):
+                ...
             r.raise_for_status()
             data = r.json()
         return Deck.model_validate(data)
@@ -121,7 +126,10 @@ class AgentStrategy(OutlineStrategy):
     async def regenerate_slide(self, index: int, req: OutlineRequest) -> Slide:
         payload = req.model_dump()
         async with httpx.AsyncClient(timeout=self.timeout_ms / 1000) as client:
-            r = await client.post(self.url.rstrip("/") + f"/outline/{index}/regenerate", json=payload)
+            async with aspan("agent_regen_request", url=self.url, index=index, timeout_ms=self.timeout_ms):
+                r = await client.post(self.url.rstrip("/") + f"/outline/{index}/regenerate", json=payload)
+            with span("agent_regen_response", status=r.status_code, bytes=len(r.content), index=index):
+                ...
             r.raise_for_status()
             data = r.json()
         return Slide.model_validate(data)
@@ -131,25 +139,93 @@ class OutlineService:
     primary: OutlineStrategy
     fallback: OutlineStrategy
 
+    async def _enrich_images(self, deck: Deck) -> Deck:
+        """
+        Attach a deterministic image to each slide that lacks media.
+        Controlled by FEATURE_IMAGE_API=true|false (default true).
+        """
+        if os.getenv("FEATURE_IMAGE_API", "true").lower() != "true":
+            return deck
+
+        provider = build_image_provider()
+        provider_name = provider.__class__.__name__
+        async with aspan("image_enrich_deck", slides=len(deck.slides), provider=provider_name):
+            for idx, s in enumerate(deck.slides):
+                if getattr(s, "media", None) and len(s.media) > 0:
+                    continue  # already has media
+                # Use title (minus 'Slide') as keyword; fallback to deck.topic
+                kw = (s.title or "").replace("Slide", "").strip() or (deck.topic or "Presentation")
+                async with aspan("image_enrich_slide", idx=idx, kw=kw):
+                    try:
+                        media = await provider.image_for(kw, idx)
+                        if media:
+                            # Ensure list container exists
+                            if not getattr(s, "media", None):
+                                s.media = []
+                            s.media = [media]
+                        else:
+                            with span("image_enrich_miss", idx=idx, kw=kw):
+                                ...
+                    except Exception as e:
+                        log.warning("image_enrich_error idx=%s kw=%s: %s", idx, kw, e)
+                        with span("image_enrich_error", idx=idx, kw=kw, err=type(e).__name__):
+                            ...
+        return deck
+
     async def generate_deck(self, req: OutlineRequest) -> Deck:
+        """
+        Orchestrates: primary strategy -> fallback on error -> image enrichment.
+        Emits a top-level span for observability around the chosen strategy.
+        """
         try:
-            return await self.primary.generate_deck(req)
+            async with aspan("outline_generate", strategy=self.primary.__class__.__name__):
+                deck = await self.primary.generate_deck(req)
         except Exception:
             log.warning("outline primary failed; using fallback", exc_info=True)
-            return await self.fallback.generate_deck(req)
+            async with aspan("outline_generate_fallback", strategy=self.fallback.__class__.__name__):
+                deck = await self.fallback.generate_deck(req)
+
+        # Post-process: attach images (feature-flagged)
+        deck = await self._enrich_images(deck)
+        return deck
 
     async def regenerate_slide(self, index: int, req: OutlineRequest) -> Slide:
+        """
+        Regenerates a single slide via primary strategy with fallback,
+        then enriches that slide with an image (feature-flagged).
+        """
         try:
-            return await self.primary.regenerate_slide(index, req)
+            async with aspan("outline_regenerate", strategy=self.primary.__class__.__name__, index=index):
+                slide = await self.primary.regenerate_slide(index, req)
         except Exception:
             log.warning("outline regen primary failed; using fallback", exc_info=True)
-            return await self.fallback.regenerate_slide(index, req)
+            async with aspan("outline_regenerate_fallback", strategy=self.fallback.__class__.__name__, index=index):
+                slide = await self.fallback.regenerate_slide(index, req)
+
+        if os.getenv("FEATURE_IMAGE_API", "true").lower() == "true":
+            provider = build_image_provider()
+            kw = (slide.title or "").replace("Slide", "").strip() or (req.topic or "Presentation")
+            async with aspan("image_enrich_slide", idx=index, kw=kw):
+                try:
+                    media = await provider.image_for(kw, index)
+                    if media:
+                        if not getattr(slide, "media", None):
+                            slide.media = []
+                        slide.media = [media]
+                    else:
+                        with span("image_enrich_miss", idx=index, kw=kw):
+                            ...
+                except Exception as e:
+                    log.warning("image_enrich_error idx=%s kw=%s: %s", index, kw, e)
+                    with span("image_enrich_error", idx=index, kw=kw, err=type(e).__name__):
+                        ...
+        return slide
 
 def build_outline_service() -> OutlineService:
-    use_agent = os.getenv("FEATURE_USE_AGENT", "false").lower() == "true"
+    use_agent = os.getenv("FEATURE_USE_MODEL", "false").lower() == "true"
     if use_agent:
         url = os.getenv("AGENT_URL", "").strip()
         if url:
             return OutlineService(primary=AgentStrategy(url=url), fallback=PlaceholderStrategy())
-        log.error("FEATURE_USE_AGENT=true but AGENT_URL empty; defaulting to placeholder")
+        log.error("FEATURE_USE_MODEL=true but AGENT_URL empty; defaulting to placeholder")
     return OutlineService(primary=PlaceholderStrategy(), fallback=PlaceholderStrategy())
