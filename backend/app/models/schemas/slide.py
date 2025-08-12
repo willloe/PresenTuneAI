@@ -1,6 +1,7 @@
 from typing import List, Literal, Optional
 from pydantic import BaseModel, Field, HttpUrl, field_validator, model_validator
 from datetime import datetime
+from app.core.version import SCHEMA_VERSION
 
 class Media(BaseModel):
     type: Literal["image"] = "image"
@@ -21,7 +22,7 @@ class Slide(BaseModel):
         return [b.strip() for b in v if b and b.strip()]
 
 class Deck(BaseModel):
-    version: str = "1.0"
+    version: str = SCHEMA_VERSION
     topic: Optional[str] = None
     source: Optional[dict] = Field(default=None, description="e.g. {'file_id':'abc','filename':'doc.pdf'}")
     slide_count: int = Field(..., ge=1, le=50)

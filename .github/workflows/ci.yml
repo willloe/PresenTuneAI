@@ -1,12 +1,46 @@
 name: CI
+
 on:
-  pull_request:
-    branches: [dev, main]
   push:
-    branches: [dev]
+    branches: [ "main", "week-*" ]
+  pull_request:
+    branches: [ "main" ]
+
 jobs:
-  verify:
+  api:
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
     steps:
       - uses: actions/checkout@v4
-      - run: echo "CI placeholder – expand in Week 1 Day 6"
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install deps
+        run: |
+          python -m pip install -U pip
+          pip install -r requirements.txt ruff mypy
+      - name: Lint (ruff)
+        run: ruff check .
+      - name: Typecheck (mypy)
+        run: mypy app || true  # loosen during week 1
+
+  ui:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: frontend/package-lock.json
+      - name: Install
+        run: npm ci
+      - name: Lint
+        run: npx eslint . --max-warnings=0 || true  # strict later
+      - name: Typecheck
+        run: npx tsc --noEmit
