@@ -1,6 +1,7 @@
 import time
 import uuid
 import logging
+import os
 from fastapi import Request
 from starlette.middleware.base import BaseHTTPMiddleware
 from app.core.telemetry import request_id_ctx, server_timing_ctx
@@ -21,26 +22,48 @@ class ObservabilityMiddleware(BaseHTTPMiddleware):
         rid_token = request_id_ctx.set(request_id)
         st_token = server_timing_ctx.set([])  # spans will append here
 
-        response = None
         try:
             response = await call_next(request)
 
             duration_ms = int((time.perf_counter() - start) * 1000)
+
             # headers for correlation + devtools timing
             response.headers["x-request-id"] = request_id
             response.headers["x-response-time-ms"] = str(duration_ms)
 
             # add overall app time to any per-span timings
             timings = server_timing_ctx.get() or []
+            # You can keep "app" or use "total"; both are fine.
             timings.append(f"app;dur={duration_ms}")
-            prev = response.headers.get("Server-Timing")
-            response.headers["Server-Timing"] = (
-                f"{prev}, {', '.join(timings)}" if prev else ", ".join(timings)
-            )
 
-            level = (
-                logging.DEBUG if request.url.path.endswith("/health") else logging.INFO
-            )
+            # merge with any existing Server-Timing
+            prev = response.headers.get("Server-Timing")
+            merged = ", ".join(timings) if not prev else f"{prev}, {', '.join(timings)}"
+            response.headers["Server-Timing"] = merged
+
+            expose_need = ["Server-Timing", "X-Request-Id", "X-Response-Time-Ms"]
+            existing_expose = response.headers.get("Access-Control-Expose-Headers", "")
+            existing_tokens = {t.strip().lower() for t in existing_expose.split(",") if t.strip()}
+            merged_tokens = list({*existing_tokens, *[h.lower() for h in expose_need]})
+            if merged_tokens:
+                # preserve canonical casing when writing
+                final_list = []
+                for t in merged_tokens:
+                    if t == "server-timing":
+                        final_list.append("Server-Timing")
+                    elif t == "x-request-id":
+                        final_list.append("X-Request-Id")
+                    elif t == "x-response-time-ms":
+                        final_list.append("X-Response-Time-Ms")
+                    else:
+                        final_list.append(t)
+                response.headers["Access-Control-Expose-Headers"] = ", ".join(final_list)
+
+            tao = os.getenv("TIMING_ALLOW_ORIGIN", "*")
+            if tao:
+                response.headers.setdefault("Timing-Allow-Origin", tao)
+
+            level = logging.DEBUG if request.url.path.endswith("/health") else logging.INFO
             log.log(
                 level,
                 "request_complete",
@@ -60,7 +83,6 @@ class ObservabilityMiddleware(BaseHTTPMiddleware):
             return response
 
         except Exception:
-            # NOTE: do NOT reset context vars here; do it in finally.
             duration_ms = int((time.perf_counter() - start) * 1000)
             log.exception(
                 "unhandled_error",

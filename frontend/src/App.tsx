@@ -12,6 +12,7 @@ function clamp(n: number, lo: number, hi: number) {
 
 export default function App() {
   const [health, setHealth] = useState<"checking" | "ok" | "error">("checking");
+  const [schemaVersion, setSchemaVersion] = useState<string | null>(null);
   const [topic, setTopic] = useState("AI Hackathon");
   const [count, setCount] = useLocalStorage<number>("slideCount", 5);
   const [theme, setTheme] = useLocalStorage<string>("exportTheme", "default");
@@ -32,7 +33,13 @@ export default function App() {
   const displayTopic = (deck?.topic || topic || uploadMeta?.filename || "Untitled") as string;
 
   useEffect(() => {
-    api.health().then(() => setHealth("ok")).catch(() => setHealth("error"));
+    api
+      .healthWithMeta()
+      .then(({ data }) => {
+        setHealth("ok");
+        setSchemaVersion((data as any)?.schema_version ?? null);
+      })
+      .catch(() => setHealth("error"));
   }, []);
 
   const onPick = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -105,7 +112,7 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-gray-50 text-gray-900">
-      <HeaderBar health={health} onOpenSettings={() => setSettingsOpen(true)} />
+      <HeaderBar health={health} schemaVersion={schemaVersion} onOpenSettings={() => setSettingsOpen(true)} />
 
       <main className="mx-auto max-w-4xl px-6">
         <UploadSection uploadErr={uploadErr} uploadMeta={uploadMeta} onPick={onPick} />
