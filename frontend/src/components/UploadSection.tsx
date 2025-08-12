@@ -1,4 +1,4 @@
-import type { UploadResponse } from "@/lib/upload";
+import type { UploadResponse } from "../lib/upload";
 
 type Props = {
   uploadErr: string | null;

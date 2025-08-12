@@ -3,65 +3,47 @@ import { api, type ExportResp, API_BASE } from "./lib/api";
 import { uploadFile, type UploadResponse } from "./lib/upload";
 import type { Deck } from "./types/deck";
 import { useOutline, type OutlineRequest } from "./hooks/useOutline";
-
 import { useLocalStorage } from "./hooks/useLocalStorage";
-import HeaderBar from "./components/HeaderBar";
-import UploadSection from "./components/UploadSection";
-import OutlineControls from "./components/OutlineControls";
-import Preview from "./components/Preview";
-import Settings from "./components/Settings";
+import { HeaderBar, UploadSection, OutlineControls, Preview, Settings } from "./components";
 
 function clamp(n: number, lo: number, hi: number) {
   return Math.max(lo, Math.min(hi, n));
 }
 
 export default function App() {
-  // Health
   const [health, setHealth] = useState<"checking" | "ok" | "error">("checking");
-
-  // Inputs (persist)
   const [topic, setTopic] = useState("AI Hackathon");
   const [count, setCount] = useLocalStorage<number>("slideCount", 5);
   const [theme, setTheme] = useLocalStorage<string>("exportTheme", "default");
   const [showImages, setShowImages] = useLocalStorage<boolean>("showImages", true);
-
-  // Settings modal
   const [settingsOpen, setSettingsOpen] = useState(false);
 
-  // Upload
   const [uploadMeta, setUploadMeta] = useState<UploadResponse | null>(null);
   const [uploadErr, setUploadErr] = useState<string | null>(null);
 
-  // Outline via hook
-  const { deck, loading, error, meta, generate, regenerate, clearError } = useOutline();
+  const { deck, loading, error, meta, generate, regenerate, updateSlide, clearError } = useOutline();
 
-  // Export
   const [exportInfo, setExportInfo] = useState<ExportResp | null>(null);
   const [exporting, setExporting] = useState(false);
   const [exportErr, setExportErr] = useState<string | null>(null);
 
-  // Per-slide regenerate UI state
   const [regenIndex, setRegenIndex] = useState<number | null>(null);
 
   const displayTopic = (deck?.topic || topic || uploadMeta?.filename || "Untitled") as string;
 
-  // Health check
   useEffect(() => {
     api.health().then(() => setHealth("ok")).catch(() => setHealth("error"));
   }, []);
 
-  // Upload handler
   const onPick = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const input = e.currentTarget;
     const f = input.files?.[0];
     if (!f) return;
-
     setUploadErr(null);
     setUploadMeta(null);
     setExportInfo(null);
     setExportErr(null);
     clearError();
-
     try {
       const meta = await uploadFile(f);
       setUploadMeta(meta);
@@ -73,22 +55,18 @@ export default function App() {
     }
   };
 
-  // Generate outline
   const runOutline = async () => {
     setExportInfo(null);
     setExportErr(null);
     clearError();
-
     const body: OutlineRequest = {
       topic,
       slide_count: clamp(count, 1, 15),
       text: uploadMeta?.parsed?.text ?? undefined,
     };
-
     await generate(body);
   };
 
-  // Per-slide regenerate
   const runRegen = async (i: number) => {
     if (!deck) return;
     setRegenIndex(i);
@@ -101,11 +79,6 @@ export default function App() {
     } finally {
       setRegenIndex(null);
     }
-  };
-
-  // Export
-  const copy = async (text: string) => {
-    try { await navigator.clipboard.writeText(text); } catch {}
   };
 
   const runExport = async () => {
@@ -121,6 +94,11 @@ export default function App() {
     } finally {
       setExporting(false);
     }
+  };
+
+  const copy = async (text: string) => {
+    try { await navigator.clipboard.writeText(text); } catch {}
+
   };
 
   const slides: Deck["slides"] = deck?.slides ?? [];
@@ -157,10 +135,10 @@ export default function App() {
           showImages={showImages}
           regenIndex={regenIndex}
           onRegenerate={runRegen}
+          onUpdateSlide={(idx, next) => updateSlide(idx, () => next)}
         />
       </main>
 
-      {/* Settings modal */}
       <Settings
         open={settingsOpen}
         onClose={() => setSettingsOpen(false)}

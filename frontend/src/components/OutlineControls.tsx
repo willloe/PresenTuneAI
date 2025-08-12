@@ -1,4 +1,4 @@
-import type { ExportResp, ApiMeta } from "@/lib/api";
+import type { ExportResp, ApiMeta } from "../lib/api";
 
 type Props = {
   topic: string;

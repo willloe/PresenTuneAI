@@ -1,6 +1,6 @@
 import { useState } from "react";
-import { api, type ApiMeta, ApiError, type Slide } from "../lib/api";
-import type { Deck } from "@/types/deck";
+import { api, type ApiMeta, ApiError } from "../lib/api";
+import type { Deck, Slide } from "../types/deck";
 
 export type OutlineRequest = {
   topic?: string | null;
@@ -67,5 +67,16 @@ export function useOutline() {
     }
   }
 
-  return { deck, loading, error, meta, generate, regenerate, setDeck, clearError };
+  /** Local-only mutation for inline editing (title/bullets/etc.) */
+  function updateSlide(index: number, updater: (prev: Slide) => Slide) {
+    setDeck((prev: Deck | null) => {
+      if (!prev) return prev;
+      if (index < 0 || index >= prev.slides.length) return prev;
+      const slides = [...prev.slides];
+      slides[index] = updater(slides[index]);
+      return { ...prev, slides };
+    });
+  }
+
+  return { deck, loading, error, meta, generate, regenerate, updateSlide, setDeck, clearError };
 }

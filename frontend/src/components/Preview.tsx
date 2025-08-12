@@ -1,5 +1,6 @@
-import type { Deck } from "@/types/deck";
-import type { ApiMeta } from "@/lib/api";
+import type { Deck } from "../types/deck";
+import type { ApiMeta } from "../lib/api";
+import SlideCard from "./SlideCard";
 
 type Props = {
   deck: Deck | null;
@@ -13,14 +14,14 @@ type Props = {
 
   regenIndex: number | null;
   onRegenerate: (i: number) => Promise<void>;
+  onUpdateSlide: (index: number, next: Deck["slides"][number]) => void;
 };
 
 export default function Preview({
   deck, slides, displayTopic, loading, meta,
-  theme, showImages, regenIndex, onRegenerate,
+  theme, showImages, regenIndex, onRegenerate, onUpdateSlide,
 }: Props) {
   const pretty = (s: string) => s.replace(/[_-]+/g, " ").replace(/\s+/g, " ").trim();
-
   if (!slides.length) return null;
 
   return (
@@ -50,53 +51,16 @@ export default function Preview({
 
       <ul className="space-y-3">
         {slides.map((s, i) => (
-          <li key={s.id ?? i} className="border rounded-xl p-4">
-            <div className="font-semibold">{s.title}</div>
-
-            {!!s.bullets?.length && (
-              <ul className="list-disc ml-6">
-                {s.bullets.map((b, j) => (
-                  <li key={j}>{b}</li>
-                ))}
-              </ul>
-            )}
-
-            {/* Thumbnail & caption (client-side toggle) */}
-            {showImages && (
-              (s.media && s.media.length > 0) ? (
-                <div className="mt-2">
-                  <img
-                    src={s.media[0].url}
-                    alt={s.media[0].alt ?? s.title}
-                    className="w-full h-40 object-cover rounded-lg border bg-gray-100"
-                    loading="lazy"
-                  />
-                  {s.media[0].alt && (
-                    <div className="mt-1 text-xs text-gray-500">
-                      {s.media[0].alt}
-                    </div>
-                  )}
-                </div>
-              ) : (
-                (loading || regenIndex === i) ? (
-                  <div className="mt-2 h-40 w-full rounded-lg bg-gray-100 animate-pulse" />
-                ) : null
-              )
-            )}
-
-            <div className="mt-3">
-              <button
-                onClick={() => onRegenerate(i)}
-                disabled={regenIndex === i}
-                className={`rounded-lg px-3 py-1 border ${
-                  regenIndex === i ? "opacity-60 cursor-not-allowed" : "hover:bg-gray-50"
-                }`}
-                title="Regenerate this slide"
-              >
-                {regenIndex === i ? "Regenerating…" : "Regenerate"}
-              </button>
-            </div>
-          </li>
+          <SlideCard
+            key={s.id ?? i}
+            slide={s}
+            index={i}
+            loading={loading}
+            regenIndex={regenIndex}
+            showImages={showImages}
+            onRegenerate={onRegenerate}
+            onUpdate={(idx, next) => onUpdateSlide(idx, next)}
+          />
         ))}
       </ul>
     </section>
