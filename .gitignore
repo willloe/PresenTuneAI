@@ -16,4 +16,4 @@ __pycache__/
 Thumbs.db
 .vscode/
 .idea/
-backend/data/uploads/**
+backend/data/uploads/**frontend/.env.production.local
