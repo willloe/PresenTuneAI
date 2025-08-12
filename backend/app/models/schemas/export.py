@@ -1,9 +1,13 @@
-from pydantic import BaseModel
-from app.models.schemas.common import Slide
+from typing import Optional, Literal
+from pydantic import BaseModel, Field
+from app.models.schemas.slide import Slide
 
 class ExportRequest(BaseModel):
     slides: list[Slide]
-    theme: str | None = None
+    theme: Optional[str] = None
 
 class ExportResponse(BaseModel):
     path: str
+    format: Literal["txt"] = "txt"
+    theme: Optional[str] = None
+    bytes: int = Field(..., ge=0)
