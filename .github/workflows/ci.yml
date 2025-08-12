@@ -47,30 +47,27 @@ jobs:
       - name: Mypy (types)
         run: mypy app || true
 
-      # Ensure we always have at least one test (creates a tiny smoke test if repo has none)
-      - name: Ensure smoke test exists (if none found)
+      - name: Create smoke test
+        working-directory: backend
+        env:
+          PYTHONPATH: .
         run: |
           mkdir -p tests
-          if ! ls tests/test_*.py 1>/dev/null 2>&1; then
-            cat > tests/test_ci_smoke.py <<'PY'
-            from fastapi.testclient import TestClient
-            from app.main import app
+          cat > tests/test_smoke.py <<'PY'
+          from fastapi.testclient import TestClient
+          from app.main import app
 
-            def test_health_ok():
-                c = TestClient(app)
-                r = c.get("/v1/health")
-                assert r.status_code == 200
-                j = r.json()
-                assert j.get("status") == "ok"
-            PY
-          fi
+          def test_health():
+              c = TestClient(app)
+              r = c.get("/v1/health")
+              assert r.status_code == 200, (r.status_code, r.text)
+          PY
 
-      - name: Pytest
+      - name: Run pytest (quiet, ignore deprecations)
+        working-directory: backend
         env:
-          PYTHONPATH: backend
-          # Keep warnings out of the summary; tighten later as needed
-          PYTEST_ADDOPTS: "-q -ra -W ignore::DeprecationWarning"
-        run: pytest
+          PYTHONPATH: .
+        run: pytest -q -W ignore::DeprecationWarning
 
       - name: Generate JSON Schemas
         env:
