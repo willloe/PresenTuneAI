@@ -1,6 +1,13 @@
 from pydantic import BaseModel, Field
+from typing import Optional
 
-class Slide(BaseModel):
-    title: str = Field(..., description="Slide title")
-    bullets: list[str] = Field(default_factory=list, description="Bullet points")
-    image_hint: str | None = None  # placeholder for Week 2+
+
+class RequestMeta(BaseModel):
+    """Optional correlation info we may attach in responses (dev only)."""
+
+    request_id: Optional[str] = Field(
+        default=None, description="x-request-id correlation id"
+    )
+    duration_ms: Optional[int] = Field(
+        default=None, description="total request time (ms)"
+    )

@@ -6,6 +6,7 @@ from pathlib import Path
 # Resolve the backend project root (…/backend)
 BACKEND_ROOT = Path(__file__).resolve().parents[2]
 
+
 class Settings(BaseSettings):
     ENV: str = "local"
     DEBUG: bool = True
@@ -16,8 +17,10 @@ class Settings(BaseSettings):
     # CORS for Vite + fallback ports
     ALLOW_ALL_CORS: bool = False
     CORS_ALLOW_ORIGINS: List[str] = [
-        "http://localhost:5173", "http://127.0.0.1:5173",
-        "http://localhost:3000", "http://127.0.0.1:3000",
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
+        "http://localhost:3000",
+        "http://127.0.0.1:3000",
     ]
 
     STORAGE_DIR: Path = BACKEND_ROOT / "data" / "uploads"
@@ -32,5 +35,6 @@ class Settings(BaseSettings):
         env_file=".env",
         env_file_encoding="utf-8",
     )
+
 
 settings = Settings()

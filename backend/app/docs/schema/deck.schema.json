@@ -1,0 +1,152 @@
+{
+  "$defs": {
+    "Media": {
+      "properties": {
+        "type": {
+          "const": "image",
+          "default": "image",
+          "enum": [
+            "image"
+          ],
+          "title": "Type",
+          "type": "string"
+        },
+        "url": {
+          "title": "Url",
+          "type": "string"
+        },
+        "alt": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Alt"
+        }
+      },
+      "required": [
+        "url"
+      ],
+      "title": "Media",
+      "type": "object"
+    },
+    "Slide": {
+      "properties": {
+        "id": {
+          "description": "Client/UI-generated id (uuid/ulid)",
+          "title": "Id",
+          "type": "string"
+        },
+        "title": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Title",
+          "type": "string"
+        },
+        "bullets": {
+          "description": "Bullet points",
+          "items": {
+            "type": "string"
+          },
+          "title": "Bullets",
+          "type": "array"
+        },
+        "notes": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Notes"
+        },
+        "layout": {
+          "default": "title-bullets",
+          "enum": [
+            "title",
+            "title-bullets",
+            "two-col"
+          ],
+          "title": "Layout",
+          "type": "string"
+        },
+        "media": {
+          "items": {
+            "$ref": "#/$defs/Media"
+          },
+          "title": "Media",
+          "type": "array"
+        }
+      },
+      "required": [
+        "id",
+        "title"
+      ],
+      "title": "Slide",
+      "type": "object"
+    }
+  },
+  "properties": {
+    "version": {
+      "default": "1.0",
+      "title": "Version",
+      "type": "string"
+    },
+    "topic": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Topic"
+    },
+    "source": {
+      "anyOf": [
+        {
+          "type": "object"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "e.g. {'file_id': 'abc', 'filename': 'doc.pdf'}",
+      "title": "Source"
+    },
+    "slide_count": {
+      "maximum": 50,
+      "minimum": 1,
+      "title": "Slide Count",
+      "type": "integer"
+    },
+    "created_at": {
+      "format": "date-time",
+      "title": "Created At",
+      "type": "string"
+    },
+    "slides": {
+      "items": {
+        "$ref": "#/$defs/Slide"
+      },
+      "title": "Slides",
+      "type": "array"
+    }
+  },
+  "required": [
+    "slide_count",
+    "slides"
+  ],
+  "title": "Deck",
+  "type": "object"
+}
