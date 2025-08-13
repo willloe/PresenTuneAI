@@ -1,10 +1,12 @@
 from pathlib import Path
 from datetime import datetime
+import re
 
 from app.core.telemetry import aspan
 from app.models.schemas.slide import Slide
 from app.models.schemas.export import ExportResponse
 
+_SLIDE_PREFIX = re.compile(r"^\s*Slide\s+\d+:\s*", re.IGNORECASE)
 
 async def export_to_pptx(slides: list[Slide], theme: str = "default") -> ExportResponse:
     out_dir = Path("data/exports")
@@ -15,14 +17,15 @@ async def export_to_pptx(slides: list[Slide], theme: str = "default") -> ExportR
     async with aspan("export_txt", theme=theme, slides=len(slides), out=str(out_path)):
         with out_path.open("w", encoding="utf-8") as f:
             for idx, s in enumerate(slides, start=1):
-                f.write(f"Slide {idx}: {s.title}\n")
+                title = (s.title or f"Slide {idx}").strip()
+                header = title if _SLIDE_PREFIX.match(title) else f"Slide {idx}: {title}"
+                f.write(f"{header}\n")
                 for b in s.bullets or []:
                     f.write(f"  - {b}\n")
                 if getattr(s, "notes", None):
                     f.write(f"  [notes] {s.notes}\n")
                 if getattr(s, "media", None):
                     for m in s.media:
-                        # media is [{type:"image", url, alt?}]
                         f.write(f"  [media] {m.type} {m.url}")
                         if getattr(m, "alt", None):
                             f.write(f"  — {m.alt}")

@@ -57,3 +57,8 @@ backend/data/uploads/**
 # Docker (optional – if you generate locals)
 .docker/
 docker-compose.override.yml
+
+# Smoke test outputs
+payload.smoke.json
+exported.txt
+smoke_out/

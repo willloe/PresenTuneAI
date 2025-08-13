@@ -4,6 +4,7 @@ import logging
 import os
 from fastapi import Request
 from starlette.middleware.base import BaseHTTPMiddleware
+from app.core.config import settings
 from app.core.telemetry import request_id_ctx, server_timing_ctx
 
 log = logging.getLogger("http")
@@ -40,6 +41,7 @@ class ObservabilityMiddleware(BaseHTTPMiddleware):
             prev = response.headers.get("Server-Timing")
             merged = ", ".join(timings) if not prev else f"{prev}, {', '.join(timings)}"
             response.headers["Server-Timing"] = merged
+            response.headers["Timing-Allow-Origin"] = settings.TIMING_ALLOW_ORIGIN or "*"
 
             expose_need = ["Server-Timing", "X-Request-Id", "X-Response-Time-Ms"]
             existing_expose = response.headers.get("Access-Control-Expose-Headers", "")
@@ -58,10 +60,6 @@ class ObservabilityMiddleware(BaseHTTPMiddleware):
                     else:
                         final_list.append(t)
                 response.headers["Access-Control-Expose-Headers"] = ", ".join(final_list)
-
-            tao = os.getenv("TIMING_ALLOW_ORIGIN", "*")
-            if tao:
-                response.headers.setdefault("Timing-Allow-Origin", tao)
 
             level = logging.DEBUG if request.url.path.endswith("/health") else logging.INFO
             log.log(
