@@ -1,12 +1,14 @@
-from fastapi import APIRouter, UploadFile, File, HTTPException, Request
+from fastapi import APIRouter, UploadFile, File, HTTPException, Request, Depends
 from uuid import uuid4
 from pydantic import BaseModel as PydModel
 from app.core.config import settings
 from app.core.telemetry import aspan, span
 from app.services.parsing_service import parse_file
 from app.models.schemas.upload import UploadResponse, ParsedPreview
+from app.core.auth import require_token
+from app.core.config import settings
 
-router = APIRouter(tags=["upload"])
+router = APIRouter(tags=["upload"], dependencies=([Depends(require_token)] if settings.AUTH_ENABLED else []))
 
 CHUNK = 1024 * 1024  # 1MB
 

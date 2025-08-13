@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { api, type ExportResp, API_BASE } from "./lib/api";
 import { uploadFile, type UploadResponse } from "./lib/upload";
 import type { Deck } from "./types/deck";
@@ -105,10 +105,18 @@ export default function App() {
 
   const copy = async (text: string) => {
     try { await navigator.clipboard.writeText(text); } catch {}
-
   };
 
   const slides: Deck["slides"] = deck?.slides ?? [];
+
+  // Compute a direct download URL for the last export (works without helper)
+  const downloadUrl = useMemo(() => {
+    const p = exportInfo?.path;
+    if (!p) return null;
+    const name = p.split("/").pop();
+    if (!name) return null;
+    return `${API_BASE}/export/${encodeURIComponent(name)}`;
+  }, [exportInfo?.path]);
 
   return (
     <div className="min-h-screen bg-gray-50 text-gray-900">
@@ -143,6 +151,7 @@ export default function App() {
           regenIndex={regenIndex}
           onRegenerate={runRegen}
           onUpdateSlide={(idx, next) => updateSlide(idx, () => next)}
+          downloadUrl={downloadUrl}
         />
       </main>
 

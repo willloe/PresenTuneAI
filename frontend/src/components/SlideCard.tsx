@@ -20,7 +20,8 @@ const BULLETS_MAX = 12;
 function normalizeBullets(input: string): string[] {
   return input
     .split(/\r?\n/)
-    .map(s => s.trim().replace(/^[-*•·]\s*/, ""))
+    // strip common bullet prefixes and whitespace
+    .map((s) => s.trim().replace(/^(\d+[.)]\s*|[-*•·]\s*)/, ""))
     .filter(Boolean)
     .slice(0, BULLETS_MAX);
 }
@@ -33,84 +34,128 @@ export default function SlideCard({
   const [bulletsText, setBulletsText] = useState(slide.bullets?.join("\n") ?? "");
   const [dirty, setDirty] = useState(false);
 
+  // keep local editor in sync when slide changes externally (regen)
   useEffect(() => {
-    // keep local editor in sync when slide changes externally (regen)
     setTitle(slide.title);
     setBulletsText(slide.bullets?.join("\n") ?? "");
     setDirty(false);
   }, [slide.id, slide.title, slide.bullets]);
 
-  const titleValid = useMemo(() => {
-    const t = (title || "").trim();
-    return t.length >= TITLE_MIN && t.length <= TITLE_MAX;
-  }, [title]);
+  const titleTrim = (title || "").trim();
+  const titleValid = useMemo(() => (
+    titleTrim.length >= TITLE_MIN && titleTrim.length <= TITLE_MAX
+  ), [titleTrim]);
 
-  const bulletsValid = useMemo(() => {
-    const list = normalizeBullets(bulletsText);
-    return list.length <= BULLETS_MAX;
-  }, [bulletsText]);
+  const bulletList = useMemo(() => normalizeBullets(bulletsText), [bulletsText]);
+  const bulletsValid = bulletList.length <= BULLETS_MAX;
+
+  const isRegenning = regenIndex === index;
+  const isBusy = loading || isRegenning;
 
   function startEdit() {
+    if (isBusy) return;
     setEditing(true);
     setDirty(false);
   }
+
   function cancelEdit() {
     setEditing(false);
     setTitle(slide.title);
     setBulletsText(slide.bullets?.join("\n") ?? "");
     setDirty(false);
   }
+
   function saveEdit() {
-    if (!titleValid || !bulletsValid) return;
-    const nextBullets = normalizeBullets(bulletsText);
-    const next: Slide = { ...slide, title: title.trim(), bullets: nextBullets };
+    if (!dirty || !titleValid || !bulletsValid) return;
+    const next: Slide = { ...slide, title: titleTrim, bullets: bulletList };
     onUpdate(index, next);
     setEditing(false);
     setDirty(false);
   }
 
+  // Keyboard UX: Enter = save title, Esc = cancel, Ctrl/⌘+S = save bullets
+  function onTitleKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
+    if (e.key === "Enter") {
+      e.currentTarget.blur();
+      saveEdit();
+    } else if (e.key === "Escape") {
+      e.preventDefault();
+      cancelEdit();
+    }
+  }
+  function onBulletsKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "s") {
+      e.preventDefault();
+      saveEdit();
+    } else if (e.key === "Escape") {
+      e.preventDefault();
+      cancelEdit();
+    }
+  }
+
+  // Auto-save on blur (only if user changed something and inputs are valid)
+  function onTitleBlur() {
+    if (dirty && titleValid) saveEdit();
+  }
+  function onBulletsBlur() {
+    if (dirty && bulletsValid) saveEdit();
+  }
+
+  const bulletRows = Math.max(3, Math.min(8, bulletsText.split(/\r?\n/).length));
+  const media0 = slide.media?.[0];
+  const showSkeleton = showImages && !editing && !media0 && isBusy;
+
   return (
     <li className="border rounded-xl p-4">
-      {/* Title */}
+      {/* Title / actions */}
       {!editing ? (
         <div className="flex items-start justify-between gap-3">
           <div className="font-semibold break-words">{slide.title}</div>
           <div className="flex gap-2">
             <button
+              type="button"
               onClick={startEdit}
-              className="rounded-lg border px-2 py-1 text-xs hover:bg-gray-50"
+              disabled={isBusy}
+              className={`rounded-lg border px-2 py-1 text-xs ${
+                isBusy ? "opacity-60 cursor-not-allowed" : "hover:bg-gray-50"
+              }`}
               title="Edit slide"
+              aria-label={`Edit slide ${index + 1}`}
             >
               Edit
             </button>
             <button
+              type="button"
               onClick={() => onRegenerate(index)}
-              disabled={regenIndex === index}
+              disabled={isRegenning}
               className={`rounded-lg border px-2 py-1 text-xs ${
-                regenIndex === index ? "opacity-60 cursor-not-allowed" : "hover:bg-gray-50"
+                isRegenning ? "opacity-60 cursor-not-allowed" : "hover:bg-gray-50"
               }`}
               title="Regenerate this slide"
+              aria-label={`Regenerate slide ${index + 1}`}
             >
-              {regenIndex === index ? "Regenerating…" : "Regenerate"}
+              {isRegenning ? "Regenerating…" : "Regenerate"}
             </button>
           </div>
         </div>
       ) : (
-        <div className="space-y-2">
+        <div className="space-y-1">
           <input
             value={title}
             onChange={(e) => { setTitle(e.target.value); setDirty(true); }}
+            onKeyDown={onTitleKeyDown}
+            onBlur={onTitleBlur}
             className={`w-full rounded-xl border px-3 py-2 outline-none focus:ring ${
               titleValid ? "" : "border-red-500"
             }`}
             maxLength={TITLE_MAX}
             placeholder="Slide title"
+            aria-invalid={!titleValid}
+            aria-label={`Slide ${index + 1} title`}
           />
-          {!titleValid && (
-            <div className="text-xs text-red-600">
-              Title must be {TITLE_MIN}–{TITLE_MAX} characters.
-            </div>
-          )}
+          <div className="text-[11px] text-gray-500 text-right">
+            {titleTrim.length}/{TITLE_MAX}
+          </div>
         </div>
       )}
 
@@ -129,20 +174,26 @@ export default function SlideCard({
           <textarea
             value={bulletsText}
             onChange={(e) => { setBulletsText(e.target.value); setDirty(true); }}
-            rows={Math.max(3, Math.min(8, bulletsText.split(/\r?\n/).length))}
+            onKeyDown={onBulletsKeyDown}
+            onBlur={onBulletsBlur}
+            rows={bulletRows}
             className={`w-full rounded-xl border px-3 py-2 outline-none focus:ring ${
               bulletsValid ? "" : "border-red-500"
             }`}
             placeholder="- Point A\n- Point B"
+            aria-invalid={!bulletsValid}
+            aria-label={`Slide ${index + 1} bullets`}
           />
-          {!bulletsValid && (
-            <div className="text-xs text-red-600">
-              Up to {BULLETS_MAX} bullet points are allowed.
-            </div>
-          )}
+          <div className="mt-1 flex items-center justify-between text-[11px] text-gray-500">
+            <span>{bulletList.length}/{BULLETS_MAX} bullets</span>
+            {!bulletsValid && (
+              <span className="text-red-600">Up to {BULLETS_MAX} bullets allowed.</span>
+            )}
+          </div>
 
           <div className="mt-2 flex gap-2">
             <button
+              type="button"
               onClick={saveEdit}
               disabled={!titleValid || !bulletsValid || !dirty}
               className={`rounded-lg px-3 py-1 text-sm text-white ${
@@ -154,6 +205,7 @@ export default function SlideCard({
               Save
             </button>
             <button
+              type="button"
               onClick={cancelEdit}
               className="rounded-lg border px-3 py-1 text-sm hover:bg-gray-50"
             >
@@ -165,23 +217,21 @@ export default function SlideCard({
 
       {/* Media */}
       {showImages && !editing && (
-        (slide.media && slide.media.length > 0) ? (
+        media0 ? (
           <div className="mt-2">
             <img
-              src={slide.media[0].url}
-              alt={slide.media[0].alt ?? slide.title}
+              src={media0.url}
+              alt={media0.alt ?? slide.title}
               className="w-full h-40 object-cover rounded-lg border bg-gray-100"
               loading="lazy"
             />
-            {slide.media[0].alt && (
-              <div className="mt-1 text-xs text-gray-500">{slide.media[0].alt}</div>
+            {media0.alt && (
+              <div className="mt-1 text-xs text-gray-500">{media0.alt}</div>
             )}
           </div>
-        ) : (
-          (loading || regenIndex === index) ? (
-            <div className="mt-2 h-40 w-full rounded-lg bg-gray-100 animate-pulse" />
-          ) : null
-        )
+        ) : showSkeleton ? (
+          <div className="mt-2 h-40 w-full rounded-lg bg-gray-100 animate-pulse" />
+        ) : null
       )}
     </li>
   );

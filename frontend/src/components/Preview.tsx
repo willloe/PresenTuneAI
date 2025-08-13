@@ -15,14 +15,23 @@ type Props = {
   regenIndex: number | null;
   onRegenerate: (i: number) => Promise<void>;
   onUpdateSlide: (index: number, next: Deck["slides"][number]) => void;
+
+  /** New: direct download URL for the most recent export (or null if none) */
+  downloadUrl?: string | null;
 };
 
 export default function Preview({
   deck, slides, displayTopic, loading, meta,
   theme, showImages, regenIndex, onRegenerate, onUpdateSlide,
+  downloadUrl,
 }: Props) {
   const pretty = (s: string) => s.replace(/[_-]+/g, " ").replace(/\s+/g, " ").trim();
   if (!slides.length) return null;
+
+  const suggestedName =
+    (deck?.topic?.trim()?.replace(/[^\w.-]+/g, "_") || "deck") +
+    (deck?.slide_count ? `_${deck.slide_count}s` : "") +
+    ".txt";
 
   return (
     <section className="rounded-2xl bg-white shadow-sm p-6">
@@ -35,6 +44,16 @@ export default function Preview({
           <span className="opacity-80">Slides:</span>{" "}
           <span className="font-medium">{deck?.slide_count ?? slides.length}</span>
         </div>
+        {downloadUrl ? (
+          <a
+            href={downloadUrl}
+            download={suggestedName}
+            className="text-xs rounded-lg border px-3 py-1 bg-white/10 hover:bg-white/20"
+            title="Download latest export"
+          >
+            Download export
+          </a>
+        ) : null}
       </div>
 
       <div className="flex items-center justify-between mb-4">

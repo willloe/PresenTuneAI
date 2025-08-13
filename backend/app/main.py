@@ -54,7 +54,7 @@ async def lifespan(app: FastAPI):
 def create_app() -> FastAPI:
     app = FastAPI(
         title="PresenTuneAI API",
-        version="0.1.0",
+        version="0.2.0",
         docs_url="/docs",
         openapi_url="/openapi.json",
         lifespan=lifespan,
