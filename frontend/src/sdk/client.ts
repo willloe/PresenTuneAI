@@ -11,10 +11,14 @@ import {
 import type { Deck } from "../types/deck";
 import type { OutlineRequest, ExportResp } from "./types";
 
+// Re-exports for convenience
 export { API_BASE, ApiError };
 export type { ApiMeta };
 
-/** Convert nullable fields to the shape lib/api expects */
+// Handy consumer types
+export type Slide = Deck["slides"][number];
+
+// Normalize nullable fields to the shape lib/api expects
 function normalize(req: OutlineRequest): {
   topic?: string;
   text?: string;
@@ -31,7 +35,7 @@ function normalize(req: OutlineRequest): {
 export async function health() {
   return rawApi.health();
 }
-export async function healthWithMeta() {
+export async function healthWithMeta(): Promise<{ data: { status: string; schema_version?: string; time?: string }; meta: ApiMeta }> {
   return rawApi.healthWithMeta();
 }
 
@@ -39,15 +43,15 @@ export async function healthWithMeta() {
 export async function outline(body: OutlineRequest): Promise<Deck> {
   return rawApi.outline(normalize(body));
 }
-export async function outlineWithMeta(body: OutlineRequest) {
+export async function outlineWithMeta(body: OutlineRequest): Promise<{ data: Deck; meta: ApiMeta }> {
   return rawApi.outlineWithMeta(normalize(body));
 }
 
 /** Regenerate a single slide (0-based index) */
-export async function regenerateSlide(index: number, body: OutlineRequest) {
+export async function regenerateSlide(index: number, body: OutlineRequest): Promise<Slide> {
   return rawApi.regenerateSlide(index, normalize(body));
 }
-export async function regenerateSlideWithMeta(index: number, body: OutlineRequest) {
+export async function regenerateSlideWithMeta(index: number, body: OutlineRequest): Promise<{ data: Slide; meta: ApiMeta }> {
   return rawApi.regenerateSlideWithMeta(index, normalize(body));
 }
 
@@ -56,8 +60,13 @@ export async function exportDeck(payload: {
   slides: Deck["slides"];
   theme?: string | null;
 }): Promise<{ data: ExportResp; meta: ApiMeta }> {
-  // rawApi.exportDeck already returns { data, meta }
-  return rawApi.exportDeck(payload);
+  return rawApi.exportDeck(payload); // already returns { data, meta }
+}
+
+/** Build a download URL for /export/{filename} from a server path or name */
+export function exportDownloadUrl(pathOrName: string): string {
+  const name = pathOrName.includes("/") ? pathOrName.split("/").pop()! : pathOrName;
+  return `${API_BASE}/export/${encodeURIComponent(name)}`;
 }
 
 /** JSON Schemas */

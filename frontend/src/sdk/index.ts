@@ -1,2 +1,45 @@
 export * from "./types";
-export * from "./client";
+export {
+  API_BASE,
+  ApiError,
+  type ApiMeta,
+  health,
+  healthWithMeta,
+  outline,
+  outlineWithMeta,
+  regenerateSlide,
+  regenerateSlideWithMeta,
+  exportDeck,
+  exportDownloadUrl,
+  schema,
+} from "./client";
+
+// Optional: convenient default export
+import * as Client from "./client";
+
+const sdk = {
+  // health
+  health: Client.health,
+  healthWithMeta: Client.healthWithMeta,
+
+  // outline
+  outline: Client.outline,
+  outlineWithMeta: Client.outlineWithMeta,
+
+  // regenerate
+  regenerateSlide: Client.regenerateSlide,
+  regenerateSlideWithMeta: Client.regenerateSlideWithMeta,
+
+  // export
+  exportDeck: Client.exportDeck,
+  exportDownloadUrl: Client.exportDownloadUrl,
+
+  // schemas
+  schema: Client.schema,
+
+  // constants / errors
+  API_BASE: Client.API_BASE,
+  ApiError: Client.ApiError,
+};
+
+export default sdk;

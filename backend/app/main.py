@@ -1,38 +1,66 @@
-from fastapi import FastAPI, Request
-from fastapi.responses import JSONResponse
-from fastapi.exceptions import RequestValidationError
-from starlette.exceptions import HTTPException as StarletteHTTPException
-from fastapi.middleware.cors import CORSMiddleware
+# backend/app/main.py
+from __future__ import annotations
+
 import asyncio
 import contextlib
+from contextlib import asynccontextmanager
 import logging
-from datetime import timedelta
+
+from fastapi import FastAPI, Request, APIRouter
+from fastapi.exceptions import RequestValidationError
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
+from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from app.core.config import settings
 from app.core.logging import setup_logging
+from app.middleware.observability import ObservabilityMiddleware
 
+# v1 endpoints
 from app.api.v1.endpoints.health import router as health_router
 from app.api.v1.endpoints.upload import router as upload_router
 from app.api.v1.endpoints.outline import router as outline_router
 from app.api.v1.endpoints.export import router as export_router
 from app.api.v1.endpoints.ops import router as ops_router
 from app.api.v1.endpoints.schema import router as schema_router
-from app.middleware.observability import ObservabilityMiddleware
-from app.services.storage_service import purge_old_files
 
-logger = logging.getLogger("retention")
+# background worker
+from app.workers.retention import retention_loop
+
+log_retention = logging.getLogger("retention")
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # ── startup ─────────────────────────────────────────────────────
+    setup_logging()
+
+    # Ensure local storage exists
+    settings.STORAGE_DIR.mkdir(parents=True, exist_ok=True)
+
+    # Start background retention task (worker exits early if disabled)
+    retention_task: asyncio.Task | None = asyncio.create_task(retention_loop())
+
+    try:
+        yield
+    finally:
+        # ── shutdown ────────────────────────────────────────────────
+        if retention_task:
+            retention_task.cancel()
+            with contextlib.suppress(Exception):
+                await retention_task
 
 
 def create_app() -> FastAPI:
-    setup_logging()
     app = FastAPI(
         title="PresenTuneAI API",
         version="0.1.0",
         docs_url="/docs",
         openapi_url="/openapi.json",
+        lifespan=lifespan,
     )
 
-    # CORS
+    # CORS (expose perf/correlation headers to browser DevTools)
     allow_origins = ["*"] if settings.ALLOW_ALL_CORS else settings.CORS_ALLOW_ORIGINS
     app.add_middleware(
         CORSMiddleware,
@@ -40,10 +68,13 @@ def create_app() -> FastAPI:
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],
-        expose_headers=["x-request-id", "x-response-time-ms", "Server-Timing"],
+        expose_headers=["X-Request-Id", "X-Response-Time-Ms", "Server-Timing"],
     )
+
+    # Observability (x-request-id, Server-Timing aggregation)
     app.add_middleware(ObservabilityMiddleware)
 
+    # Uniform JSON error shape + request id propagation
     @app.exception_handler(StarletteHTTPException)
     async def http_exc_handler(request: Request, exc: StarletteHTTPException):
         rid = getattr(getattr(request, "state", None), "request_id", None)
@@ -74,45 +105,15 @@ def create_app() -> FastAPI:
             headers=headers,
         )
 
-    # Ensure local storage exists
-    @app.on_event("startup")
-    def _ensure_storage():
-        settings.STORAGE_DIR.mkdir(parents=True, exist_ok=True)
-
-    # Mount v1 routes under a single, configurable prefix
-    API_PREFIX = settings.API_BASE
-    app.include_router(health_router, prefix=API_PREFIX)
-    app.include_router(upload_router, prefix=API_PREFIX)
-    app.include_router(outline_router, prefix=API_PREFIX)
-    app.include_router(export_router, prefix=API_PREFIX)
-    app.include_router(schema_router, prefix=API_PREFIX)
-    app.include_router(ops_router, prefix=API_PREFIX)
-
-    # Background retention loop
-    async def _retention_loop():
-        interval = max(1, settings.RETENTION_SWEEP_MINUTES) * 60
-        ttl = timedelta(days=max(0, settings.RETENTION_DAYS))
-        while True:
-            try:
-                removed = purge_old_files(settings.STORAGE_DIR, ttl)
-                if removed:
-                    logger.info("retention: deleted %d file(s)", len(removed))
-            except Exception:
-                logger.exception("retention sweep crashed")
-            await asyncio.sleep(interval)
-
-    @app.on_event("startup")
-    async def _start_retention():
-        if settings.ENABLE_RETENTION:
-            app.state.retention_task = asyncio.create_task(_retention_loop())
-
-    @app.on_event("shutdown")
-    async def _stop_retention():
-        task = getattr(app.state, "retention_task", None)
-        if task:
-            task.cancel()
-            with contextlib.suppress(Exception):
-                await task
+    # Mount v1 routers under a single configurable prefix
+    api = APIRouter(prefix=settings.API_BASE)
+    api.include_router(health_router)
+    api.include_router(upload_router)
+    api.include_router(outline_router)
+    api.include_router(export_router)
+    api.include_router(schema_router)
+    api.include_router(ops_router)
+    app.include_router(api)
 
     return app
 

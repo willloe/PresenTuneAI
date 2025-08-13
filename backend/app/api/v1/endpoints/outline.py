@@ -1,12 +1,13 @@
-# app/api/v1/endpoints/outline.py
-from fastapi import APIRouter, HTTPException, Request, Path
+from fastapi import APIRouter, HTTPException, Request, Path, Depends
 import logging
 
 from app.models.schemas.outline import OutlineRequest
 from app.models.schemas.slide import Deck, Slide
 from app.services.outline_service import build_outline_service
+from app.core.auth import require_token
+from app.core.config import settings
 
-router = APIRouter(tags=["outline"])
+router = APIRouter(tags=["outline"], dependencies=([Depends(require_token)] if settings.AUTH_ENABLED else []))
 log = logging.getLogger("app")
 
 _service = build_outline_service()

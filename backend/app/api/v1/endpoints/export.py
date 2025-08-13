@@ -1,13 +1,15 @@
 from __future__ import annotations
 from pathlib import Path
-from fastapi import APIRouter, HTTPException, Path as PathParam
+from fastapi import APIRouter, HTTPException, Depends, Path as PathParam
 from fastapi.responses import FileResponse
 
 from app.models.schemas.export import ExportRequest, ExportResponse
 from app.services.export_service import export_to_pptx
 from app.core.telemetry import aspan, span
+from app.core.auth import require_token
+from app.core.config import settings
 
-router = APIRouter(prefix="/export", tags=["export"])
+router = APIRouter(prefix="/export", tags=["export"], dependencies=([Depends(require_token)] if settings.AUTH_ENABLED else []))
 
 # Use absolute path to avoid cwd surprises
 _EXPORT_DIR = Path("data/exports").resolve()

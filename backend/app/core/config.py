@@ -4,7 +4,7 @@ from __future__ import annotations
 from typing import List, Optional, Literal
 from pathlib import Path
 
-from pydantic import field_validator
+from pydantic import field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 # Resolve the backend project root (…/backend)
@@ -23,6 +23,11 @@ class Settings(BaseSettings):
 
     # API mount prefix
     API_BASE: str = "/v1"
+
+    # ─────────────────────────── Auth (optional, Week 2) ──────────
+    # If enabled, mutation endpoints require: Authorization: Bearer <API_TOKEN>
+    AUTH_ENABLED: bool = False
+    API_TOKEN: str = "dev-token"
 
     # ─────────────────────────── CORS ──────────────────────────────
     # If true, allow all origins. Otherwise restrict to CORS_ALLOW_ORIGINS.
@@ -63,7 +68,6 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",
-        # Uncomment to namespace env vars, e.g., APP__DEBUG
         # env_prefix="",
         # env_nested_delimiter="__",
     )
@@ -87,6 +91,13 @@ class Settings(BaseSettings):
     @classmethod
     def _trim_agent_url(cls, v: str) -> str:
         return (v or "").strip()
+
+    @model_validator(mode="after")
+    def _auth_require_token(self) -> "Settings":
+        # Guard: if auth is enabled, token must be non-empty
+        if self.AUTH_ENABLED and not (self.API_TOKEN and self.API_TOKEN.strip()):
+            raise ValueError("AUTH_ENABLED=true requires API_TOKEN to be set.")
+        return self
 
 
 settings = Settings()
