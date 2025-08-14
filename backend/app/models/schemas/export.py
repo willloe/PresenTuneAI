@@ -10,6 +10,6 @@ class ExportRequest(BaseModel):
 
 class ExportResponse(BaseModel):
     path: str
-    format: Literal["txt"] = "txt"
+    format: Literal["pptx", "txt"] = "pptx"
     theme: Optional[str] = None
     bytes: int = Field(..., ge=0)

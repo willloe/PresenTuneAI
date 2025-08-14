@@ -21,6 +21,8 @@ from app.api.v1.endpoints.health import router as health_router
 from app.api.v1.endpoints.upload import router as upload_router
 from app.api.v1.endpoints.outline import router as outline_router
 from app.api.v1.endpoints.export import router as export_router
+from app.api.v1.endpoints.layouts import router as layouts_router
+from app.api.v1.endpoints.editor import router as editor_router
 from app.api.v1.endpoints.ops import router as ops_router
 from app.api.v1.endpoints.schema import router as schema_router
 
@@ -114,6 +116,8 @@ def create_app() -> FastAPI:
     api.include_router(schema_router)
     api.include_router(ops_router)
     app.include_router(api)
+    api.include_router(layouts_router)
+    api.include_router(editor_router)
 
     return app
 

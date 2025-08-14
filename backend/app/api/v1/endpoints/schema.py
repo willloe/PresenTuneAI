@@ -4,6 +4,8 @@ from fastapi.responses import JSONResponse
 from app.models.schemas.slide import Slide, Deck
 from app.models.schemas.outline import OutlineRequest
 from app.models.schemas.upload import UploadMeta, ParsedPreview
+from app.models.schemas.layouts import LayoutItem, LayoutLibrary, LayoutFilterRequest
+from app.models.schemas.editor import EditorDoc, EditorSlide, EditorLayer
 from app.core.version import SCHEMA_VERSION
 
 router = APIRouter(prefix="/schema", tags=["schema"])
@@ -34,3 +36,27 @@ def schema_upload_meta():
 @router.get("/upload_parsed", summary="JSON Schema for ParsedPreview")
 def schema_upload_parsed():
     return JSONResponse(_decorate(ParsedPreview.model_json_schema(), "upload_parsed"))
+
+@router.get("/layout_item", summary="JSON Schema for LayoutItem")
+def schema_layout_item():
+    return JSONResponse(_decorate(LayoutItem.model_json_schema(), "layout_item"))
+
+@router.get("/layout_library", summary="JSON Schema for LayoutLibrary")
+def schema_layout_library():
+    return JSONResponse(_decorate(LayoutLibrary.model_json_schema(), "layout_library"))
+
+@router.get("/layout_filter_request", summary="JSON Schema for LayoutFilterRequest")
+def schema_layout_filter_request():
+    return JSONResponse(_decorate(LayoutFilterRequest.model_json_schema(), "layout_filter_request"))
+
+@router.get("/editor_doc", summary="JSON Schema for EditorDoc")
+def schema_editor_doc():
+    return JSONResponse(_decorate(EditorDoc.model_json_schema(), "editor_doc"))
+
+@router.get("/editor_slide", summary="JSON Schema for EditorSlide")
+def schema_editor_slide():
+    return JSONResponse(_decorate(EditorSlide.model_json_schema(), "editor_slide"))
+
+@router.get("/editor_layer", summary="JSON Schema for EditorLayer")
+def schema_editor_layer():
+    return JSONResponse(_decorate(EditorLayer.model_json_schema(), "editor_layer"))

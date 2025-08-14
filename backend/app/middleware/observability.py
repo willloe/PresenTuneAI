@@ -1,9 +1,11 @@
+from __future__ import annotations
+
 import time
 import uuid
 import logging
-import os
 from fastapi import Request
 from starlette.middleware.base import BaseHTTPMiddleware
+
 from app.core.config import settings
 from app.core.telemetry import request_id_ctx, server_timing_ctx
 
@@ -13,42 +15,45 @@ log = logging.getLogger("http")
 class ObservabilityMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):
         start = time.perf_counter()
-        request_id = request.headers.get("x-request-id") or uuid.uuid4().hex
+        request_id = request.headers.get("X-Request-Id") or uuid.uuid4().hex
 
-        # make available to handlers
+        # Make available to handlers
         request.state.request_id = request_id
         request.state.t_start = start
 
-        # set context vars ONCE and capture tokens
+        # Per-request Server-Timing accumulator (also expose on request.state)
+        server_timing_parts: list[str] = []
+        request.state.server_timing = server_timing_parts
+
+        # Set contextvars and capture tokens for cleanup
         rid_token = request_id_ctx.set(request_id)
-        st_token = server_timing_ctx.set([])  # spans will append here
+        st_token = server_timing_ctx.set(server_timing_parts)
 
         try:
             response = await call_next(request)
 
             duration_ms = int((time.perf_counter() - start) * 1000)
 
-            # headers for correlation + devtools timing
-            response.headers["x-request-id"] = request_id
-            response.headers["x-response-time-ms"] = str(duration_ms)
+            # Correlation + perf headers (canonical casing)
+            response.headers["X-Request-Id"] = request_id
+            response.headers["X-Response-Time-Ms"] = str(duration_ms)
 
-            # add overall app time to any per-span timings
-            timings = server_timing_ctx.get() or []
-            # You can keep "app" or use "total"; both are fine.
+            # Add overall span to any per-span timings
+            timings = server_timing_ctx.get() or server_timing_parts
             timings.append(f"app;dur={duration_ms}")
 
-            # merge with any existing Server-Timing
+            # Merge with any existing Server-Timing
             prev = response.headers.get("Server-Timing")
             merged = ", ".join(timings) if not prev else f"{prev}, {', '.join(timings)}"
             response.headers["Server-Timing"] = merged
             response.headers["Timing-Allow-Origin"] = settings.TIMING_ALLOW_ORIGIN or "*"
 
+            # Ensure browser can read these headers (merge case-insensitively)
             expose_need = ["Server-Timing", "X-Request-Id", "X-Response-Time-Ms"]
             existing_expose = response.headers.get("Access-Control-Expose-Headers", "")
             existing_tokens = {t.strip().lower() for t in existing_expose.split(",") if t.strip()}
             merged_tokens = list({*existing_tokens, *[h.lower() for h in expose_need]})
             if merged_tokens:
-                # preserve canonical casing when writing
                 final_list = []
                 for t in merged_tokens:
                     if t == "server-timing":
@@ -99,7 +104,7 @@ class ObservabilityMiddleware(BaseHTTPMiddleware):
             raise
 
         finally:
-            # reset exactly once
+            # Reset contextvars exactly once
             try:
                 request_id_ctx.reset(rid_token)
             finally:

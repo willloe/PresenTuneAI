@@ -6,8 +6,11 @@ from app.core.version import SCHEMA_VERSION
 
 class Media(BaseModel):
     type: Literal["image"] = "image"
-    url: HttpUrl
+    url: Optional[HttpUrl] = None
     alt: Optional[str] = Field(default=None, max_length=160)
+    # Forward-compat for editor/build: allow asset-sourced media
+    source: Optional[Literal["asset", "external"]] = None
+    asset_id: Optional[str] = None
 
 
 class Slide(BaseModel):
@@ -17,7 +20,7 @@ class Slide(BaseModel):
         default_factory=list, description="Bullet points", max_items=12
     )
     notes: Optional[str] = Field(default=None, max_length=4000)
-    layout: Literal["title", "title-bullets", "two-col"] = "title-bullets"
+    layout: Optional[str] = "title-bullets"
     media: List[Media] = Field(default_factory=list)
 
     @field_validator("bullets", mode="after")

@@ -11,8 +11,8 @@ from app.core.config import settings
 
 router = APIRouter(prefix="/export", tags=["export"], dependencies=([Depends(require_token)] if settings.AUTH_ENABLED else []))
 
-# Use absolute path to avoid cwd surprises
-_EXPORT_DIR = Path("data/exports").resolve()
+_EXPORT_DIR = (settings.STORAGE_DIR.parent / "exports").resolve()
+_EXPORT_DIR.mkdir(parents=True, exist_ok=True)
 
 def _media_type_for(path: Path) -> str:
     ext = path.suffix.lower()
@@ -22,7 +22,7 @@ def _media_type_for(path: Path) -> str:
         return "text/plain; charset=utf-8"
     return "application/octet-stream"
 
-@router.post("", response_model=ExportResponse, summary="Export slides to text")
+@router.post("", response_model=ExportResponse, summary="Export slides to PPTX")
 async def export(req: ExportRequest) -> ExportResponse:
     theme = req.theme or "default"
     async with aspan("export_endpoint", theme=theme, slide_count=len(req.slides)):

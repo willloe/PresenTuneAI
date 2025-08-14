@@ -6,11 +6,16 @@ from app.models.schemas.slide import Deck, Slide
 from app.services.outline_service import build_outline_service
 from app.core.auth import require_token
 from app.core.config import settings
+from app.core.telemetry import aspan  # ⟵ add timing spans for Server-Timing
 
-router = APIRouter(tags=["outline"], dependencies=([Depends(require_token)] if settings.AUTH_ENABLED else []))
+router = APIRouter(
+    tags=["outline"],
+    dependencies=([Depends(require_token)] if settings.AUTH_ENABLED else []),
+)
 log = logging.getLogger("app")
 
 _service = build_outline_service()
+
 
 @router.post(
     "/outline",
@@ -20,9 +25,18 @@ _service = build_outline_service()
 async def outline(req: OutlineRequest, request: Request) -> Deck:
     if not (req.topic or req.text):
         raise HTTPException(400, "Provide either 'text' or 'topic'")
-    deck = await _service.generate_deck(req)
-    log.info("outline_complete", extra={"slide_count": deck.slide_count})
+
+    # Server-Timing: wrap the core generation
+    strategy = "agent" if settings.FEATURE_USE_MODEL else "placeholder"
+    async with aspan("outline_generate", strategy=strategy, slide_count=req.slide_count):
+        deck = await _service.generate_deck(req)
+
+    log.info(
+        "outline_complete",
+        extra={"slide_count": deck.slide_count, "strategy": strategy},
+    )
     return deck
+
 
 @router.post(
     "/outline/{index}/regenerate",
@@ -35,6 +49,15 @@ async def regenerate_slide(
 ) -> Slide:
     if req is None or not (req.topic or req.text):
         raise HTTPException(400, "Provide either 'text' or 'topic'")
-    slide = await _service.regenerate_slide(index, req)
+
+    # Optional guard: ensure index is plausible for requested slide_count
+    # (Service may also validate; this keeps the API predictable.)
+    if req.slide_count is not None and index >= req.slide_count:
+        raise HTTPException(400, "index out of range for requested slide_count")
+
+    # Server-Timing: wrap single-slide regeneration
+    async with aspan("outline_regenerate", index=index):
+        slide = await _service.regenerate_slide(index, req)
+
     log.info("outline_regenerate_complete", extra={"index": index})
     return slide
