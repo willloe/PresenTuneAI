@@ -4,7 +4,9 @@ import time
 import uuid
 from typing import List, Optional
 
-from fastapi import APIRouter, Header, Depends
+from fastapi import APIRouter, Header, Depends, HTTPException
+from fastapi.responses import JSONResponse
+from fastapi.encoders import jsonable_encoder
 from pydantic import BaseModel
 
 from app.core.auth import require_token
@@ -44,19 +46,20 @@ async def build_editor_doc(
     idempotency_key: Optional[str] = Header(None, alias="Idempotency-Key"),
 ):
     now = time.time()
+    # Cache HIT fast-path
     if idempotency_key and idempotency_key in _IDEMP_CACHE:
         ts, resp = _IDEMP_CACHE[idempotency_key]
         if now - ts < _IDEMP_TTL_SEC:
-            # tiny marker so you can tell it's a cache hit in DevTools
-            resp = dict(resp)
-            resp.setdefault("meta", {})["idempotency"] = "HIT"
-            return resp
+            out = dict(resp)  # shallow copy
+            out.setdefault("meta", {})["idempotency"] = "HIT"
+            return JSONResponse(content=jsonable_encoder(out))
 
-    with aspan("editor_build", policy=payload.policy, theme=payload.theme):
+    warnings: list[dict] = []
+    slides_out: List[EditorSlide] = []
+
+    async with aspan("editor_build", policy=payload.policy, theme=payload.theme):
         deck = payload.deck
         layout_by_slide = {sel.slide_id: sel.layout_id for sel in payload.selections}
-        warnings: list[dict] = []
-        slides_out: List[EditorSlide] = []
 
         for s in deck.slides:
             with span("layout_apply_slide", slide_id=s.id):
@@ -65,13 +68,18 @@ async def build_editor_doc(
 
                 if not layout and payload.policy == "best_fit":
                     layout = max(LIB.items, key=lambda li: li.weight)
-                    warnings.append({
-                        "slide_id": s.id,
-                        "reason": "unknown_layout_best_fit_substitution",
-                        "layout_id": layout.id,
-                    })
+                    warnings.append(
+                        {
+                            "slide_id": s.id,
+                            "reason": "unknown_layout_best_fit_substitution",
+                            "layout_id": layout.id,
+                        }
+                    )
                 elif not layout and payload.policy == "strict":
-                    return {"detail": f"Unknown layout_id {layout_id} for slide {s.id}"}, 400
+                    raise HTTPException(
+                        status_code=400,
+                        detail=f"Unknown layout_id {layout_id} for slide {s.id}",
+                    )
 
                 layers: List[EditorLayer] = []
 
@@ -101,12 +109,49 @@ async def build_editor_doc(
                         )
                     )
 
-                # First image (if any)
+                # First image (if any) — supports Pydantic model or plain dict
                 if "images" in layout.frames and s.media:
                     m0 = s.media[0]
+                    if isinstance(m0, dict):
+                        url = m0.get("url")
+                        source = m0.get("source")
+                        asset_id = m0.get("asset_id")
+                    else:
+                        url = getattr(m0, "url", None)
+                        source = getattr(m0, "source", None)
+                        asset_id = getattr(m0, "asset_id", None)
+
                     layers.append(
                         EditorLayer(
                             id=f"ly_{s.id}_img0",
                             kind="image",
                             frame=layout.frames["images"][0],
-                            source={"type": ge
+                            source={"type": source or "external", "asset_id": asset_id, "url": url},
+                            fit="cover",
+                            z=6,
+                        )
+                    )
+
+                # Append the composed slide
+                slides_out.append(
+                    EditorSlide(id=s.id, name=s.title, layers=layers, meta={"layout_id": layout.id})
+                )
+
+        # Compose the full EditorDoc
+        editor = EditorDoc(
+            editor_id=f"ed_{uuid.uuid4().hex[:12]}",
+            deck_id=f"dk_{uuid.uuid4().hex[:8]}",
+            page=payload.page,
+            theme=payload.theme,
+            slides=slides_out,
+            meta={"created_at": time.strftime("%Y-%m-%dT%H:%M:%SZ")},
+        )
+
+    resp = {"editor": editor, "warnings": warnings}
+
+    # Cache MISS: remember response for future HIT
+    if idempotency_key:
+        _IDEMP_CACHE[idempotency_key] = (now, resp)
+
+    # Explicit, safe JSON encoding
+    return JSONResponse(content=jsonable_encoder(resp))

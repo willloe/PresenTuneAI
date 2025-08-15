@@ -115,9 +115,9 @@ def create_app() -> FastAPI:
     api.include_router(export_router)
     api.include_router(schema_router)
     api.include_router(ops_router)
-    app.include_router(api)
     api.include_router(layouts_router)
     api.include_router(editor_router)
+    app.include_router(api)
 
     return app
 
