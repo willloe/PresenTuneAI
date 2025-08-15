@@ -21,8 +21,9 @@ export default function UploadSection({ uploadErr, uploadMeta, onPick }: Props) 
         <div className="mt-3 text-sm">
           <div className="font-medium">{uploadMeta.filename}</div>
           <div className="text-gray-600">
-            {Math.round(uploadMeta.size / 1024)} KB • {uploadMeta.content_type} • kind:{" "}
+            {Math.round(uploadMeta.size / 1024)} KB • {uploadMeta.content_type} • type:{" "}
             {uploadMeta.parsed.kind} • pages: {uploadMeta.parsed.pages}
+             • assets: {((uploadMeta as any)?.parsed?.assets?.length ?? 0)}
           </div>
           <pre className="mt-2 whitespace-pre-wrap rounded-lg bg-gray-50 p-3 border">
             {uploadMeta.parsed.text_preview}

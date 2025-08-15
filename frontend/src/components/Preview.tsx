@@ -16,11 +16,14 @@ type Props = {
   onRegenerate: (i: number) => Promise<void>;
   onUpdateSlide: (index: number, next: Deck["slides"][number]) => void;
 
-  /** New: direct download URL for the most recent export (or null if none) */
   downloadUrl?: string | null;
-
-  /** Optional: slideId -> layout name for badges */
   layoutNameBySlide?: Record<string, string>;
+  onReorder?: (from: number, to: number) => void;
+
+  // NEW: image tools
+  onSetImage?: (index: number, url: string, alt?: string) => void;
+  onRemoveImage?: (index: number) => void;
+  onGenerateImage?: (index: number) => void;
 };
 
 export default function Preview({
@@ -36,6 +39,10 @@ export default function Preview({
   onUpdateSlide,
   downloadUrl,
   layoutNameBySlide,
+  onReorder,
+  onSetImage,
+  onRemoveImage,
+  onGenerateImage,
 }: Props) {
   const pretty = (s: string) => s.replace(/[_-]+/g, " ").replace(/\s+/g, " ").trim();
   if (!slides.length) return null;
@@ -47,7 +54,6 @@ export default function Preview({
 
   return (
     <section className="rounded-2xl bg-white shadow-sm p-6">
-      {/* Active settings banner */}
       <div className="mb-4 flex items-center justify-between rounded-xl bg-gradient-to-r from-gray-900 to-gray-700 px-4 py-2 text-white">
         <div className="text-sm">
           <span className="opacity-80">Theme:</span>{" "}
@@ -86,12 +92,17 @@ export default function Preview({
             key={s.id ?? i}
             slide={s}
             index={i}
+            total={slides.length}
             loading={loading}
             regenIndex={regenIndex}
             showImages={showImages}
             onRegenerate={onRegenerate}
             onUpdate={(idx, next) => onUpdateSlide(idx, next)}
             layoutName={layoutNameBySlide?.[s.id]}
+            onReorder={onReorder}
+            onSetImage={onSetImage}
+            onRemoveImage={onRemoveImage}
+            onGenerateImage={onGenerateImage}
           />
         ))}
       </ul>

@@ -4,6 +4,7 @@ import type { Slide } from "../types/deck";
 type Props = {
   slide: Slide;
   index: number;
+  total: number;
 
   loading: boolean;
   regenIndex: number | null;
@@ -12,8 +13,13 @@ type Props = {
   onRegenerate: (i: number) => Promise<void>;
   onUpdate: (index: number, next: Slide) => void;
 
-  /** Optional: show the currently selected layout name */
   layoutName?: string;
+  onReorder?: (from: number, to: number) => void;
+
+  // NEW: image tools
+  onSetImage?: (index: number, url: string, alt?: string) => void;
+  onRemoveImage?: (index: number) => void;
+  onGenerateImage?: (index: number) => void;
 };
 
 const TITLE_MIN = 1;
@@ -23,7 +29,6 @@ const BULLETS_MAX = 12;
 function normalizeBullets(input: string): string[] {
   return input
     .split(/\r?\n/)
-    // strip common bullet prefixes and whitespace
     .map((s) => s.trim().replace(/^(\d+[.)]\s*|[-*•·]\s*)/, ""))
     .filter(Boolean)
     .slice(0, BULLETS_MAX);
@@ -32,19 +37,29 @@ function normalizeBullets(input: string): string[] {
 export default function SlideCard({
   slide,
   index,
+  total,
   loading,
   regenIndex,
   showImages,
   onRegenerate,
   onUpdate,
   layoutName,
+  onReorder,
+  onSetImage,
+  onRemoveImage,
+  onGenerateImage,
 }: Props) {
   const [editing, setEditing] = useState(false);
   const [title, setTitle] = useState(slide.title);
   const [bulletsText, setBulletsText] = useState(slide.bullets?.join("\n") ?? "");
   const [dirty, setDirty] = useState(false);
 
-  // keep local editor in sync when slide changes externally (regen)
+  // image tools local state
+  const [imgUrl, setImgUrl] = useState(slide.media?.[0]?.url ?? "");
+  useEffect(() => {
+    setImgUrl(slide.media?.[0]?.url ?? "");
+  }, [slide.media, slide.id]);
+
   useEffect(() => {
     setTitle(slide.title);
     setBulletsText(slide.bullets?.join("\n") ?? "");
@@ -52,10 +67,7 @@ export default function SlideCard({
   }, [slide.id, slide.title, slide.bullets]);
 
   const titleTrim = (title || "").trim();
-  const titleValid = useMemo(
-    () => titleTrim.length >= TITLE_MIN && titleTrim.length <= TITLE_MAX,
-    [titleTrim]
-  );
+  const titleValid = useMemo(() => titleTrim.length >= TITLE_MIN && titleTrim.length <= TITLE_MAX, [titleTrim]);
 
   const bulletList = useMemo(() => normalizeBullets(bulletsText), [bulletsText]);
   const bulletsValid = bulletList.length <= BULLETS_MAX;
@@ -63,19 +75,20 @@ export default function SlideCard({
   const isRegenning = regenIndex === index;
   const isBusy = loading || isRegenning;
 
+  const canUp = index > 0;
+  const canDown = index < total - 1;
+
   function startEdit() {
     if (isBusy) return;
     setEditing(true);
     setDirty(false);
   }
-
   function cancelEdit() {
     setEditing(false);
     setTitle(slide.title);
     setBulletsText(slide.bullets?.join("\n") ?? "");
     setDirty(false);
   }
-
   function saveEdit() {
     if (!dirty || !titleValid || !bulletsValid) return;
     const next: Slide = { ...slide, title: titleTrim, bullets: bulletList };
@@ -84,7 +97,15 @@ export default function SlideCard({
     setDirty(false);
   }
 
-  // Keyboard UX: Enter = save title, Esc = cancel, Ctrl/⌘+S = save bullets
+  function moveUp() {
+    if (!canUp || !onReorder) return;
+    onReorder(index, index - 1);
+  }
+  function moveDown() {
+    if (!canDown || !onReorder) return;
+    onReorder(index, index + 1);
+  }
+
   function onTitleKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
     if (e.key === "Enter") {
       e.currentTarget.blur();
@@ -103,14 +124,8 @@ export default function SlideCard({
       cancelEdit();
     }
   }
-
-  // Auto-save on blur (only if user changed something and inputs are valid)
-  function onTitleBlur() {
-    if (dirty && titleValid) saveEdit();
-  }
-  function onBulletsBlur() {
-    if (dirty && bulletsValid) saveEdit();
-  }
+  function onTitleBlur() { if (dirty && titleValid) saveEdit(); }
+  function onBulletsBlur() { if (dirty && bulletsValid) saveEdit(); }
 
   const bulletRows = Math.max(3, Math.min(8, bulletsText.split(/\r?\n/).length));
   const media0 = slide.media?.[0];
@@ -132,13 +147,34 @@ export default function SlideCard({
             )}
           </div>
           <div className="flex gap-2 shrink-0">
+            {/* Reorder */}
+            <button
+              type="button"
+              onClick={moveUp}
+              disabled={!canUp}
+              className={`rounded-lg border px-2 py-1 text-xs ${canUp ? "hover:bg-gray-50" : "opacity-50 cursor-not-allowed"}`}
+              title="Move up"
+              aria-label={`Move slide ${index + 1} up`}
+            >
+              ▲
+            </button>
+            <button
+              type="button"
+              onClick={moveDown}
+              disabled={!canDown}
+              className={`rounded-lg border px-2 py-1 text-xs ${canDown ? "hover:bg-gray-50" : "opacity-50 cursor-not-allowed"}`}
+              title="Move down"
+              aria-label={`Move slide ${index + 1} down`}
+            >
+              ▼
+            </button>
+
+            {/* Edit / Regenerate */}
             <button
               type="button"
               onClick={startEdit}
               disabled={isBusy}
-              className={`rounded-lg border px-2 py-1 text-xs ${
-                isBusy ? "opacity-60 cursor-not-allowed" : "hover:bg-gray-50"
-              }`}
+              className={`rounded-lg border px-2 py-1 text-xs ${isBusy ? "opacity-60 cursor-not-allowed" : "hover:bg-gray-50"}`}
               title="Edit slide"
               aria-label={`Edit slide ${index + 1}`}
             >
@@ -148,9 +184,7 @@ export default function SlideCard({
               type="button"
               onClick={() => onRegenerate(index)}
               disabled={isRegenning}
-              className={`rounded-lg border px-2 py-1 text-xs ${
-                isRegenning ? "opacity-60 cursor-not-allowed" : "hover:bg-gray-50"
-              }`}
+              className={`rounded-lg border px-2 py-1 text-xs ${isRegenning ? "opacity-60 cursor-not-allowed" : "hover:bg-gray-50"}`}
               title="Regenerate this slide"
               aria-label={`Regenerate slide ${index + 1}`}
             >
@@ -162,15 +196,10 @@ export default function SlideCard({
         <div className="space-y-1">
           <input
             value={title}
-            onChange={(e) => {
-              setTitle(e.target.value);
-              setDirty(true);
-            }}
+            onChange={(e) => { setTitle(e.target.value); setDirty(true); }}
             onKeyDown={onTitleKeyDown}
             onBlur={onTitleBlur}
-            className={`w-full rounded-xl border px-3 py-2 outline-none focus:ring ${
-              titleValid ? "" : "border-red-500"
-            }`}
+            className={`w-full rounded-xl border px-3 py-2 outline-none focus:ring ${titleValid ? "" : "border-red-500"}`}
             maxLength={TITLE_MAX}
             placeholder="Slide title"
             aria-invalid={!titleValid}
@@ -186,9 +215,7 @@ export default function SlideCard({
       {!editing ? (
         !!slide.bullets?.length && (
           <ul className="list-disc ml-6 mt-2">
-            {slide.bullets.map((b, j) => (
-              <li key={j}>{b}</li>
-            ))}
+            {slide.bullets.map((b, j) => (<li key={j}>{b}</li>))}
           </ul>
         )
       ) : (
@@ -196,67 +223,84 @@ export default function SlideCard({
           <label className="block text-sm mb-1">Bullets (one per line)</label>
           <textarea
             value={bulletsText}
-            onChange={(e) => {
-              setBulletsText(e.target.value);
-              setDirty(true);
-            }}
+            onChange={(e) => { setBulletsText(e.target.value); setDirty(true); }}
             onKeyDown={onBulletsKeyDown}
             onBlur={onBulletsBlur}
             rows={bulletRows}
-            className={`w-full rounded-xl border px-3 py-2 outline-none focus:ring ${
-              bulletsValid ? "" : "border-red-500"
-            }`}
+            className={`w-full rounded-xl border px-3 py-2 outline-none focus:ring ${bulletsValid ? "" : "border-red-500"}`}
             placeholder="- Point A\n- Point B"
             aria-invalid={!bulletsValid}
             aria-label={`Slide ${index + 1} bullets`}
           />
           <div className="mt-1 flex items-center justify-between text-[11px] text-gray-500">
-            <span>
-              {bulletList.length}/{BULLETS_MAX} bullets
-            </span>
-            {!bulletsValid && (
-              <span className="text-red-600">Up to {BULLETS_MAX} bullets allowed.</span>
-            )}
+            <span>{bulletList.length}/{BULLETS_MAX} bullets</span>
+            {!bulletsValid && <span className="text-red-600">Up to {BULLETS_MAX} bullets allowed.</span>}
           </div>
 
           <div className="mt-2 flex gap-2">
-            <button
-              type="button"
-              onClick={saveEdit}
+            <button type="button" onClick={saveEdit}
               disabled={!titleValid || !bulletsValid || !dirty}
-              className={`rounded-lg px-3 py-1 text-sm text-white ${
-                !titleValid || !bulletsValid || !dirty
-                  ? "bg-gray-400 cursor-not-allowed"
-                  : "bg-black hover:opacity-90"
-              }`}
-            >
+              className={`rounded-lg px-3 py-1 text-sm text-white ${!titleValid || !bulletsValid || !dirty ? "bg-gray-400 cursor-not-allowed" : "bg-black hover:opacity-90"}`}>
               Save
             </button>
-            <button
-              type="button"
-              onClick={cancelEdit}
-              className="rounded-lg border px-3 py-1 text-sm hover:bg-gray-50"
-            >
+            <button type="button" onClick={cancelEdit}
+              className="rounded-lg border px-3 py-1 text-sm hover:bg-gray-50">
               Cancel
             </button>
           </div>
         </div>
       )}
 
-      {/* Media */}
-      {showImages && !editing && (media0 ? (
+      {/* Media preview */}
+      {showImages && !editing && (slide.media?.[0] ? (
         <div className="mt-2">
           <img
-            src={media0.url}
-            alt={media0.alt ?? slide.title}
+            src={slide.media[0].url}
+            alt={slide.media[0].alt ?? slide.title}
             className="w-full h-40 object-cover rounded-lg border bg-gray-100"
             loading="lazy"
           />
-          {media0.alt && <div className="mt-1 text-xs text-gray-500">{media0.alt}</div>}
+          {slide.media[0].alt && <div className="mt-1 text-xs text-gray-500">{slide.media[0].alt}</div>}
         </div>
       ) : showSkeleton ? (
         <div className="mt-2 h-40 w-full rounded-lg bg-gray-100 animate-pulse" />
       ) : null)}
+
+      {/* Image tools (always available in Edit & Assign phase) */}
+      {!editing && (
+        <div className="mt-3 flex flex-wrap items-center gap-2">
+          <input
+            value={imgUrl}
+            onChange={(e) => setImgUrl(e.target.value)}
+            placeholder="https://… (image URL)"
+            className="min-w-[12rem] flex-1 rounded-xl border px-3 py-2 outline-none focus:ring"
+          />
+          <button
+            type="button"
+            onClick={() => onSetImage?.(index, imgUrl || "", slide.title)}
+            className="rounded-lg border px-3 py-1 text-sm hover:bg-gray-50"
+          >
+            {slide.media?.[0] ? "Replace" : "Attach"} Image
+          </button>
+          <button
+            type="button"
+            onClick={() => onGenerateImage?.(index)}
+            className="rounded-lg border px-3 py-1 text-sm hover:bg-gray-50"
+            title="Generate placeholder image (stub)"
+          >
+            AI Generate
+          </button>
+          {slide.media?.length ? (
+            <button
+              type="button"
+              onClick={() => onRemoveImage?.(index)}
+              className="rounded-lg border px-3 py-1 text-sm hover:bg-gray-50"
+            >
+              Remove
+            </button>
+          ) : null}
+        </div>
+      )}
     </li>
   );
 }

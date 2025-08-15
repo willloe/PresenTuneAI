@@ -19,7 +19,10 @@ type Props = {
   meta: ApiMeta | null;
   copyToClipboard: (s: string) => Promise<void>;
 
-  /** Optional Week-2: build button */
+  canConfirm?: boolean;
+  confirming?: boolean;
+  onConfirm?: () => void;
+
   canBuild?: boolean;
   building?: boolean;
   onBuild?: () => void;
@@ -38,13 +41,14 @@ export default function OutlineControls({
   onExport,
   meta,
   copyToClipboard,
+  canConfirm,
+  confirming,
+  onConfirm,
   canBuild,
   building,
   onBuild,
 }: Props) {
   const [localTopic, setLocalTopic] = useState(topic);
-
-  // keep parent topic in sync on blur (optional)
   const commitTopic = () => {
     if (localTopic !== topic) setTopic(localTopic);
   };
@@ -88,6 +92,22 @@ export default function OutlineControls({
           {loading ? "Generating…" : "Generate"}
         </button>
 
+        {/* phase gate: confirm edits before layouts */}
+        {hasSlides && typeof onConfirm === "function" && (
+          <button
+            onClick={onConfirm}
+            disabled={!!confirming || !canConfirm}
+            className={`rounded-xl px-4 py-2 text-white ${
+              !!confirming || !canConfirm
+                ? "bg-gray-400 cursor-not-allowed"
+                : "bg-black hover:opacity-90"
+            }`}
+            title="Lock in your edits and go to layout selection"
+          >
+            {confirming ? "Confirming…" : "Confirm edits → Layouts"}
+          </button>
+        )}
+
         {hasSlides && (
           <button
             onClick={onExport}
@@ -101,6 +121,7 @@ export default function OutlineControls({
           </button>
         )}
 
+        {/* Optional build button (we’ll only pass these once layouts are selected) */}
         {typeof onBuild === "function" && (
           <button
             onClick={onBuild}
