@@ -11,6 +11,9 @@ type Props = {
 
   onRegenerate: (i: number) => Promise<void>;
   onUpdate: (index: number, next: Slide) => void;
+
+  /** Optional: show the currently selected layout name */
+  layoutName?: string;
 };
 
 const TITLE_MIN = 1;
@@ -27,7 +30,14 @@ function normalizeBullets(input: string): string[] {
 }
 
 export default function SlideCard({
-  slide, index, loading, regenIndex, showImages, onRegenerate, onUpdate,
+  slide,
+  index,
+  loading,
+  regenIndex,
+  showImages,
+  onRegenerate,
+  onUpdate,
+  layoutName,
 }: Props) {
   const [editing, setEditing] = useState(false);
   const [title, setTitle] = useState(slide.title);
@@ -42,9 +52,10 @@ export default function SlideCard({
   }, [slide.id, slide.title, slide.bullets]);
 
   const titleTrim = (title || "").trim();
-  const titleValid = useMemo(() => (
-    titleTrim.length >= TITLE_MIN && titleTrim.length <= TITLE_MAX
-  ), [titleTrim]);
+  const titleValid = useMemo(
+    () => titleTrim.length >= TITLE_MIN && titleTrim.length <= TITLE_MAX,
+    [titleTrim]
+  );
 
   const bulletList = useMemo(() => normalizeBullets(bulletsText), [bulletsText]);
   const bulletsValid = bulletList.length <= BULLETS_MAX;
@@ -110,8 +121,17 @@ export default function SlideCard({
       {/* Title / actions */}
       {!editing ? (
         <div className="flex items-start justify-between gap-3">
-          <div className="font-semibold break-words">{slide.title}</div>
-          <div className="flex gap-2">
+          <div className="min-w-0">
+            <div className="font-semibold break-words">{slide.title}</div>
+            {layoutName && (
+              <div className="mt-1">
+                <span className="inline-block text-[11px] rounded-full bg-gray-100 text-gray-700 px-2 py-0.5">
+                  {layoutName}
+                </span>
+              </div>
+            )}
+          </div>
+          <div className="flex gap-2 shrink-0">
             <button
               type="button"
               onClick={startEdit}
@@ -142,7 +162,10 @@ export default function SlideCard({
         <div className="space-y-1">
           <input
             value={title}
-            onChange={(e) => { setTitle(e.target.value); setDirty(true); }}
+            onChange={(e) => {
+              setTitle(e.target.value);
+              setDirty(true);
+            }}
             onKeyDown={onTitleKeyDown}
             onBlur={onTitleBlur}
             className={`w-full rounded-xl border px-3 py-2 outline-none focus:ring ${
@@ -173,7 +196,10 @@ export default function SlideCard({
           <label className="block text-sm mb-1">Bullets (one per line)</label>
           <textarea
             value={bulletsText}
-            onChange={(e) => { setBulletsText(e.target.value); setDirty(true); }}
+            onChange={(e) => {
+              setBulletsText(e.target.value);
+              setDirty(true);
+            }}
             onKeyDown={onBulletsKeyDown}
             onBlur={onBulletsBlur}
             rows={bulletRows}
@@ -185,7 +211,9 @@ export default function SlideCard({
             aria-label={`Slide ${index + 1} bullets`}
           />
           <div className="mt-1 flex items-center justify-between text-[11px] text-gray-500">
-            <span>{bulletList.length}/{BULLETS_MAX} bullets</span>
+            <span>
+              {bulletList.length}/{BULLETS_MAX} bullets
+            </span>
             {!bulletsValid && (
               <span className="text-red-600">Up to {BULLETS_MAX} bullets allowed.</span>
             )}
@@ -197,7 +225,7 @@ export default function SlideCard({
               onClick={saveEdit}
               disabled={!titleValid || !bulletsValid || !dirty}
               className={`rounded-lg px-3 py-1 text-sm text-white ${
-                (!titleValid || !bulletsValid || !dirty)
+                !titleValid || !bulletsValid || !dirty
                   ? "bg-gray-400 cursor-not-allowed"
                   : "bg-black hover:opacity-90"
               }`}
@@ -216,23 +244,19 @@ export default function SlideCard({
       )}
 
       {/* Media */}
-      {showImages && !editing && (
-        media0 ? (
-          <div className="mt-2">
-            <img
-              src={media0.url}
-              alt={media0.alt ?? slide.title}
-              className="w-full h-40 object-cover rounded-lg border bg-gray-100"
-              loading="lazy"
-            />
-            {media0.alt && (
-              <div className="mt-1 text-xs text-gray-500">{media0.alt}</div>
-            )}
-          </div>
-        ) : showSkeleton ? (
-          <div className="mt-2 h-40 w-full rounded-lg bg-gray-100 animate-pulse" />
-        ) : null
-      )}
+      {showImages && !editing && (media0 ? (
+        <div className="mt-2">
+          <img
+            src={media0.url}
+            alt={media0.alt ?? slide.title}
+            className="w-full h-40 object-cover rounded-lg border bg-gray-100"
+            loading="lazy"
+          />
+          {media0.alt && <div className="mt-1 text-xs text-gray-500">{media0.alt}</div>}
+        </div>
+      ) : showSkeleton ? (
+        <div className="mt-2 h-40 w-full rounded-lg bg-gray-100 animate-pulse" />
+      ) : null)}
     </li>
   );
 }

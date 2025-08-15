@@ -18,6 +18,11 @@ type Props = {
 
   meta: ApiMeta | null;
   copyToClipboard: (s: string) => Promise<void>;
+
+  /** Optional Week-2: build button */
+  canBuild?: boolean;
+  building?: boolean;
+  onBuild?: () => void;
 };
 
 export default function OutlineControls({
@@ -33,6 +38,9 @@ export default function OutlineControls({
   onExport,
   meta,
   copyToClipboard,
+  canBuild,
+  building,
+  onBuild,
 }: Props) {
   const [localTopic, setLocalTopic] = useState(topic);
 
@@ -90,6 +98,19 @@ export default function OutlineControls({
             title="Export deck"
           >
             {exporting ? "Exporting…" : `Export`}
+          </button>
+        )}
+
+        {typeof onBuild === "function" && (
+          <button
+            onClick={onBuild}
+            disabled={!!building || !canBuild}
+            className={`rounded-xl px-4 py-2 text-white ${
+              !!building || !canBuild ? "bg-gray-400 cursor-not-allowed" : "bg-black hover:opacity-90"
+            }`}
+            title="Build editor document"
+          >
+            {building ? "Building…" : "Build Editor Doc"}
           </button>
         )}
 

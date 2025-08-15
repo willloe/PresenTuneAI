@@ -18,12 +18,24 @@ type Props = {
 
   /** New: direct download URL for the most recent export (or null if none) */
   downloadUrl?: string | null;
+
+  /** Optional: slideId -> layout name for badges */
+  layoutNameBySlide?: Record<string, string>;
 };
 
 export default function Preview({
-  deck, slides, displayTopic, loading, meta,
-  theme, showImages, regenIndex, onRegenerate, onUpdateSlide,
+  deck,
+  slides,
+  displayTopic,
+  loading,
+  meta,
+  theme,
+  showImages,
+  regenIndex,
+  onRegenerate,
+  onUpdateSlide,
   downloadUrl,
+  layoutNameBySlide,
 }: Props) {
   const pretty = (s: string) => s.replace(/[_-]+/g, " ").replace(/\s+/g, " ").trim();
   if (!slides.length) return null;
@@ -79,6 +91,7 @@ export default function Preview({
             showImages={showImages}
             onRegenerate={onRegenerate}
             onUpdate={(idx, next) => onUpdateSlide(idx, next)}
+            layoutName={layoutNameBySlide?.[s.id]}
           />
         ))}
       </ul>
