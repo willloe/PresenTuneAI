@@ -5,8 +5,10 @@ import asyncio
 import contextlib
 from contextlib import asynccontextmanager
 import logging
+from pathlib import Path
 
 from fastapi import FastAPI, Request, APIRouter
+from fastapi.staticfiles import StaticFiles
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
@@ -73,6 +75,10 @@ def create_app() -> FastAPI:
         expose_headers=["X-Request-Id", "X-Response-Time-Ms", "Server-Timing"],
     )
 
+    static_dir = (Path(__file__).parent / "static").resolve()
+    static_dir.mkdir(parents=True, exist_ok=True)
+    app.mount("/static", StaticFiles(directory=str(static_dir)), name="static")
+    
     # Observability (x-request-id, Server-Timing aggregation)
     app.add_middleware(ObservabilityMiddleware)
 
@@ -118,6 +124,9 @@ def create_app() -> FastAPI:
     api.include_router(layouts_router)
     api.include_router(editor_router)
     app.include_router(api)
+
+    app.mount("/static", StaticFiles(directory="app/static"), name="static")
+
 
     return app
 

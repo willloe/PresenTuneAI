@@ -14,7 +14,7 @@ from app.core.config import settings
 from app.core.telemetry import aspan, span
 from app.models.schemas.slide import Deck
 from app.models.schemas.editor import EditorDoc, EditorSlide, EditorLayer
-from app.api.v1.endpoints.layouts import LIB  # reuse in-memory library
+from app.api.v1.endpoints.layouts import get_layout_library  # ⬅️ Option B: import the getter
 
 router = APIRouter(
     tags=["editor"],
@@ -46,6 +46,7 @@ async def build_editor_doc(
     idempotency_key: Optional[str] = Header(None, alias="Idempotency-Key"),
 ):
     now = time.time()
+
     # Cache HIT fast-path
     if idempotency_key and idempotency_key in _IDEMP_CACHE:
         ts, resp = _IDEMP_CACHE[idempotency_key]
@@ -61,13 +62,16 @@ async def build_editor_doc(
         deck = payload.deck
         layout_by_slide = {sel.slide_id: sel.layout_id for sel in payload.selections}
 
+        # ⬇️ Option B: fetch the current in-memory library at request time
+        lib = get_layout_library()
+
         for s in deck.slides:
             with span("layout_apply_slide", slide_id=s.id):
                 layout_id = layout_by_slide.get(s.id) or "title_bullets_left"
-                layout = next((li for li in LIB.items if li.id == layout_id), None)
+                layout = next((li for li in lib.items if li.id == layout_id), None)
 
                 if not layout and payload.policy == "best_fit":
-                    layout = max(LIB.items, key=lambda li: li.weight)
+                    layout = max(lib.items, key=lambda li: li.weight)
                     warnings.append(
                         {
                             "slide_id": s.id,
@@ -84,7 +88,7 @@ async def build_editor_doc(
                 layers: List[EditorLayer] = []
 
                 # Title
-                if "title" in layout.frames:
+                if "title" in layout.frames and layout.frames["title"]:
                     layers.append(
                         EditorLayer(
                             id=f"ly_{s.id}_title",
@@ -98,39 +102,45 @@ async def build_editor_doc(
 
                 # Bullets
                 if "bullets" in layout.frames and s.bullets:
-                    layers.append(
-                        EditorLayer(
-                            id=f"ly_{s.id}_bullets",
-                            kind="textbox",
-                            frame=layout.frames["bullets"][0],
-                            text="\n".join([f"- {b}" for b in s.bullets]),
-                            style={"font": "Inter", "size": 20},
-                            z=9,
+                    bullet_frames = layout.frames.get("bullets") or []
+                    bf0 = bullet_frames[0] if isinstance(bullet_frames, list) and bullet_frames else None
+                    if bf0:
+                        layers.append(
+                            EditorLayer(
+                                id=f"ly_{s.id}_bullets",
+                                kind="textbox",
+                                frame=bf0,
+                                text="\n".join([f"- {b}" for b in s.bullets]),
+                                style={"font": "Inter", "size": 20},
+                                z=9,
+                            )
                         )
-                    )
 
-                # First image (if any) — supports Pydantic model or plain dict
+                # First image (if any)
                 if "images" in layout.frames and s.media:
-                    m0 = s.media[0]
-                    if isinstance(m0, dict):
-                        url = m0.get("url")
-                        source = m0.get("source")
-                        asset_id = m0.get("asset_id")
-                    else:
-                        url = getattr(m0, "url", None)
-                        source = getattr(m0, "source", None)
-                        asset_id = getattr(m0, "asset_id", None)
+                    image_frames = layout.frames.get("images") or []
+                    imf0 = image_frames[0] if isinstance(image_frames, list) and image_frames else None
+                    if imf0:
+                        m0 = s.media[0]
+                        if isinstance(m0, dict):
+                            url = m0.get("url")
+                            source = m0.get("source")
+                            asset_id = m0.get("asset_id")
+                        else:
+                            url = getattr(m0, "url", None)
+                            source = getattr(m0, "source", None)
+                            asset_id = getattr(m0, "asset_id", None)
 
-                    layers.append(
-                        EditorLayer(
-                            id=f"ly_{s.id}_img0",
-                            kind="image",
-                            frame=layout.frames["images"][0],
-                            source={"type": source or "external", "asset_id": asset_id, "url": url},
-                            fit="cover",
-                            z=6,
+                        layers.append(
+                            EditorLayer(
+                                id=f"ly_{s.id}_img0",
+                                kind="image",
+                                frame=imf0,
+                                source={"type": source or "external", "asset_id": asset_id, "url": url},
+                                fit="cover",
+                                z=6,
+                            )
                         )
-                    )
 
                 # Append the composed slide
                 slides_out.append(

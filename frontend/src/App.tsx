@@ -16,10 +16,11 @@ import {
   OutlineControls,
   Preview,
   Settings,
-  EditorPreview, // ⬅️ NEW
+  EditorPreview,
 } from "./components";
 import PhaseBar, { type Phase } from "./components/PhaseBar";
 import PhaseContainer from "./components/PhaseContainer";
+import LayoutPicker from "./components/LayoutPicker";
 
 function clamp(n: number, lo: number, hi: number) {
   return Math.max(lo, Math.min(hi, n));
@@ -414,32 +415,28 @@ export default function App() {
             <>
               <div className="space-y-3">
                 {deck?.slides.map((s) => (
-                  <div key={s.id} className="border rounded-xl p-3">
+                  <div key={s.id} className="border rounded-xl p-3 space-y-3">
                     <div className="font-medium">{s.title}</div>
                     <div className="text-sm text-gray-600">
-                      {Math.max(0, s.bullets?.length || 0)} bullets •{" "}
-                      {Math.max(0, s.media?.length || 0)} images
+                      {Math.max(0, s.bullets?.length || 0)} bullets • {Math.max(0, s.media?.length || 0)} images
                     </div>
-                    <div className="mt-2">
-                      <select
-                        className="border rounded px-2 py-1"
-                        value={selection[s.id] || ""}
-                        onChange={(e) => setSelection((x) => ({ ...x, [s.id]: e.target.value }))}
-                      >
-                        <option value="" disabled>
-                          {layouts.length ? "Pick a layout…" : "Loading layouts…"}
-                        </option>
-                        {layouts.map((l) => (
-                          <option key={l.id} value={l.id}>
-                            {l.name}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
+
+                    <LayoutPicker
+                      items={layouts}
+                      selectedId={selection[s.id] || ""}
+                      onSelect={(id) => setSelection((x) => ({ ...x, [s.id]: id }))}
+                      counts={{
+                        text_count: Math.max(0, s.bullets?.length || 0),
+                        image_count: Math.max(0, s.media?.length || 0),
+                      }}
+                      page={{ width: 1280, height: 720 }}   // or editorResp?.editor?.page
+                      topK={6}
+                      initialView="selected"
+                      bringToFrontOnSelect={true}
+                    />
                   </div>
                 ))}
               </div>
-
               <div className="mt-4 flex items-center gap-3 flex-wrap">
                 <button
                   onClick={runBuildEditor}
