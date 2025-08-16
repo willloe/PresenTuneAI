@@ -20,6 +20,7 @@ type Props = {
   layoutNameBySlide?: Record<string, string>;
   onReorder?: (from: number, to: number) => void;
 
+  // Legacy single-image helpers (optional; SlideCard can operate without them)
   onSetImage?: (index: number, url: string, alt?: string) => void;
   onRemoveImage?: (index: number) => void;
   onGenerateImage?: (index: number) => void;
@@ -99,6 +100,7 @@ export default function Preview({
             onUpdate={(idx, next) => onUpdateSlide(idx, next)}
             layoutName={layoutNameBySlide?.[s.id]}
             onReorder={onReorder}
+            // Legacy single-image hooks (optional; SlideCard will fallback to local ops)
             onSetImage={onSetImage}
             onRemoveImage={onRemoveImage}
             onGenerateImage={onGenerateImage}

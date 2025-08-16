@@ -62,7 +62,6 @@ async def build_editor_doc(
         deck = payload.deck
         layout_by_slide = {sel.slide_id: sel.layout_id for sel in payload.selections}
 
-        # ⬇️ Option B: fetch the current in-memory library at request time
         lib = get_layout_library()
 
         for s in deck.slides:
@@ -118,25 +117,26 @@ async def build_editor_doc(
 
                 # First image (if any)
                 if "images" in layout.frames and s.media:
-                    image_frames = layout.frames.get("images") or []
-                    imf0 = image_frames[0] if isinstance(image_frames, list) and image_frames else None
-                    if imf0:
-                        m0 = s.media[0]
-                        if isinstance(m0, dict):
-                            url = m0.get("url")
-                            source = m0.get("source")
-                            asset_id = m0.get("asset_id")
+                    frames = list(layout.frames["images"] or [])
+                    # keep only dict-like media with a url (your Slide.media already allows a list)
+                    imgs = []
+                    for m in (s.media or []):
+                        if isinstance(m, dict):
+                            u = m.get("url")
+                            if u:
+                                imgs.append({"url": u, "source": m.get("source"), "asset_id": m.get("asset_id")})
                         else:
-                            url = getattr(m0, "url", None)
-                            source = getattr(m0, "source", None)
-                            asset_id = getattr(m0, "asset_id", None)
+                            u = getattr(m, "url", None)
+                            if u:
+                                imgs.append({"url": u, "source": getattr(m, "source", None), "asset_id": getattr(m, "asset_id", None)})
 
+                    for j, (m, fr) in enumerate(zip(imgs, frames)):
                         layers.append(
                             EditorLayer(
-                                id=f"ly_{s.id}_img0",
+                                id=f"ly_{s.id}_img{j}",
                                 kind="image",
-                                frame=imf0,
-                                source={"type": source or "external", "asset_id": asset_id, "url": url},
+                                frame=fr,
+                                source={"type": m.get("source") or "external", "asset_id": m.get("asset_id"), "url": m["url"]},
                                 fit="cover",
                                 z=6,
                             )
