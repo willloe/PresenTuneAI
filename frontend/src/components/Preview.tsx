@@ -20,7 +20,6 @@ type Props = {
   layoutNameBySlide?: Record<string, string>;
   onReorder?: (from: number, to: number) => void;
 
-  // NEW: image tools
   onSetImage?: (index: number, url: string, alt?: string) => void;
   onRemoveImage?: (index: number) => void;
   onGenerateImage?: (index: number) => void;

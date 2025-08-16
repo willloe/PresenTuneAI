@@ -10,8 +10,16 @@ import { uploadFile, type UploadResponse } from "./lib/upload";
 import type { Deck } from "./types/deck";
 import { useOutline, type OutlineRequest } from "./hooks/useOutline";
 import { useLocalStorage } from "./hooks/useLocalStorage";
-import { HeaderBar, UploadSection, OutlineControls, Preview, Settings } from "./components";
+import {
+  HeaderBar,
+  UploadSection,
+  OutlineControls,
+  Preview,
+  Settings,
+  EditorPreview, // ⬅️ NEW
+} from "./components";
 import PhaseBar, { type Phase } from "./components/PhaseBar";
+import PhaseContainer from "./components/PhaseContainer";
 
 function clamp(n: number, lo: number, hi: number) {
   return Math.max(lo, Math.min(hi, n));
@@ -29,31 +37,25 @@ export default function App() {
   const [uploadMeta, setUploadMeta] = useState<UploadResponse | null>(null);
   const [uploadErr, setUploadErr] = useState<string | null>(null);
 
-  const {
-    deck,
-    loading,
-    error,
-    meta,
-    generate,
-    regenerate,
-    updateSlide,
-    clearError,
-    setDeck,
-  } = useOutline();
+  const { deck, loading, error, meta, generate, regenerate, updateSlide, clearError, setDeck } =
+    useOutline();
 
-  // layouts + editor/build
+  // phases
+  const [step, setStep] = useState<number>(1); // 1..5
+
+  // Week-2 bits
   const [layouts, setLayouts] = useState<LayoutItem[]>([]);
   const [selection, setSelection] = useState<Record<string, string>>({});
   const [editorResp, setEditorResp] = useState<EditorBuildResponse | null>(null);
   const [building, setBuilding] = useState(false);
   const [buildErr, setBuildErr] = useState<string | null>(null);
   const idemKeyRef = useRef<string | null>(null);
+  if (!idemKeyRef.current)
+    idemKeyRef.current = (crypto?.randomUUID?.() || `${Date.now()}-${Math.random()}`).replace(
+      /-/g,
+      ""
+    );
 
-  if (!idemKeyRef.current) {
-    idemKeyRef.current = (crypto?.randomUUID?.() || `${Date.now()}-${Math.random()}`).replace(/-/g, "");
-  }
-
-  // NEW: phase-gate for layouts
   const [editConfirmed, setEditConfirmed] = useState(false);
   const [confirming, setConfirming] = useState(false);
 
@@ -62,7 +64,6 @@ export default function App() {
   const [exportErr, setExportErr] = useState<string | null>(null);
 
   const [regenIndex, setRegenIndex] = useState<number | null>(null);
-
   const displayTopic = (deck?.topic || topic || uploadMeta?.filename || "Untitled") as string;
 
   useEffect(() => {
@@ -87,6 +88,7 @@ export default function App() {
     setSelection({});
     setEditConfirmed(false);
     clearError();
+    setStep(1);
     try {
       const meta = await uploadFile(f);
       setUploadMeta(meta);
@@ -98,47 +100,61 @@ export default function App() {
     }
   };
 
-  // Load layouts (once)
   useEffect(() => {
     (async () => {
       try {
         const { data } = await api.layouts();
         setLayouts(data.items || []);
-      } catch {
-        // non-fatal
-      }
+      } catch {}
     })();
   }, []);
 
-  // Phase helpers
+  // recompute phase auto-back if edits invalidate later steps
+  useEffect(() => {
+    if (step >= 4 && !editConfirmed) setStep(3);
+    if (step >= 5 && !editorResp) setStep(4);
+  }, [step, editConfirmed, editorResp]);
+
+  // helpers
   const haveExtract = !!uploadMeta;
   const haveDeck = !!deck && (deck.slides?.length ?? 0) > 0;
   const selectionComplete = haveDeck && deck!.slides.every((s) => !!selection[s.id]);
   const haveEditor = !!editorResp;
   const haveExport = !!exportInfo;
 
-  const currentStep = (() => {
-    if (!haveExtract && !haveDeck) return 1;
-    if (haveExtract && !haveDeck) return 2;
-    if (haveDeck && !editConfirmed) return 3; // <-- editing/assignment
-    if (editConfirmed && !selectionComplete) return 4;
-    return 5;
-  })();
-
   const phases: Phase[] = [
-    { id: 1, title: "Upload Extract", status: currentStep > 1 ? "done" : currentStep === 1 ? "active" : "upcoming",
-      hint: haveExtract ? `${uploadMeta?.parsed?.pages ?? 0} pages` : undefined },
-    { id: 2, title: "Outline Generate", status: currentStep > 2 ? "done" : currentStep === 2 ? "active" : "upcoming",
-      hint: haveDeck ? `${deck?.slide_count ?? 0} slides` : undefined },
-    { id: 3, title: "Edit & Assign", status: currentStep > 3 ? "done" : currentStep === 3 ? "active" : "upcoming",
-      hint: haveDeck ? "reorder / text / images" : undefined },
-    { id: 4, title: "Layout Selection", status: currentStep > 4 ? "done" : currentStep === 4 ? "active" : "upcoming",
-      hint: selectionComplete ? "ready to build" : "pick per slide" },
-    { id: 5, title: "Live Editor & Export", status: currentStep === 5 ? "active" : "upcoming",
-      hint: haveExport ? "exported" : haveEditor ? "built" : undefined },
+    {
+      id: 1,
+      title: "Upload Extract",
+      status: step > 1 ? "done" : "active",
+      hint: haveExtract ? `${uploadMeta?.parsed?.pages ?? 0} pages` : undefined,
+    },
+    {
+      id: 2,
+      title: "Outline Generate",
+      status: step === 2 ? "active" : step > 2 ? "done" : "upcoming",
+      hint: haveDeck ? `${deck?.slide_count ?? 0} slides` : undefined,
+    },
+    {
+      id: 3,
+      title: "Edit & Assign",
+      status: step === 3 ? "active" : step > 3 ? "done" : "upcoming",
+      hint: "reorder / text / images",
+    },
+    {
+      id: 4,
+      title: "Layout Selection",
+      status: step === 4 ? "active" : step > 4 ? "done" : "upcoming",
+      hint: selectionComplete ? "ready" : undefined,
+    },
+    {
+      id: 5,
+      title: "Finalize & Export",
+      status: step === 5 ? "active" : "upcoming",
+      hint: haveExport ? "exported" : haveEditor ? "built" : undefined,
+    },
   ];
 
-  // Generate → only produce deck; do NOT choose layouts yet
   const runOutline = async () => {
     setExportInfo(null);
     setExportErr(null);
@@ -155,7 +171,6 @@ export default function App() {
     await generate(body);
   };
 
-  // Confirm edits → compute component counts and pre-pick a layout suggestion per slide
   async function suggestLayoutsFromDeck(d: Deck) {
     const next: Record<string, string> = {};
     await Promise.all(
@@ -181,7 +196,8 @@ export default function App() {
     setConfirming(true);
     try {
       await suggestLayoutsFromDeck(deck);
-      setEditConfirmed(true); // now reveal layout section
+      setEditConfirmed(true);
+      setStep(4);
     } finally {
       setConfirming(false);
     }
@@ -196,11 +212,10 @@ export default function App() {
         text: uploadMeta?.parsed?.text ?? undefined,
         slide_count: deck.slide_count ?? clamp(count, 1, 15),
       });
-      // Invalidate built editor + selection suggestions (slide changed)
+      // invalidate later steps
       setEditorResp(null);
       setSelection((old) => {
         const cp = { ...old };
-        // optional: drop selection for this slide to force re-evaluate
         delete cp[deck.slides[i].id];
         return cp;
       });
@@ -232,13 +247,19 @@ export default function App() {
     }
   };
 
+  // inside App.tsx
   const runExport = async () => {
     if (!deck) return;
     setExporting(true);
     setExportInfo(null);
     setExportErr(null);
     try {
-      const { data } = await api.exportDeck({ slides: deck.slides, theme });
+      const body =
+        editorResp?.editor
+          ? { editor: editorResp.editor, theme }
+          : { slides: deck.slides, theme };
+
+      const { data } = await api.exportDeck(body);
       setExportInfo(data);
     } catch (e: any) {
       setExportErr(e?.message || "export failed");
@@ -247,14 +268,20 @@ export default function App() {
     }
   };
 
-  // Copy helper
   const copy = async (text: string) => {
-    try { await navigator.clipboard.writeText(text); } catch {}
+    try {
+      await navigator.clipboard.writeText(text);
+    } catch {}
   };
-
   const slides: Deck["slides"] = deck?.slides ?? [];
+  const downloadUrl = useMemo(() => {
+    const p = exportInfo?.path;
+    if (!p) return null;
+    const name = p.split("/").pop();
+    if (!name) return null;
+    return `${API_BASE}/export/${encodeURIComponent(name)}`;
+  }, [exportInfo?.path]);
 
-  // Move/reorder slides (client-side)
   function moveSlide(from: number, to: number) {
     if (!deck) return;
     if (to < 0 || to >= deck.slides.length || from === to) return;
@@ -268,14 +295,10 @@ export default function App() {
     setEditorResp(null);
     setEditConfirmed(false);
   }
-
-  // Image tools (client-side)
   function setImageForSlide(idx: number, url: string, alt?: string) {
     updateSlide(idx, (prev) => ({
       ...prev,
-      media: url
-        ? [{ type: "image", url, alt: alt ?? prev.title }]
-        : [],
+      media: url ? [{ type: "image", url, alt: alt ?? prev.title }] : [],
     }) as any);
     setEditorResp(null);
     setEditConfirmed(false);
@@ -293,140 +316,237 @@ export default function App() {
     setImageForSlide(idx, url, s.title);
   }
 
-  // Download URL for last export
-  const downloadUrl = useMemo(() => {
-    const p = exportInfo?.path;
-    if (!p) return null;
-    const name = p.split("/").pop();
-    if (!name) return null;
-    return `${API_BASE}/export/${encodeURIComponent(name)}`;
-  }, [exportInfo?.path]);
-
-  const layoutNameBySlide = useMemo(() => {
-    const map: Record<string, string> = {};
-    if (!deck) return map;
-    for (const s of deck.slides) {
-      const lid = selection[s.id];
-      const name = layouts.find((l) => l.id === lid)?.name;
-      if (lid && name) map[s.id] = name;
-    }
-    return map;
-  }, [deck, selection, layouts]);
-
   return (
     <div className="min-h-screen bg-gray-50 text-gray-900">
-      <HeaderBar health={health} schemaVersion={schemaVersion} onOpenSettings={() => setSettingsOpen(true)} />
+      <HeaderBar
+        health={health}
+        schemaVersion={schemaVersion}
+        onOpenSettings={() => setSettingsOpen(true)}
+      />
 
       <main className="mx-auto max-w-4xl px-6">
         <PhaseBar phases={phases} />
 
-        {/* Phase 1: Upload Extract */}
-        <section aria-label="Phase 1: Upload Extract">
+        {/* Step 1: Upload */}
+        <PhaseContainer
+          title="Upload Extract"
+          subtitle="PDF, DOCX or plain text. We extract text and (optionally) images."
+          step={1}
+          currentStep={step}
+          onNext={() => setStep(2)}
+          nextLabel="Continue to Outline"
+        >
           <UploadSection uploadErr={uploadErr} uploadMeta={uploadMeta} onPick={onPick} />
-        </section>
+        </PhaseContainer>
 
-        {/* Phase 2 & 3: Outline + Edit (no layouts yet) */}
-        <section aria-label="Phase 2 & 3: Outline + Edit">
+        {/* Step 2: Outline Generate */}
+        <PhaseContainer
+          title="Outline Generate"
+          subtitle="Set slide count & theme, then generate."
+          step={2}
+          currentStep={step}
+          onNext={() => setStep(3)}
+          nextLabel="Proceed to Editing"
+          nextDisabled={!haveDeck}
+        >
           <OutlineControls
             topic={topic}
             setTopic={setTopic}
             loading={loading}
             onGenerate={runOutline}
             hasSlides={slides.length > 0}
-            onOpenSettings={() => setSettingsOpen(true)}
+            showInlineSettings={true}
+            showSettingsButton={false}
+            theme={theme}
+            setTheme={setTheme}
+            count={count}
+            setCount={(n: number) => setCount(Math.max(1, Math.min(15, n)))}
+            showImages={showImages}
+            setShowImages={setShowImages}
             exporting={exporting}
             exportInfo={exportInfo}
             exportErr={exportErr || error}
             onExport={runExport}
             meta={meta}
             copyToClipboard={copy}
-            canConfirm={!!deck && !editConfirmed}
-            confirming={confirming}
-            onConfirm={confirmEdits}
           />
-        </section>
+        </PhaseContainer>
 
-        {/* Phase 4: Layout Selection (only after Confirm edits) */}
-        {slides.length > 0 && editConfirmed && (
-          <section className="rounded-2xl bg-white shadow-sm p-6 mb-6" aria-label="Phase 4: Layout Selection">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-medium">Select Layouts & Build</h2>
-              <div className="text-xs text-gray-500">
-                Using <code>/layouts</code>, <code>/layouts/filter</code> and <code>/editor/build</code>
-              </div>
-            </div>
+        {/* Step 3: Edit & Assign */}
+        <PhaseContainer
+          title="Edit & Assign"
+          subtitle="Reorder slides, refine text, attach/AI-generate images. Confirm to move on."
+          step={3}
+          currentStep={step}
+          onNext={confirmEdits}
+          nextLabel="Confirm edits → Layouts"
+          nextDisabled={!haveDeck || confirming}
+        >
+          <Preview
+            deck={deck}
+            slides={slides}
+            displayTopic={displayTopic}
+            loading={loading}
+            meta={meta}
+            theme={theme}
+            showImages={showImages}
+            regenIndex={regenIndex}
+            onRegenerate={runRegen}
+            onUpdateSlide={(idx, next) => updateSlide(idx, () => next)}
+            onReorder={moveSlide}
+            onSetImage={setImageForSlide}
+            onRemoveImage={removeImageForSlide}
+            onGenerateImage={generateImageForSlide}
+          />
+        </PhaseContainer>
 
-            <div className="space-y-3">
-              {deck?.slides.map((s) => (
-                <div key={s.id} className="border rounded-xl p-3">
-                  <div className="font-medium">{s.title}</div>
-                  <div className="text-sm text-gray-600">
-                    {Math.max(0, s.bullets?.length || 0)} bullets • {Math.max(0, s.media?.length || 0)} images
-                  </div>
-                  <div className="mt-2">
-                    <select
-                      className="border rounded px-2 py-1"
-                      value={selection[s.id] || ""}
-                      onChange={(e) => setSelection((x) => ({ ...x, [s.id]: e.target.value }))}
-                    >
-                      <option value="" disabled>
-                        {layouts.length ? "Pick a layout…" : "Loading layouts…"}
-                      </option>
-                      {layouts.map((l) => (
-                        <option key={l.id} value={l.id}>
-                          {l.name}
+        {/* Step 4: Layout Selection */}
+        <PhaseContainer
+          title="Layout Selection"
+          subtitle="Pick a layout per slide, then build an editor doc."
+          step={4}
+          currentStep={step}
+          onNext={() => setStep(5)}
+          nextLabel="Proceed to Finalize"
+          nextDisabled={!haveDeck || !selectionComplete || !haveEditor}
+        >
+          {slides.length > 0 && (
+            <>
+              <div className="space-y-3">
+                {deck?.slides.map((s) => (
+                  <div key={s.id} className="border rounded-xl p-3">
+                    <div className="font-medium">{s.title}</div>
+                    <div className="text-sm text-gray-600">
+                      {Math.max(0, s.bullets?.length || 0)} bullets •{" "}
+                      {Math.max(0, s.media?.length || 0)} images
+                    </div>
+                    <div className="mt-2">
+                      <select
+                        className="border rounded px-2 py-1"
+                        value={selection[s.id] || ""}
+                        onChange={(e) => setSelection((x) => ({ ...x, [s.id]: e.target.value }))}
+                      >
+                        <option value="" disabled>
+                          {layouts.length ? "Pick a layout…" : "Loading layouts…"}
                         </option>
-                      ))}
-                    </select>
+                        {layouts.map((l) => (
+                          <option key={l.id} value={l.id}>
+                            {l.name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
                   </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
 
-            <div className="mt-4 flex items-center gap-3 flex-wrap">
-              <button
-                onClick={runBuildEditor}
-                disabled={building || !deck || !Object.values(selection).every(Boolean)}
-                className={`rounded-xl px-4 py-2 text-white ${
-                  building ? "bg-gray-400 cursor-not-allowed" : "bg-black hover:opacity-90"
-                }`}
-              >
-                {building ? "Building…" : "Build Editor Doc"}
-              </button>
+              <div className="mt-4 flex items-center gap-3 flex-wrap">
+                <button
+                  onClick={runBuildEditor}
+                  disabled={building || !haveDeck || !selectionComplete}
+                  className={`rounded-xl px-4 py-2 text-white ${
+                    building ? "bg-gray-400 cursor-not-allowed" : "bg-black hover:opacity-90"
+                  }`}
+                >
+                  {building ? "Building…" : "Build Editor Doc"}
+                </button>
 
-              {buildErr && <span className="text-sm text-red-600">{buildErr}</span>}
+                {buildErr && <span className="text-sm text-red-600">{buildErr}</span>}
 
-              {editorResp && (
-                <span className="text-sm text-gray-700">
-                  Editor slides: <b>{editorResp.editor?.slides?.length ?? 0}</b>
-                  {editorResp.warnings?.length ? (
-                    <span className="ml-2 text-amber-700">Warnings: {editorResp.warnings.length}</span>
-                  ) : null}
-                </span>
-              )}
-            </div>
-          </section>
-        )}
+                {editorResp && (
+                  <span className="text-sm text-gray-700">
+                    Editor slides: <b>{editorResp.editor?.slides?.length ?? 0}</b>
+                    {editorResp.warnings?.length ? (
+                      <span className="ml-2 text-amber-700">
+                        Warnings: {editorResp.warnings.length}
+                      </span>
+                    ) : null}
+                  </span>
+                )}
+              </div>
+            </>
+          )}
+        </PhaseContainer>
 
-        {/* Phase 3 (Edit) & 5 (Export) visualized here */}
-        <Preview
-          deck={deck}
-          slides={slides}
-          displayTopic={displayTopic}
-          loading={loading}
-          meta={meta}
-          theme={theme}
-          showImages={showImages}
-          regenIndex={regenIndex}
-          onRegenerate={runRegen}
-          onUpdateSlide={(idx, next) => updateSlide(idx, () => next)}
-          downloadUrl={downloadUrl}
-          layoutNameBySlide={layoutNameBySlide}
-          onReorder={moveSlide}
-          onSetImage={setImageForSlide}
-          onRemoveImage={removeImageForSlide}
-          onGenerateImage={generateImageForSlide}
-        />
+        {/* Step 5: Finalize & Export */}
+        <PhaseContainer
+          title="Finalize & Export"
+          subtitle="Review the built editor doc and export a PPTX (text stub during Week 2)."
+          step={5}
+          currentStep={step}
+        >
+          <div className="rounded-xl border p-3 bg-gray-50 text-sm">
+            <div className="font-medium mb-1">Editor build result</div>
+            {editorResp ? (
+              <>
+                <div>Slides: <b>{editorResp.editor?.slides?.length ?? 0}</b></div>
+                {editorResp.warnings?.length ? (
+                  <div className="text-amber-700">
+                    Warnings: {editorResp.warnings.length}
+                  </div>
+                ) : (
+                  <div className="text-gray-600">No warnings</div>
+                )}
+                <details className="mt-2">
+                  <summary className="cursor-pointer">View JSON</summary>
+                  <pre className="mt-2 max-h-80 overflow-auto">
+                    {JSON.stringify(editorResp, null, 2)}
+                  </pre>
+                </details>
+              </>
+            ) : (
+              <div className="text-gray-600">
+                No editor doc yet. Go back one step and build it.
+              </div>
+            )}
+          </div>
+
+          {/* Visual preview of the built editor doc */}
+          {editorResp?.editor && (
+            <EditorPreview
+              doc={editorResp.editor}
+              cols={2}
+              minFontPx={12}
+              showFrames={false}
+              showImages={true}
+              maxThumbH={220}
+            />
+          )}
+
+          {/* Export controls only (no outline form here) */}
+          <div className="mt-4 flex items-center gap-3 flex-wrap">
+            <button
+              onClick={runExport}
+              disabled={exporting || !editorResp?.editor}
+              className={`rounded-xl px-4 py-2 text-white ${
+                exporting || !editorResp?.editor
+                  ? "bg-gray-400 cursor-not-allowed"
+                  : "bg-black hover:opacity-90"
+              }`}
+              title={!editorResp?.editor ? "Build the editor doc first" : "Export deck"}
+            >
+              {exporting ? "Exporting…" : "Export"}
+            </button>
+
+            {exportErr && <span className="text-sm text-red-600">{exportErr}</span>}
+
+            {exportInfo && (
+              <span className="text-sm text-gray-700">
+                Exported <b>.{exportInfo.format}</b> •{" "}
+                {Math.max(1, Math.round(exportInfo.bytes / 1024))} KB —{" "}
+                <a
+                  href={downloadUrl ?? "#"}
+                  className="underline"
+                  download
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  Download file
+                </a>
+              </span>
+            )}
+          </div>
+        </PhaseContainer>
       </main>
 
       <Settings

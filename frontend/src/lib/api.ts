@@ -1,3 +1,4 @@
+// frontend/src/lib/api.ts
 import type { Deck } from "../types/deck";
 
 /** Narrow Slide type from Deck for convenience */
@@ -53,7 +54,6 @@ async function requestWithMeta<T>(path: string, init: RequestInit = {}) {
     serverTiming: res.headers.get("server-timing"),
   };
 
-  // Handle non-2xx as ApiError with best-effort body
   if (!res.ok) {
     let detail = "";
     try {
@@ -72,7 +72,6 @@ async function requestWithMeta<T>(path: string, init: RequestInit = {}) {
     );
   }
 
-  // JSON vs non-JSON responses
   const ct = res.headers.get("content-type") || "";
   if (ct.includes("application/json")) {
     const data = (await res.json()) as T;
@@ -93,12 +92,15 @@ export type HealthResp = {
   schema_version?: string;
   time?: string;
 };
+
 export type ExportResp = {
   path: string;
   format: "pptx" | "txt";
   theme?: string | null;
   bytes: number;
 };
+
+/* -------------------- Layout / Editor types -------------------- */
 
 export type LayoutItem = {
   id: string;
@@ -157,6 +159,14 @@ export type EditorBuildResponse = {
   meta?: Record<string, any>;
 };
 
+export const exportEditor = (payload: { editor: EditorDocOut; theme?: string | null }) =>
+  requestWithMeta<ExportResp>("/export", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+
+/* -------------------- API client -------------------- */
+
 export const api = {
   // Health
   health: () => request<HealthResp>("/health"),
@@ -185,19 +195,21 @@ export const api = {
       body: JSON.stringify(body),
     }),
 
-  // Export
-  exportDeck: (payload: { slides: Deck["slides"]; theme?: string | null }) =>
+  /* -------------------- Export (new schema) -------------------- */
+  // Enforce "either slides or editor" at the type level
+  exportDeck: (payload: { slides?: Deck["slides"]; editor?: EditorDocOut; theme?: string | null }) =>
     requestWithMeta<ExportResp>("/export", {
       method: "POST",
       body: JSON.stringify(payload),
     }),
 
-  // Schemas
+  // Schemas (optional)
   schema: {
     deck: () => request<Record<string, unknown>>("/schema/deck"),
     slide: () => request<Record<string, unknown>>("/schema/slide"),
   },
 
+  // Layouts + editor build
   layouts: () => requestWithMeta<LayoutLibrary>("/layouts", { method: "GET" }),
   filterLayouts: (body: LayoutFilterRequest) =>
     requestWithMeta<{ candidates: string[] }>("/layouts/filter", {
