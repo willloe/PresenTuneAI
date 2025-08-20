@@ -26,17 +26,21 @@ export default function PhaseContainer({
 
   return (
     <section
-      className={`rounded-2xl bg-white shadow-sm p-6 mb-6 relative ${
-        isFuture ? "opacity-50" : ""
-      }`}
+      className={`rounded-2xl bg-white shadow-sm p-6 mb-6 relative ${isFuture ? "opacity-50" : ""}`}
       aria-disabled={isFuture}
+      aria-labelledby={`phase-title-${step}`}
     >
       <div className="flex items-center justify-between mb-4">
-        <div>
-          <h2 className="text-lg font-medium">{title}</h2>
-          {subtitle ? <div className="text-xs text-gray-500">{subtitle}</div> : null}
+        <div className="min-w-0">
+          <h2 id={`phase-title-${step}`} className="text-lg font-medium truncate">
+            {title}
+          </h2>
+          {subtitle ? <div className="text-xs text-gray-500 mt-0.5">{subtitle}</div> : null}
         </div>
-        <div className="text-xs rounded-full bg-gray-100 text-gray-700 px-2 py-0.5">
+        <div
+          className="text-xs rounded-full bg-gray-100 text-gray-700 px-2 py-0.5"
+          aria-label={`Step ${step}${isActive ? ", active" : isFuture ? ", upcoming" : ", done"}`}
+        >
           Step {step}
         </div>
       </div>
@@ -51,6 +55,7 @@ export default function PhaseContainer({
             className={`rounded-xl px-4 py-2 text-white ${
               nextDisabled ? "bg-gray-400 cursor-not-allowed" : "bg-black hover:opacity-90"
             }`}
+            type="button"
           >
             {nextLabel}
           </button>

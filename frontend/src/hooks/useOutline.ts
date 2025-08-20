@@ -8,6 +8,15 @@ export type OutlineRequest = {
   slide_count?: number; // 1..15 (backend clamps)
 };
 
+function metaFromError(e: ApiError): ApiMeta {
+  return {
+    requestId: e.requestId ?? undefined,
+    status: e.status,
+    url: e.url,
+    serverTiming: e.serverTiming ?? null,
+  };
+}
+
 export function useOutline() {
   const [deck, setDeck] = useState<Deck | null>(null);
   const [loading, setLoading] = useState(false);
@@ -31,10 +40,10 @@ export function useOutline() {
       setDeck(data);
       setMeta(meta);
       return { deck: data, meta };
-    } catch (e: any) {
+    } catch (e) {
       const msg = e instanceof ApiError ? e.message : "Failed to generate outline";
       setError(msg);
-      if (e instanceof ApiError) setMeta(e.meta);
+      if (e instanceof ApiError) setMeta(metaFromError(e));
       throw e;
     } finally {
       setLoading(false);
@@ -59,10 +68,10 @@ export function useOutline() {
 
       setMeta(meta);
       return { slide, meta };
-    } catch (e: any) {
+    } catch (e) {
       const msg = e instanceof ApiError ? e.message : "Failed to regenerate slide";
       setError(msg);
-      if (e instanceof ApiError) setMeta(e.meta);
+      if (e instanceof ApiError) setMeta(metaFromError(e));
       throw e;
     }
   }

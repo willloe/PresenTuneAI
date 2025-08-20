@@ -7,6 +7,7 @@ import {
   API_BASE,
   ApiError,
   type ApiMeta,
+  exportDownloadUrl as coreExportDownloadUrl,
 } from "../lib/api";
 import type { Deck } from "../types/deck";
 import type { OutlineRequest, ExportResp } from "./types";
@@ -35,7 +36,10 @@ function normalize(req: OutlineRequest): {
 export async function health() {
   return rawApi.health();
 }
-export async function healthWithMeta(): Promise<{ data: { status: string; schema_version?: string; time?: string }; meta: ApiMeta }> {
+export async function healthWithMeta(): Promise<{
+  data: { status: string; schema_version?: string; time?: string };
+  meta: ApiMeta;
+}> {
   return rawApi.healthWithMeta();
 }
 
@@ -43,34 +47,37 @@ export async function healthWithMeta(): Promise<{ data: { status: string; schema
 export async function outline(body: OutlineRequest): Promise<Deck> {
   return rawApi.outline(normalize(body));
 }
-export async function outlineWithMeta(body: OutlineRequest): Promise<{ data: Deck; meta: ApiMeta }> {
+export async function outlineWithMeta(
+  body: OutlineRequest
+): Promise<{ data: Deck; meta: ApiMeta }> {
   return rawApi.outlineWithMeta(normalize(body));
 }
 
 /** Regenerate a single slide (0-based index) */
-export async function regenerateSlide(index: number, body: OutlineRequest): Promise<Slide> {
+export async function regenerateSlide(
+  index: number,
+  body: OutlineRequest
+): Promise<Slide> {
   return rawApi.regenerateSlide(index, normalize(body));
 }
-export async function regenerateSlideWithMeta(index: number, body: OutlineRequest): Promise<{ data: Slide; meta: ApiMeta }> {
+export async function regenerateSlideWithMeta(
+  index: number,
+  body: OutlineRequest
+): Promise<{ data: Slide; meta: ApiMeta }> {
   return rawApi.regenerateSlideWithMeta(index, normalize(body));
 }
 
-/** Export (.txt stub) */
+/** Export (.txt/.pptx, etc.) */
 export async function exportDeck(payload: {
-  slides: Deck["slides"];
+  slides?: Deck["slides"];
+  // if you’ve built an editor doc already, you can also pass:
+  // editor?: import("../lib/api").EditorDocOut;
   theme?: string | null;
 }): Promise<{ data: ExportResp; meta: ApiMeta }> {
-  return rawApi.exportDeck(payload); // already returns { data, meta }
+  return rawApi.exportDeck(payload);
 }
 
 /** Build a download URL for /export/{filename} from a server path or name */
 export function exportDownloadUrl(pathOrName: string): string {
-  const name = pathOrName.includes("/") ? pathOrName.split("/").pop()! : pathOrName;
-  return `${API_BASE}/export/${encodeURIComponent(name)}`;
+  return coreExportDownloadUrl(pathOrName);
 }
-
-/** JSON Schemas */
-export const schema = {
-  deck: () => rawApi.schema.deck(),
-  slide: () => rawApi.schema.slide(),
-};

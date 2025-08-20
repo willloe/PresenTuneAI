@@ -1,97 +1,37 @@
 // frontend/src/lib/api.ts
 import type { Deck } from "../types/deck";
+import { request, requestWithMeta } from "./http";
+export type { HttpMeta as ApiMeta } from "./http";
+export { ApiError } from "./errors";
 
 /** Narrow Slide type from Deck for convenience */
 export type Slide = Deck["slides"][number];
 
-export const API_BASE =
-  (import.meta.env.VITE_API_BASE as string) ??
-  (import.meta.env.DEV ? "http://localhost:8000/v1" : "/v1");
+/** Keep a single source for the base (matches http.ts) */
+export const API_BASE: string =
+  (import.meta as any).env?.VITE_API_BASE ??
+  ((import.meta as any).env?.DEV ? "http://localhost:8000/v1" : "/v1");
 
-export type ApiMeta = {
-  requestId?: string;
-  status: number;
-  url: string;
-  serverTiming?: string | null;
-};
-
-export class ApiError extends Error {
-  meta: ApiMeta;
-  constructor(message: string, meta: ApiMeta) {
-    super(message);
-    this.name = "ApiError";
-    this.meta = meta;
-  }
-}
-
-/** Safe join for base + path (protects against trailing/leading slashes) */
-function join(base: string, path: string) {
-  if (base.endsWith("/") && path.startsWith("/")) return base + path.slice(1);
-  if (!base.endsWith("/") && !path.startsWith("/")) return base + "/" + path;
-  return base + path;
-}
-
-/** Turn the server's absolute file path into a GET /export/{filename} URL */
+/** Build a download URL from a server path or filename */
 export function exportDownloadUrl(serverPath: string) {
-  // Works for Unix/Windows paths
+  // Tolerate absolute URLs
+  if (/^https?:\/\//i.test(serverPath)) return serverPath;
+
+  // Works for Unix/Windows paths: take final segment as the filename
   const name = serverPath.split(/[\\/]/).pop()!;
-  return join(API_BASE, `/export/${encodeURIComponent(name)}`);
+  const base = String(API_BASE).replace(/\/$/, "");
+  return `${base}/export/${encodeURIComponent(name)}`;
 }
 
-async function requestWithMeta<T>(path: string, init: RequestInit = {}) {
-  const headers = new Headers(init.headers);
-  if (!headers.has("Content-Type") && init.method && init.method !== "GET") {
-    headers.set("Content-Type", "application/json");
-  }
-
-  const url = join(API_BASE, path);
-  const res = await fetch(url, { ...init, headers });
-
-  const meta: ApiMeta = {
-    requestId: res.headers.get("x-request-id") ?? undefined,
-    status: res.status,
-    url,
-    serverTiming: res.headers.get("server-timing"),
-  };
-
-  if (!res.ok) {
-    let detail = "";
-    try {
-      const j = await res.clone().json();
-      detail = (j?.detail as string) ?? JSON.stringify(j);
-    } catch {
-      try {
-        detail = await res.text();
-      } catch {
-        detail = "";
-      }
-    }
-    throw new ApiError(
-      `${res.status} ${res.statusText}${detail ? ` — ${detail}` : ""}`,
-      meta
-    );
-  }
-
-  const ct = res.headers.get("content-type") || "";
-  if (ct.includes("application/json")) {
-    const data = (await res.json()) as T;
-    return { data, meta };
-  } else {
-    const text = (await res.text()) as unknown as T;
-    return { data: text, meta };
-  }
-}
-
-async function request<T>(path: string, init: RequestInit = {}) {
-  const { data } = await requestWithMeta<T>(path, init);
-  return data;
-}
+/* -------------------- Health -------------------- */
 
 export type HealthResp = {
   status: string;
   schema_version?: string;
   time?: string;
 };
+
+/* -------------------- Export (new schema) -------------------- */
 
 export type ExportResp = {
   path: string;
@@ -101,6 +41,8 @@ export type ExportResp = {
 };
 
 /* -------------------- Layout / Editor types -------------------- */
+
+export type Frame = { x: number; y: number; w: number; h: number };
 
 export type LayoutItem = {
   id: string;
@@ -159,12 +101,6 @@ export type EditorBuildResponse = {
   meta?: Record<string, any>;
 };
 
-export const exportEditor = (payload: { editor: EditorDocOut; theme?: string | null }) =>
-  requestWithMeta<ExportResp>("/export", {
-    method: "POST",
-    body: JSON.stringify(payload),
-  });
-
 /* -------------------- API client -------------------- */
 
 export const api = {
@@ -178,6 +114,7 @@ export const api = {
   outlineWithMeta: (body: { topic?: string; text?: string; slide_count?: number }) =>
     requestWithMeta<Deck>("/outline", { method: "POST", body: JSON.stringify(body) }),
 
+  // Regenerate a specific slide
   regenerateSlide: (
     index: number,
     body: { topic?: string; text?: string; slide_count?: number }
@@ -196,8 +133,15 @@ export const api = {
     }),
 
   /* -------------------- Export (new schema) -------------------- */
-  // Enforce "either slides or editor" at the type level
+  // Enforce "either slides or editor" at the type level for callers
   exportDeck: (payload: { slides?: Deck["slides"]; editor?: EditorDocOut; theme?: string | null }) =>
+    requestWithMeta<ExportResp>("/export", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }),
+
+  // Alternate export for explicit editor payload (kept for convenience)
+  exportEditor: (payload: { editor: EditorDocOut; theme?: string | null }) =>
     requestWithMeta<ExportResp>("/export", {
       method: "POST",
       body: JSON.stringify(payload),

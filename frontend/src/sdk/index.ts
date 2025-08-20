@@ -11,7 +11,6 @@ export {
   regenerateSlideWithMeta,
   exportDeck,
   exportDownloadUrl,
-  schema,
 } from "./client";
 
 // Optional: convenient default export
@@ -33,9 +32,6 @@ const sdk = {
   // export
   exportDeck: Client.exportDeck,
   exportDownloadUrl: Client.exportDownloadUrl,
-
-  // schemas
-  schema: Client.schema,
 
   // constants / errors
   API_BASE: Client.API_BASE,
