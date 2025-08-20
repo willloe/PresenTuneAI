@@ -1,6 +1,82 @@
 import { useEffect, useMemo, useState } from "react";
-import type { Slide } from "../types/deck";
+import type { Slide, Media, TextSection } from "../types/deck";
 import ImageGalleryEditor, { type MediaItem } from "./ImageGalleryEditor";
+
+/* ------------------------- Config & small helpers ------------------------- */
+
+const TITLE_MIN = 1;
+const TITLE_MAX = 200;
+const BULLETS_MAX = 12;
+const PARA_MAX = 4000;
+
+function trimLines(s: string): string[] {
+  return s
+    .split(/\r?\n/)
+    .map((t) => t.trim())
+    .filter(Boolean);
+}
+
+function normalizeBulletsInput(input: string): string[] {
+  return trimLines(input)
+    .map((s) => s.replace(/^(\d+[.)]\s*|[-*•·]\s*)/, ""))
+    .slice(0, BULLETS_MAX);
+}
+
+function sectionsFromSlide(slide: Slide): TextSection[] {
+  const existing = slide.meta?.sections ?? null;
+  if (Array.isArray(existing) && existing.length) {
+    return existing.map((s) => ({ ...s })); // shallow clone
+  }
+  const bullets = (slide.bullets ?? []).map((b) => b.trim()).filter(Boolean);
+  if (bullets.length) {
+    return [
+      {
+        id: cryptoRandomId(),
+        kind: "list",
+        bullets,
+        role: "primary",
+      },
+    ];
+  }
+  return [{ id: cryptoRandomId(), kind: "paragraph", text: "", role: "primary" }];
+}
+
+function cryptoRandomId() {
+  try {
+    return typeof crypto !== "undefined" && "randomUUID" in crypto
+      ? (crypto as any).randomUUID()
+      : `sec_${Math.random().toString(36).slice(2, 10)}`;
+  } catch {
+    return `sec_${Math.random().toString(36).slice(2, 10)}`;
+  }
+}
+
+/** Return sanitized sections (trim, drop empties, clamp bullets). */
+function sanitizeSections(sections: TextSection[]): TextSection[] {
+  const out: TextSection[] = [];
+  for (const s of sections) {
+    if (s.kind === "paragraph") {
+      const text = (s.text ?? "").trim();
+      if (text) out.push({ id: s.id || cryptoRandomId(), kind: "paragraph", text, role: s.role ?? null });
+    } else {
+      const bullets = (s.bullets ?? []).map((b) => b.trim()).filter(Boolean).slice(0, BULLETS_MAX);
+      if (bullets.length) out.push({ id: s.id || cryptoRandomId(), kind: "list", bullets, role: s.role ?? null });
+    }
+  }
+  if (!out.length) out.push({ id: cryptoRandomId(), kind: "paragraph", text: "", role: "primary" });
+  return out;
+}
+
+/** Pick the "primary" list (or first list) to mirror into legacy slide.bullets. */
+function derivePrimaryBullets(sections: TextSection[]): string[] {
+  const list =
+    (sections.find((s) => s.kind === "list" && s.role === "primary") as any) ||
+    (sections.find((s) => s.kind === "list") as any);
+  const bullets = (list?.bullets ?? []).map((b: string) => b.trim()).filter(Boolean).slice(0, BULLETS_MAX);
+  return bullets;
+}
+
+/* ------------------------------ Component API ----------------------------- */
 
 type Props = {
   slide: Slide;
@@ -17,23 +93,11 @@ type Props = {
   layoutName?: string;
   onReorder?: (from: number, to: number) => void;
 
-  // image tools
+  // Optional legacy single-image hooks
   onSetImage?: (index: number, url: string, alt?: string) => void;
   onRemoveImage?: (index: number) => void;
   onGenerateImage?: (index: number) => void;
 };
-
-const TITLE_MIN = 1;
-const TITLE_MAX = 200;
-const BULLETS_MAX = 12;
-
-function normalizeBullets(input: string): string[] {
-  return input
-    .split(/\r?\n/)
-    .map((s) => s.trim().replace(/^(\d+[.)]\s*|[-*•·]\s*)/, ""))
-    .filter(Boolean)
-    .slice(0, BULLETS_MAX);
-}
 
 export default function SlideCard({
   slide,
@@ -50,31 +114,25 @@ export default function SlideCard({
   onRemoveImage,
   onGenerateImage,
 }: Props) {
+  /* ------------------------------ Local editing ------------------------------ */
+
   const [editing, setEditing] = useState(false);
   const [title, setTitle] = useState(slide.title);
-  const [bulletsText, setBulletsText] = useState(slide.bullets?.join("\n") ?? "");
+  const [sections, setSections] = useState<TextSection[]>(sectionsFromSlide(slide));
   const [dirty, setDirty] = useState(false);
 
-  // quick URL box (legacy single-image helpers)
+  // For the quick URL box
   const [imgUrl, setImgUrl] = useState(slide.media?.[0]?.url ?? "");
-  useEffect(() => {
-    setImgUrl(slide.media?.[0]?.url ?? "");
-  }, [slide.media, slide.id]);
 
   useEffect(() => {
     setTitle(slide.title);
-    setBulletsText(slide.bullets?.join("\n") ?? "");
+    setSections(sectionsFromSlide(slide));
     setDirty(false);
-  }, [slide.id, slide.title, slide.bullets]);
+    setImgUrl(slide.media?.[0]?.url ?? "");
+  }, [slide.id, slide.title, slide.meta?.sections, slide.bullets, slide.media]);
 
   const titleTrim = (title || "").trim();
-  const titleValid = useMemo(
-    () => titleTrim.length >= TITLE_MIN && titleTrim.length <= TITLE_MAX,
-    [titleTrim]
-  );
-
-  const bulletList = useMemo(() => normalizeBullets(bulletsText), [bulletsText]);
-  const bulletsValid = bulletList.length <= BULLETS_MAX;
+  const titleValid = titleTrim.length >= TITLE_MIN && titleTrim.length <= TITLE_MAX;
 
   const isRegenning = regenIndex === index;
   const isBusy = loading || isRegenning;
@@ -90,12 +148,18 @@ export default function SlideCard({
   function cancelEdit() {
     setEditing(false);
     setTitle(slide.title);
-    setBulletsText(slide.bullets?.join("\n") ?? "");
+    setSections(sectionsFromSlide(slide));
     setDirty(false);
   }
   function saveEdit() {
-    if (!dirty || !titleValid || !bulletsValid) return;
-    const next: Slide = { ...slide, title: titleTrim, bullets: bulletList };
+    if (!dirty || !titleValid) return;
+    const clean = sanitizeSections(sections);
+    const next: Slide = {
+      ...slide,
+      title: titleTrim,
+      bullets: derivePrimaryBullets(clean), // mirror for back-compat
+      meta: { ...(slide.meta ?? {}), sections: clean },
+    };
     onUpdate(index, next);
     setEditing(false);
     setDirty(false);
@@ -119,37 +183,90 @@ export default function SlideCard({
       cancelEdit();
     }
   }
-  function onBulletsKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
-    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "s") {
-      e.preventDefault();
-      saveEdit();
-    } else if (e.key === "Escape") {
-      e.preventDefault();
-      cancelEdit();
-    }
-  }
-  function onTitleBlur() {
-    if (dirty && titleValid) saveEdit();
-  }
-  function onBulletsBlur() {
-    if (dirty && bulletsValid) saveEdit();
+
+  /* --------------------------- Sections: operations -------------------------- */
+
+  function updateParagraphText(id: string, text: string) {
+    setSections((prev) =>
+      prev.map((s) => (s.id === id && s.kind === "paragraph" ? { ...s, text } : s)),
+    );
+    setDirty(true);
   }
 
-  // --- Media normalization (strict MediaItem[]) ---
+  function updateListBullets(id: string, bullets: string[]) {
+    setSections((prev) =>
+      prev.map((s) => (s.id === id && s.kind === "list" ? { ...s, bullets } : s)),
+    );
+    setDirty(true);
+  }
+
+  function addSection(kind: TextSection["kind"]) {
+    const base: TextSection =
+      kind === "paragraph"
+        ? { id: cryptoRandomId(), kind, text: "", role: "secondary" }
+        : { id: cryptoRandomId(), kind, bullets: [], role: "secondary" };
+    setSections((prev) => [...prev, base]);
+    setDirty(true);
+  }
+
+  function removeSection(id: string) {
+    setSections((prev) => prev.filter((s) => s.id !== id));
+    setDirty(true);
+  }
+
+  function moveSection(id: string, dir: -1 | 1) {
+    setSections((prev) => {
+      const idx = prev.findIndex((s) => s.id === id);
+      if (idx < 0) return prev;
+      const to = Math.max(0, Math.min(prev.length - 1, idx + dir));
+      if (to === idx) return prev;
+      const next = [...prev];
+      const [item] = next.splice(idx, 1);
+      next.splice(to, 0, item);
+      return next;
+    });
+    setDirty(true);
+  }
+
+  function setPrimary(id: string) {
+    setSections((prev) =>
+      prev.map((s) =>
+        s.id === id ? { ...s, role: "primary" } : { ...s, role: s.role === "primary" ? "secondary" : s.role ?? null },
+      ),
+    );
+    setDirty(true);
+  }
+
+  function changeKind(id: string, target: TextSection["kind"]) {
+    setSections((prev) =>
+      prev.map((s) => {
+        if (s.id !== id) return s;
+        if (target === s.kind) return s;
+        if (target === "paragraph") {
+          const text = s.kind === "paragraph" ? (s.text ?? "") : (s.bullets ?? []).join("\n");
+          const next: TextSection = { id: s.id, kind: "paragraph", text, role: s.role ?? null };
+          return next;
+        } else {
+          const bullets = s.kind === "list" ? (s.bullets ?? []) : normalizeBulletsInput(s.text ?? "");
+          const next: TextSection = { id: s.id, kind: "list", bullets, role: s.role ?? null };
+          return next;
+        }
+      }),
+    );
+    setDirty(true);
+  }
+
+  /* ------------------------------- Media logic ------------------------------- */
+
   const media: MediaItem[] = useMemo(() => {
-    const arr = (slide.media || []) as any[];
+    const arr = (slide.media || []) as Media[];
     return arr
-      .map((m: any) => {
-        const url = m?.url as string | undefined;
-        if (!url) return null;
-        const alt = (m?.alt as string | undefined) ?? undefined;
-        return { type: "image" as const, url: String(url), alt };
-      })
+      .map((m) => (m?.url ? { type: "image" as const, url: String(m.url), alt: m.alt ?? undefined } : null))
       .filter(Boolean) as MediaItem[];
   }, [slide.media]);
 
   function updateMedia(nextMedia: MediaItem[]) {
-    const next: Slide = { ...slide, media: nextMedia };
+    const next: Slide = { ...slide, media: nextMedia as any };
     onUpdate(index, next);
   }
   function addImage(url: string, alt?: string) {
@@ -195,6 +312,10 @@ export default function SlideCard({
 
   const showSkeleton = showImages && !editing && !media.length && isBusy;
 
+  /* --------------------------------- Render --------------------------------- */
+
+  const selectedLayout = layoutName ?? (slide.layout || "");
+
   return (
     <li className="border rounded-xl p-4">
       {/* Header / actions */}
@@ -202,13 +323,13 @@ export default function SlideCard({
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
             <div className="font-semibold break-words">{slide.title}</div>
-            {layoutName && (
+            {selectedLayout ? (
               <div className="mt-1">
                 <span className="inline-block text-[11px] rounded-full bg-gray-100 text-gray-700 px-2 py-0.5">
-                  {layoutName}
+                  {selectedLayout}
                 </span>
               </div>
-            )}
+            ) : null}
           </div>
           <div className="flex gap-2 shrink-0">
             <button
@@ -271,7 +392,6 @@ export default function SlideCard({
               setDirty(true);
             }}
             onKeyDown={onTitleKeyDown}
-            onBlur={onTitleBlur}
             className={`w-full rounded-xl border px-3 py-2 outline-none focus:ring ${
               titleValid ? "" : "border-red-500"
             }`}
@@ -280,64 +400,168 @@ export default function SlideCard({
             aria-invalid={!titleValid}
             aria-label={`Slide ${index + 1} title`}
           />
-          <div className="text-[11px] text-gray-500 text-right">
-            {titleTrim.length}/{TITLE_MAX}
-          </div>
+          <div className="text-[11px] text-gray-500 text-right">{titleTrim.length}/{TITLE_MAX}</div>
         </div>
       )}
 
-      {/* Bullets */}
+      {/* Read-only content preview */}
       {!editing ? (
-        !!slide.bullets?.length && <ul className="list-disc ml-6 mt-2">{slide.bullets.map((b, j) => <li key={j}>{b}</li>)}</ul>
+        <div className="mt-2 space-y-2">
+          {(slide.meta?.sections ?? sections).map((s: TextSection, i: number) =>
+            s.kind === "paragraph" ? (
+              <p key={s.id || i} className="text-sm leading-6 text-gray-800 whitespace-pre-wrap">
+                {s.text}
+              </p>
+            ) : (
+              <ul key={s.id || i} className="list-disc ml-6">
+                {s.bullets.map((b: string, j: number) => (
+                  <li key={j}>{b}</li>
+                ))}
+              </ul>
+            ),
+          )}
+          {!slide.meta?.sections?.length && slide.bullets?.length ? (
+            <ul className="list-disc ml-6">
+              {slide.bullets.map((b: string, j: number) => (
+                <li key={j}>{b}</li>
+              ))}
+            </ul>
+          ) : null}
+        </div>
       ) : (
-        <div className="mt-3">
-          <label className="block text-sm mb-1">Bullets (one per line)</label>
-          <textarea
-            value={bulletsText}
-            onChange={(e) => {
-              setBulletsText(e.target.value);
-              setDirty(true);
-            }}
-            onKeyDown={onBulletsKeyDown}
-            onBlur={onBulletsBlur}
-            rows={Math.max(3, Math.min(8, bulletsText.split(/\r?\n/).length))}
-            className={`w-full rounded-xl border px-3 py-2 outline-none focus:ring ${
-              bulletsValid ? "" : "border-red-500"
-            }`}
-            placeholder="- Point A\n- Point B"
-            aria-invalid={!bulletsValid}
-            aria-label={`Slide ${index + 1} bullets`}
-          />
-          <div className="mt-1 flex items-center justify-between text-[11px] text-gray-500">
-            <span>
-              {bulletList.length}/{BULLETS_MAX} bullets
-            </span>
-            {!bulletsValid && <span className="text-red-600">Up to {BULLETS_MAX} bullets allowed.</span>}
+        /* ---------------------------- Sections editor ---------------------------- */
+        <div className="mt-3 space-y-3">
+          <div className="flex items-center justify-between">
+            <label className="text-sm font-medium">Text sections</label>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => addSection("paragraph")}
+                className="rounded-lg border px-2 py-1 text-xs hover:bg-gray-50"
+              >
+                + Paragraph
+              </button>
+              <button
+                type="button"
+                onClick={() => addSection("list")}
+                className="rounded-lg border px-2 py-1 text-xs hover:bg-gray-50"
+              >
+                + Bullet list
+              </button>
+            </div>
           </div>
+
+          {sections.map((s, idx) => (
+            <div key={s.id} className="rounded-xl border p-3 bg-gray-50/50">
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2 text-xs text-gray-600">
+                  <span className="inline-flex items-center gap-1">
+                    <select
+                      value={s.kind}
+                      onChange={(e) => changeKind(s.id, e.target.value as TextSection["kind"])}
+                      className="rounded-md border px-2 py-1 bg-white"
+                    >
+                      <option value="paragraph">Paragraph</option>
+                      <option value="list">Bullet list</option>
+                    </select>
+                    {s.role === "primary" ? (
+                      <span className="inline-block rounded-full bg-black text-white px-2 py-0.5">primary</span>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => setPrimary(s.id)}
+                        className="text-xs underline text-gray-700"
+                        title="Mark this section as primary"
+                      >
+                        make primary
+                      </button>
+                    )}
+                  </span>
+                </div>
+
+                <div className="flex items-center gap-1">
+                  <button
+                    type="button"
+                    onClick={() => moveSection(s.id, -1)}
+                    disabled={idx === 0}
+                    className={`rounded-lg border px-2 py-1 text-xs ${
+                      idx === 0 ? "opacity-40 cursor-not-allowed" : "hover:bg-gray-50"
+                    }`}
+                    title="Move up"
+                  >
+                    ↑
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => moveSection(s.id, +1)}
+                    disabled={idx === sections.length - 1}
+                    className={`rounded-lg border px-2 py-1 text-xs ${
+                      idx === sections.length - 1 ? "opacity-40 cursor-not-allowed" : "hover:bg-gray-50"
+                    }`}
+                    title="Move down"
+                  >
+                    ↓
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => removeSection(s.id)}
+                    className="rounded-lg border px-2 py-1 text-xs hover:bg-gray-50"
+                    title="Remove section"
+                  >
+                    Remove
+                  </button>
+                </div>
+              </div>
+
+              {s.kind === "paragraph" ? (
+                <>
+                  <textarea
+                    value={s.text ?? ""}
+                    onChange={(e) => updateParagraphText(s.id, e.target.value.slice(0, PARA_MAX))}
+                    rows={Math.max(2, Math.min(8, (s.text ?? "").split(/\r?\n/).length))}
+                    className="mt-2 w-full rounded-xl border px-3 py-2 outline-none focus:ring bg-white"
+                    placeholder="Write a short paragraph…"
+                  />
+                  <div className="mt-1 text-[11px] text-right text-gray-500">
+                    {(s.text ?? "").length}/{PARA_MAX}
+                  </div>
+                </>
+              ) : (
+                <>
+                  <textarea
+                    value={(s.bullets ?? []).join("\n")}
+                    onChange={(e) => updateListBullets(s.id, normalizeBulletsInput(e.target.value))}
+                    rows={Math.max(3, Math.min(10, (s.bullets ?? []).length || 3))}
+                    className="mt-2 w-full rounded-xl border px-3 py-2 outline-none focus:ring bg-white"
+                    placeholder={"- First point\n- Second point"}
+                  />
+                  <div className="mt-1 text-[11px] text-gray-500">
+                    {(s.bullets ?? []).length}/{BULLETS_MAX} bullets
+                  </div>
+                </>
+              )}
+            </div>
+          ))}
 
           <div className="mt-2 flex gap-2">
             <button
               type="button"
               onClick={saveEdit}
-              disabled={!titleValid || !bulletsValid || !dirty}
+              disabled={!titleValid || !dirty}
               className={`rounded-lg px-3 py-1 text-sm text-white ${
-                !titleValid || !bulletsValid || !dirty ? "bg-gray-400 cursor-not-allowed" : "bg-black hover:opacity-90"
+                !titleValid || !dirty ? "bg-gray-400 cursor-not-allowed" : "bg-black hover:opacity-90"
               }`}
             >
               Save
             </button>
-            <button
-              type="button"
-              onClick={cancelEdit}
-              className="rounded-lg border px-3 py-1 text-sm hover:bg-gray-50"
-            >
+            <button type="button" onClick={cancelEdit} className="rounded-lg border px-3 py-1 text-sm hover:bg-gray-50">
               Cancel
             </button>
           </div>
         </div>
       )}
 
-      {/* Quick preview of first image */}
+      {/* Images: quick preview of first image */}
       {showImages && !editing && (media[0] ? (
         <div className="mt-2">
           <img
@@ -383,7 +607,7 @@ export default function SlideCard({
             }}
             className="rounded-lg border px-3 py-1 text-sm hover:bg-gray-50"
           >
-            {media.length ? "Replace" : "Attach"} Image
+            {media.length ? "Replace" : "Add Image"}
           </button>
           <button
             type="button"

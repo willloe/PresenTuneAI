@@ -1,14 +1,18 @@
 import { useEffect, useMemo, useState } from "react";
 import { api, type LayoutItem } from "../lib/api";
 
+/**
+ * Thumb preview color legend:
+ * - Title bar = deep slate
+ * - Text blocks = amber tint
+ * - Image blocks = blue tint
+ */
 const COLORS = {
   titleBar: "#0f172a",                     // slate-900
   textBg: "rgba(251, 191, 36, 0.22)",      // amber-400 @ 22%
   textBorder: "rgba(245, 158, 11, 0.55)",  // amber-500 @ 55%
   imageBg: "rgba(59, 130, 246, 0.18)",     // blue-500 @ 18%
   imageBorder: "rgba(59, 130, 246, 0.35)", // blue-500 @ 35%
-  shapeBg: "rgba(16, 185, 129, 0.20)",     // emerald-500 @ 20%
-  shapeBorder: "rgba(5, 150, 105, 0.45)",  // emerald-600 @ 45%
 };
 
 /** Local fallback scoring (mirrors backend heuristic) */
@@ -36,7 +40,6 @@ function scoreLayoutLocal(item: LayoutItem, text_count: number, image_count: num
 }
 
 type Counts = { text_count: number; image_count: number };
-
 type View = "selected" | "recommended" | "all";
 
 type Props = {
@@ -44,11 +47,11 @@ type Props = {
   selectedId?: string;
   onSelect: (id: string) => void;
 
-  counts?: Counts;                       // for recommendations
+  counts?: Counts;                            // for recommendations
   page?: { width?: number; height?: number }; // for aspect ratio
-  topK?: number;                         // size of recommended set
-  initialView?: View;                    // default 'selected'
-  bringToFrontOnSelect?: boolean;        // default true
+  topK?: number;                              // size of recommended set
+  initialView?: View;                         // default 'selected'
+  bringToFrontOnSelect?: boolean;             // default true
 };
 
 export default function LayoutPicker({
@@ -264,14 +267,20 @@ function Thumb({ item, aspect }: { item: LayoutItem; aspect: number }) {
       style={{ aspectRatio: String(aspect) }}
     >
       {/* Title stripe across the top edge */}
-      <div className="absolute left-0 right-0 top-0" style={{ height: "8%", background: COLORS.titleBar, opacity: 0.95 }} />
-      {/* Title frame (if present) */}
-      {frames.title && <Bar frame={frames.title} color={COLORS.titleBar} insetTopPct={1.5} heightPct={7} />}
+      <div
+        className="absolute left-0 right-0 top-0"
+        style={{ height: "8%", background: COLORS.titleBar, opacity: 0.95 }}
+      />
 
-      {/* First bullets/text frame (colorized) */}
-      {Array.isArray(frames.bullets) &&
-        frames.bullets.slice(0, 1).map((f: any, i: number) => (
-          <TextBlock key={`b${i}`} frame={f} />
+      {/* Title frame (if present) */}
+      {frames.title && (
+        <Bar frame={frames.title} color={COLORS.titleBar} insetTopPct={1.5} heightPct={7} />
+      )}
+
+      {/* Text frames (multi-text support, colorized) */}
+      {Array.isArray(frames.text) &&
+        frames.text.slice(0, 2).map((f: any, i: number) => (
+          <TextBlock key={`t${i}`} frame={f} />
         ))}
 
       {/* All image frames (colorized) */}
@@ -290,7 +299,7 @@ function pctStyles(frame: any) {
   return { left: `${x}%`, top: `${y}%`, width: `${w}%`, height: `${h}%` };
 }
 
-/* Text/bullets = amber */
+/* Text blocks = amber */
 function TextBlock({ frame }: { frame: any }) {
   return (
     <div
@@ -318,7 +327,7 @@ function ImageBlock({ frame }: { frame: any }) {
   );
 }
 
-/* Optional: generic colored bar used for the title frame */
+/* Generic colored bar used for the title frame */
 function Bar({ frame, color = COLORS.titleBar, insetTopPct = 0, heightPct = 6 }: any) {
   const base = pctStyles(frame);
   return (

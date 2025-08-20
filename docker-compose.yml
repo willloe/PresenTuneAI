@@ -9,7 +9,7 @@ services:
       - "8000:8000"
     volumes:
       - ./backend/data/uploads:/app/data/uploads
-      - ./backend/app/static:/app/app/static:ro 
+      - ./backend/app/static:/app/app/static:ro
     healthcheck:
       test: ["CMD-SHELL", "python -c \"import urllib.request,sys; sys.exit(0) if urllib.request.urlopen('http://localhost:8000/v1/health', timeout=2).status==200 else sys.exit(1)\""]
       interval: 5s
@@ -22,6 +22,8 @@ services:
     build:
       context: ./frontend
       dockerfile: Dockerfile
+      args:
+        VITE_MODE: development
     ports: ["5173:80"]
     depends_on:
       - backend
