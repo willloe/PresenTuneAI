@@ -13,6 +13,7 @@ import { useOutline, type OutlineRequest } from "./hooks/useOutline";
 import { useLocalStorage } from "./hooks/useLocalStorage";
 import { useHealth } from "./hooks/useHealth";
 import { useLayouts } from "./hooks/useLayout";
+import { usePhases } from "./hooks/usePhases";
 import { clamp } from "./utils/clamp";
 import { safeUUID } from "./utils/safeUUID";
 import { copyToClipboard } from "./utils/clipboard";
@@ -24,7 +25,7 @@ import {
   Preview,
   Settings,
 } from "./components";
-import PhaseBar, { type Phase } from "./components/PhaseBar";
+import PhaseBar from "./components/PhaseBar";
 import PhaseContainer from "./components/PhaseContainer";
 import LayoutSelectionList from "./components/layout/LayoutSelectionList";
 import FinalizeSection from "./components/FinalizeSection";
@@ -78,12 +79,7 @@ export default function App() {
   // Toasts
   const { show } = useToast();
 
-  // Auto-back when later steps are invalid
-  useEffect(() => {
-    if (step >= 4 && !editConfirmed) setStep(3);
-    if (step >= 5 && !editorResp) setStep(4);
-  }, [step, editConfirmed, editorResp]);
-
+  // Flags used by phases
   const haveExtract = !!uploadMeta;
   const haveDeck = slides.length > 0;
   const selectionComplete = useMemo(
@@ -93,135 +89,132 @@ export default function App() {
   const haveEditor = !!editorResp;
   const haveExport = !!exportInfo;
 
-  const phases: Phase[] = useMemo(
-    () => [
-      {
-        id: 1,
-        title: "Upload Extract",
-        status: step > 1 ? "done" : "active",
-        hint: haveExtract ? `${uploadMeta?.parsed?.pages ?? 0} pages` : undefined,
-      },
-      {
-        id: 2,
-        title: "Outline Generate",
-        status: step === 2 ? "active" : step > 2 ? "done" : "upcoming",
-        hint: haveDeck ? `${deck?.slide_count ?? 0} slides` : undefined,
-      },
-      {
-        id: 3,
-        title: "Edit & Assign",
-        status: step === 3 ? "active" : step > 3 ? "done" : "upcoming",
-        hint: "reorder / text / images",
-      },
-      {
-        id: 4,
-        title: "Layout Selection",
-        status: step === 4 ? "active" : step > 4 ? "done" : "upcoming",
-        hint: selectionComplete ? "ready" : undefined,
-      },
-      {
-        id: 5,
-        title: "Finalize & Export",
-        status: step === 5 ? "active" : "upcoming",
-        hint: haveExport ? "exported" : haveEditor ? "built" : undefined,
-      },
-    ],
-    [step, haveExtract, uploadMeta?.parsed?.pages, haveDeck, deck?.slide_count, selectionComplete, haveExport, haveEditor]
-  );
+  // NEW: centralize phase model
+  const { phases, safeStep } = usePhases({
+    step,
+    editConfirmed,
+    haveExtract,
+    uploadPages: uploadMeta?.parsed?.pages ?? null,
+    haveDeck,
+    deckSlideCount: deck?.slide_count ?? null,
+    selectionComplete,
+    haveEditor,
+    haveExport,
+  });
+
+  // Keep requested step in sync with safe step (auto-back)
+  useEffect(() => {
+    if (safeStep !== step) setStep(safeStep);
+  }, [safeStep, step]);
 
   /* --------------------------- handlers --------------------------- */
-  const onPick = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const input = e.currentTarget;
-    const f = input.files?.[0];
-    if (!f) return;
+  const onPick = useCallback(
+    async (e: React.ChangeEvent<HTMLInputElement>) => {
+      const input = e.currentTarget;
+      const f = input.files?.[0];
+      if (!f) return;
 
-    setUploadErr(null);
-    setUploadMeta(null);
-    setExportInfo(null);
-    setExportErr(null);
-    setEditorResp(null);
-    setSelection({});
-    setEditConfirmed(false);
-    clearError();
-    setStep(1);
+      setUploadErr(null);
+      setUploadMeta(null);
+      setExportInfo(null);
+      setExportErr(null);
+      setEditorResp(null);
+      setSelection({});
+      setEditConfirmed(false);
+      clearError();
+      setStep(1);
 
-    try {
-      const meta = await uploadFile(f);
-      setUploadMeta(meta);
-      setTopic(meta.filename.replace(/\.[^.]+$/, ""));
-      // toast: upload success
-      show({ tone: "success", title: "Uploaded", description: meta.filename });
-    } catch (err: any) {
-      const msg = err?.message || "upload failed";
-      setUploadErr(msg);
-      // toast: upload error
-      show({ tone: "danger", title: "Upload failed", description: msg });
-    } finally {
-      if (input) input.value = "";
-    }
-  }, [clearError, show]);
+      try {
+        const meta = await uploadFile(f);
+        setUploadMeta(meta);
+        setTopic(meta.filename.replace(/\.[^.]+$/, ""));
+        show({ tone: "success", title: "Uploaded", description: meta.filename });
+      } catch (err: any) {
+        const msg = err?.message || "upload failed";
+        setUploadErr(msg);
+        show({ tone: "danger", title: "Upload failed", description: msg });
+      } finally {
+        if (input) input.value = "";
+      }
+    },
+    [clearError, show]
+  );
 
-  const runOutline = useCallback(async () => {
-    setExportInfo(null);
-    setExportErr(null);
-    setEditorResp(null);
-    setBuildErr(null);
-    setSelection({});
-    setEditConfirmed(false);
-    clearError();
+  const runOutline = useCallback(
+    async () => {
+      setExportInfo(null);
+      setExportErr(null);
+      setEditorResp(null);
+      setBuildErr(null);
+      setSelection({});
+      setEditConfirmed(false);
+      clearError();
 
-    const body: OutlineRequest = {
-      topic,
-      slide_count: clamp(count, 1, 15),
-      text: uploadMeta?.parsed?.text ?? undefined,
-    };
-    try {
-      await generate(body);
-      // toast: outline success
-      show({ tone: "success", title: "Outline ready", description: "Draft slides generated." });
-    } catch (err: any) {
-      // toast: outline error
-      show({ tone: "danger", title: "Generate failed", description: err?.message || "Could not generate outline." });
-      throw err;
-    }
-  }, [topic, count, uploadMeta?.parsed?.text, generate, clearError, show]);
+      const body: OutlineRequest = {
+        topic,
+        slide_count: clamp(count, 1, 15),
+        text: uploadMeta?.parsed?.text ?? undefined,
+      };
+      try {
+        await generate(body);
+        show({ tone: "success", title: "Outline ready", description: "Draft slides generated." });
+      } catch (err: any) {
+        show({
+          tone: "danger",
+          title: "Generate failed",
+          description: err?.message || "Could not generate outline.",
+        });
+        throw err;
+      }
+    },
+    [topic, count, uploadMeta?.parsed?.text, generate, clearError, show]
+  );
 
-  const suggestLayoutsFromDeck = useCallback(async (d: Deck) => {
-    const next: Record<string, string> = {};
-    await Promise.all(
-      d.slides.map(async (s) => {
-        const text_count = Math.max(0, (s.bullets || []).length);
-        const image_count = Math.max(0, (s.media || []).length);
-        try {
-          const { data } = await api.filterLayouts({
-            components: { text_count, image_count },
-            top_k: 1,
-          });
-          next[s.id] = data.candidates?.[0] || layouts?.[0]?.id || "";
-        } catch {
-          next[s.id] = layouts?.[0]?.id || "";
-        }
-      })
-    );
-    setSelection(next);
-  }, [layouts]);
+  const suggestLayoutsFromDeck = useCallback(
+    async (d: Deck) => {
+      const next: Record<string, string> = {};
+      await Promise.all(
+        d.slides.map(async (s) => {
+          const text_count = Math.max(0, (s.bullets || []).length);
+          const image_count = Math.max(0, (s.media || []).length);
+          try {
+            const { data } = await api.filterLayouts({
+              components: { text_count, image_count },
+              top_k: 1,
+            });
+            next[s.id] = data.candidates?.[0] || layouts?.[0]?.id || "";
+          } catch {
+            next[s.id] = layouts?.[0]?.id || "";
+          }
+        })
+      );
+      setSelection(next);
+    },
+    [layouts]
+  );
 
-  const confirmEdits = useCallback(async () => {
-    if (!deck) return;
-    setConfirming(true);
-    try {
-      await suggestLayoutsFromDeck(deck);
-      setEditConfirmed(true);
-      setStep(4);
-      // toast: edits confirmed
-      show({ tone: "info", title: "Edits confirmed", description: "Initial layouts suggested." });
-    } catch (err: any) {
-      show({ tone: "danger", title: "Confirm failed", description: err?.message || "Could not confirm edits." });
-      throw err;
-    } finally {
-      setConfirming(false);
-    }
-  }, [deck, suggestLayoutsFromDeck, show]);
+  const confirmEdits = useCallback(
+    async () => {
+      if (!deck) return;
+      setConfirming(true);
+      try {
+        await suggestLayoutsFromDeck(deck);
+        setEditConfirmed(true);
+        setStep(4);
+        show({ tone: "info", title: "Edits confirmed", description: "Initial layouts suggested." });
+      } catch (err: any) {
+        show({
+          tone: "danger",
+          title: "Confirm failed",
+          description: err?.message || "Could not confirm edits.",
+        });
+        throw err;
+      } finally {
+        setConfirming(false);
+      }
+    },
+    [deck, suggestLayoutsFromDeck, show]
+  );
 
   const runRegen = useCallback(
     async (i: number) => {
@@ -240,10 +233,13 @@ export default function App() {
           return cp;
         });
         setEditConfirmed(false);
-        // toast: slide regenerated
         show({ tone: "info", title: "Slide regenerated", description: `Slide #${i + 1}` });
       } catch (err: any) {
-        show({ tone: "danger", title: "Regenerate failed", description: err?.message || `Slide #${i + 1}` });
+        show({
+          tone: "danger",
+          title: "Regenerate failed",
+          description: err?.message || `Slide #${i + 1}`,
+        });
         throw err;
       } finally {
         setRegenIndex(null);
@@ -252,60 +248,66 @@ export default function App() {
     [deck, topic, uploadMeta?.parsed?.text, count, regenerate, show]
   );
 
-  const runBuildEditor = useCallback(async () => {
-    if (!deck) return;
-    setBuilding(true);
-    setBuildErr(null);
-    setEditorResp(null);
-    try {
-      const selections = deck.slides.map((s) => ({
-        slide_id: s.id,
-        layout_id: selection[s.id] || undefined,
-      }));
-      const { data } = await api.buildEditor(
-        { deck, selections, theme, policy: "best_fit" },
-        { idempotencyKey: idemKeyRef.current }
-      );
-      setEditorResp(data);
-      // toast: build success
-      const n = data.editor?.slides?.length ?? 0;
-      show({ tone: "success", title: "Editor built", description: `${n} slide(s)` });
-      if (data.warnings?.length) {
-        show({ tone: "info", title: "Build warnings", description: `${data.warnings.length} warning(s)` });
+  const runBuildEditor = useCallback(
+    async () => {
+      if (!deck) return;
+      setBuilding(true);
+      setBuildErr(null);
+      setEditorResp(null);
+      try {
+        const selections = deck.slides.map((s) => ({
+          slide_id: s.id,
+          layout_id: selection[s.id] || undefined,
+        }));
+        const { data } = await api.buildEditor(
+          { deck, selections, theme, policy: "best_fit" },
+          { idempotencyKey: idemKeyRef.current }
+        );
+        setEditorResp(data);
+        const n = data.editor?.slides?.length ?? 0;
+        show({ tone: "success", title: "Editor built", description: `${n} slide(s)` });
+        if (data.warnings?.length) {
+          show({
+            tone: "info",
+            title: "Build warnings",
+            description: `${data.warnings.length} warning(s)`,
+          });
+        }
+      } catch (e: any) {
+        const msg = e?.message || "build failed";
+        setBuildErr(msg);
+        show({ tone: "danger", title: "Build failed", description: msg });
+      } finally {
+        setBuilding(false);
       }
-    } catch (e: any) {
-      const msg = e?.message || "build failed";
-      setBuildErr(msg);
-      // toast: build error
-      show({ tone: "danger", title: "Build failed", description: msg });
-    } finally {
-      setBuilding(false);
-    }
-  }, [deck, selection, theme, show]);
+    },
+    [deck, selection, theme, show]
+  );
 
-  const runExport = useCallback(async () => {
-    if (!deck) return;
-    setExporting(true);
-    setExportInfo(null);
-    setExportErr(null);
-    try {
-      const body = editorResp?.editor
-        ? { editor: editorResp.editor, theme }
-        : { slides: deck.slides, theme };
-      const { data } = await api.exportDeck(body);
-      setExportInfo(data);
-      // toast: export success
-      const kb = Math.max(1, Math.round(data.bytes / 1024));
-      show({ tone: "success", title: "Exported", description: `.${data.format} — ${kb} KB` });
-    } catch (e: any) {
-      const msg = e?.message || "export failed";
-      setExportErr(msg);
-      // toast: export error
-      show({ tone: "danger", title: "Export failed", description: msg });
-    } finally {
-      setExporting(false);
-    }
-  }, [deck, editorResp?.editor, theme, show]);
+  const runExport = useCallback(
+    async () => {
+      if (!deck) return;
+      setExporting(true);
+      setExportInfo(null);
+      setExportErr(null);
+      try {
+        const body = editorResp?.editor
+          ? { editor: editorResp.editor, theme }
+          : { slides: deck.slides, theme };
+        const { data } = await api.exportDeck(body);
+        setExportInfo(data);
+        const kb = Math.max(1, Math.round(data.bytes / 1024));
+        show({ tone: "success", title: "Exported", description: `.${data.format} — ${kb} KB` });
+      } catch (e: any) {
+        const msg = e?.message || "export failed";
+        setExportErr(msg);
+        show({ tone: "danger", title: "Export failed", description: msg });
+      } finally {
+        setExporting(false);
+      }
+    },
+    [deck, editorResp?.editor, theme, show]
+  );
 
   const moveSlide = useCallback(
     (from: number, to: number) => {
@@ -378,7 +380,7 @@ export default function App() {
           title="Upload Extract"
           subtitle="PDF, DOCX or plain text. We extract text and (optionally) images."
           step={1}
-          currentStep={step}
+          currentStep={safeStep}
           onNext={() => setStep(2)}
           nextLabel="Continue to Outline"
         >
@@ -390,7 +392,7 @@ export default function App() {
           title="Outline Generate"
           subtitle="Set slide count & theme, then generate."
           step={2}
-          currentStep={step}
+          currentStep={safeStep}
           onNext={() => setStep(3)}
           nextLabel="Proceed to Editing"
           nextDisabled={!haveDeck}
@@ -423,7 +425,7 @@ export default function App() {
           title="Edit & Assign"
           subtitle="Reorder slides, refine text, attach/AI-generate images. Confirm to move on."
           step={3}
-          currentStep={step}
+          currentStep={safeStep}
           onNext={confirmEdits}
           nextLabel="Confirm edits → Layouts"
           nextDisabled={!haveDeck || confirming}
@@ -451,7 +453,7 @@ export default function App() {
           title="Layout Selection"
           subtitle="Pick a layout per slide, then build an editor doc."
           step={4}
-          currentStep={step}
+          currentStep={safeStep}
           onNext={() => setStep(5)}
           nextLabel="Proceed to Finalize"
           nextDisabled={!haveDeck || !selectionComplete || !haveEditor}
@@ -495,7 +497,7 @@ export default function App() {
           title="Finalize & Export"
           subtitle="Review the built editor doc and export a PPTX."
           step={5}
-          currentStep={step}
+          currentStep={safeStep}
         >
           <FinalizeSection
             editorResp={editorResp}
