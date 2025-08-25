@@ -1,9 +1,10 @@
-import { useMemo } from "react";
+import { useCallback, useMemo } from "react";
 import type { Phase } from "../components/PhaseBar";
+import { useLocalStorage } from "./useLocalStorage";
 
 export type UsePhasesArgs = {
-  step: number;                // current requested step (1..5)
-  editConfirmed: boolean;      // whether user confirmed edits in step 3
+  // Inputs that determine readiness / hints
+  editConfirmed: boolean;      // confirms done in step 3
   haveExtract: boolean;
   uploadPages?: number | null;
   haveDeck: boolean;
@@ -11,10 +12,16 @@ export type UsePhasesArgs = {
   selectionComplete: boolean;
   haveEditor: boolean;
   haveExport: boolean;
+
+  // Optional persistence key & initial step
+  storageKey?: string;         // default: "phaseStep"
+  initialStep?: number;        // default: 1
 };
 
+type PhaseId = 1 | 2 | 3 | 4 | 5;
+const clampStep = (n: number): PhaseId => (Math.max(1, Math.min(5, Math.floor(n))) as PhaseId);
+
 export function usePhases({
-  step,
   editConfirmed,
   haveExtract,
   uploadPages,
@@ -23,15 +30,50 @@ export function usePhases({
   selectionComplete,
   haveEditor,
   haveExport,
+  storageKey = "phaseStep",
+  initialStep = 1,
 }: UsePhasesArgs) {
-  // Auto-back rules
-  const safeStep = useMemo(() => {
-    let s = step;
+  // Persist the user's requested step
+  const [requested, setRequested] = useLocalStorage<number>(storageKey, initialStep);
+
+  // Auto-back rules to ensure consistency with the current app state
+  const safeStep: PhaseId = useMemo(() => {
+    let s = clampStep(requested || 1);
     if (s >= 5 && !haveEditor) s = 4;
     if (s >= 4 && !editConfirmed) s = 3;
+    if (s >= 3 && !haveDeck) s = 2;
     return s;
-  }, [step, editConfirmed, haveEditor]);
+  }, [requested, editConfirmed, haveEditor, haveDeck]);
 
+  // Guardrails for moving forward
+  const canNext: boolean = useMemo(() => {
+    switch (safeStep) {
+      case 1: return true;                          // can proceed to Generate
+      case 2: return !!haveDeck;                    // need slides to leave Outline
+      case 3: return !!haveDeck;                    // allow Confirm button; the click sets editConfirmed & advances
+      case 4: return !!selectionComplete && !!haveEditor; // need layouts selected AND built editor
+      default: return false;                        // step 5 has no “next”
+    }
+  }, [safeStep, haveDeck, selectionComplete, haveEditor]);
+
+  const canPrev = safeStep > 1;
+
+  const next = useCallback(() => {
+    if (!canNext) return false;
+    setRequested(clampStep(safeStep + 1));
+    return true;
+  }, [canNext, safeStep, setRequested]);
+
+  const prev = useCallback(() => {
+    if (!canPrev) return;
+    setRequested(clampStep(safeStep - 1));
+  }, [canPrev, safeStep, setRequested]);
+
+  const setStep = useCallback((n: number) => {
+    setRequested(clampStep(n));
+  }, [setRequested]);
+
+  // Phase bar data
   const statusFor = (id: number): Phase["status"] =>
     id < safeStep ? "done" : id === safeStep ? "active" : "upcoming";
 
@@ -71,5 +113,13 @@ export function usePhases({
     [haveExtract, uploadPages, haveDeck, deckSlideCount, selectionComplete, haveExport, haveEditor, safeStep]
   );
 
-  return { phases, safeStep };
+  return {
+    step: safeStep,
+    phases,
+    canNext,
+    canPrev,
+    next,
+    prev,
+    setStep,
+  };
 }

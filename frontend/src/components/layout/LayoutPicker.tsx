@@ -86,15 +86,15 @@ export default function LayoutPicker({
   }
 
   // Suggested widths for thumbs
-  const largeWidth = 480; // main selected card
-  const gridWidth = 220;  // grid items
+  const largeWidth = 460; // main selected card
+  const gridWidth = 200;  // grid items
 
   return (
     <div className="space-y-2">
       {/* Selected-only view */}
       {view === "selected" && (
         <div className="flex items-start gap-3">
-          <div className="grow">
+          <div className="grow max-w-[520px]">
             {(() => {
               const chosen = selectedItem ?? recommended[0] ?? orderedItems[0];
               return chosen ? (
@@ -188,7 +188,7 @@ function Grid({ children }: { children: React.ReactNode }) {
   return (
     <div
       className="grid gap-3"
-      style={{ gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))" }}
+      style={{ gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))" }}
     >
       {children}
     </div>
