@@ -6,13 +6,21 @@ type BaseProps = {
   children: React.ReactNode;
   fallback?: React.ReactNode;
   onReset?: () => void;
+  /** When any key changes while showing an error, the boundary auto-resets */
+  resetKeys?: unknown[];
 };
 
-type InternalProps = BaseProps & {
-  onError?: (err: unknown, info?: React.ErrorInfo) => void;
-};
-
+type InternalProps = BaseProps & { onError?: (err: unknown, info?: React.ErrorInfo) => void };
 type State = { error: unknown | null };
+
+function arraysChanged(a?: unknown[], b?: unknown[]) {
+  if (a === b) return false;
+  const al = a?.length ?? 0;
+  const bl = b?.length ?? 0;
+  if (al !== bl) return true;
+  for (let i = 0; i < al; i++) if (a![i] !== b![i]) return true;
+  return false;
+}
 
 /** Class boundary so React can call lifecycle error hooks */
 class ErrorBoundaryCore extends React.Component<InternalProps, State> {
@@ -24,6 +32,12 @@ class ErrorBoundaryCore extends React.Component<InternalProps, State> {
 
   componentDidCatch(error: unknown, info: React.ErrorInfo): void {
     this.props.onError?.(error, info);
+  }
+
+  componentDidUpdate(prevProps: InternalProps) {
+    if (this.state.error && arraysChanged(prevProps.resetKeys, this.props.resetKeys)) {
+      this.reset();
+    }
   }
 
   reset = () => {
@@ -38,7 +52,11 @@ class ErrorBoundaryCore extends React.Component<InternalProps, State> {
     if (error instanceof ApiError) {
       const { status, url, requestId, serverTiming, detail } = error;
       return (
-        <div className="m-6 rounded-2xl border bg-white p-6 shadow-sm">
+        <div
+          className="m-6 rounded-2xl border bg-white p-6 shadow-sm"
+          role="alert"
+          aria-live="assertive"
+        >
           <div className="text-lg font-semibold">Request failed</div>
           <p className="mt-2 text-sm text-gray-700 break-words">{error.message}</p>
 
@@ -58,12 +76,25 @@ class ErrorBoundaryCore extends React.Component<InternalProps, State> {
             </details>
           )}
 
-          <button
-            onClick={this.reset}
-            className="mt-3 rounded-lg border px-3 py-1 text-sm hover:bg-gray-50"
-          >
-            Try again
-          </button>
+          <div className="mt-3 flex items-center gap-2">
+            <button
+              onClick={this.reset}
+              className="rounded-lg border px-3 py-1 text-sm hover:bg-gray-50"
+            >
+              Try again
+            </button>
+            <button
+              onClick={() =>
+                copyToClipboardSafe(
+                  `${error.message}\nstatus=${status}\nurl=${url}\nrequestId=${requestId ?? ""}\nserver-timing=${serverTiming ?? ""}\n${formatDetail(detail)}`
+                )
+              }
+              className="rounded-lg border px-3 py-1 text-sm hover:bg-gray-50"
+              title="Copy details"
+            >
+              Copy details
+            </button>
+          </div>
         </div>
       );
     }
@@ -71,7 +102,7 @@ class ErrorBoundaryCore extends React.Component<InternalProps, State> {
     // Generic fallback
     return (
       this.props.fallback ?? (
-        <div className="m-6 rounded-2xl border bg-white p-6 shadow-sm">
+        <div className="m-6 rounded-2xl border bg-white p-6 shadow-sm" role="alert" aria-live="assertive">
           <div className="text-lg font-semibold">Something went wrong</div>
           <p className="mt-2 text-sm text-gray-600">An unexpected error occurred in the UI.</p>
           <button
@@ -87,7 +118,7 @@ class ErrorBoundaryCore extends React.Component<InternalProps, State> {
 }
 
 /** Wrapper that hooks into the toast system */
-export default function ErrorBoundary({ children, fallback, onReset }: BaseProps) {
+export default function ErrorBoundary({ children, fallback, onReset, resetKeys }: BaseProps) {
   const { show } = useToast();
 
   function handleError(err: unknown) {
@@ -119,7 +150,12 @@ export default function ErrorBoundary({ children, fallback, onReset }: BaseProps
   }
 
   return (
-    <ErrorBoundaryCore fallback={fallback} onReset={onReset} onError={(e) => handleError(e)}>
+    <ErrorBoundaryCore
+      fallback={fallback}
+      onReset={onReset}
+      onError={handleError}
+      resetKeys={resetKeys}
+    >
       {children}
     </ErrorBoundaryCore>
   );
@@ -134,4 +170,10 @@ function formatDetail(detail: unknown): string {
   } catch {
     return String(detail);
   }
+}
+
+async function copyToClipboardSafe(text: string) {
+  try {
+    await navigator.clipboard.writeText(text);
+  } catch {}
 }

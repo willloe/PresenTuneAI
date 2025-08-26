@@ -1,4 +1,3 @@
-// frontend/src/lib/api.ts
 import type { Deck } from "../types/deck";
 import { request, requestWithMeta } from "./http";
 export type { HttpMeta as ApiMeta } from "./http";

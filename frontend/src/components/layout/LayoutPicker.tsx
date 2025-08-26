@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState, useId } from "react";
 import { api, type LayoutItem } from "../../lib/api";
 import LayoutThumb from "./LayoutThumb";
 import { scoreLayoutLocal } from "./utils";
@@ -13,11 +13,11 @@ type Props = {
   selectedId?: string;
   onSelect: (id: string) => void;
 
-  counts?: Counts;                            // for recommendations
-  page?: { width?: number; height?: number }; // for aspect ratio / scaling
-  topK?: number;                              // size of recommended set
-  initialView?: View;                         // default 'selected'
-  bringToFrontOnSelect?: boolean;             // default true
+  counts?: Counts;
+  page?: { width?: number; height?: number };
+  topK?: number;
+  initialView?: View;
+  bringToFrontOnSelect?: boolean;
 };
 
 export default function LayoutPicker({
@@ -33,10 +33,14 @@ export default function LayoutPicker({
   const [order, setOrder] = useState<string[] | null>(null);
   const [view, setView] = useState<View>(initialView);
 
-  // Ask backend for best order; fallback to local
+  // Stable ids for aria-labelledby
+  const recHdrId = useId();
+  const allHdrId = useId();
+
+  // Debounced fetch of ranked order; fallback to local score
   useEffect(() => {
     let alive = true;
-    (async () => {
+    const tid = setTimeout(async () => {
       try {
         const { data } = await api.filterLayouts({
           components: counts,
@@ -50,28 +54,32 @@ export default function LayoutPicker({
         setOrder(merged);
       } catch {
         if (!alive) return;
-        const sorted = [...items].sort((a, b) =>
-          scoreLayoutLocal(a, counts.text_count, counts.image_count) -
-          scoreLayoutLocal(b, counts.text_count, counts.image_count)
+        const sorted = [...items].sort(
+          (a, b) =>
+            scoreLayoutLocal(a, counts.text_count, counts.image_count) -
+            scoreLayoutLocal(b, counts.text_count, counts.image_count)
         );
         setOrder(sorted.map((i) => i.id));
       }
-    })();
-    return () => { alive = false; };
+    }, 120);
+    return () => {
+      alive = false;
+      clearTimeout(tid);
+    };
   }, [items, counts.text_count, counts.image_count]);
 
-  const byId = useMemo(() => new Map(items.map(i => [i.id, i])), [items]);
+  const byId = useMemo(() => new Map(items.map((i) => [i.id, i])), [items]);
 
   const orderedItems: LayoutItem[] = useMemo(() => {
     if (!order) return items;
-    return order.map(id => byId.get(id)).filter(Boolean) as LayoutItem[];
+    return order.map((id) => byId.get(id)).filter(Boolean) as LayoutItem[];
   }, [order, byId, items]);
 
-  // Recommended set (topK), but ensure the selected (if any) is first.
+  // Recommended set (topK), ensure selected (if any) is first
   const recommended = useMemo(() => {
     const top = orderedItems.slice(0, Math.min(topK, orderedItems.length));
     if (!selectedId) return top;
-    const idx = top.findIndex(i => i.id === selectedId);
+    const idx = top.findIndex((i) => i.id === selectedId);
     if (idx <= 0) return top;
     const sel = top[idx];
     const rest = top.slice(0, idx).concat(top.slice(idx + 1));
@@ -85,9 +93,83 @@ export default function LayoutPicker({
     if (bringToFrontOnSelect) setView("selected");
   }
 
-  // Suggested widths for thumbs
-  const largeWidth = 460; // main selected card
-  const gridWidth = 200;  // grid items
+  // Sizing (normalized)
+  const largeWidth = 480; // selected card width
+  const gridWidth = 240;  // grid cards
+
+  // Keyboard navigation (roving tabindex) for grids
+  const gridRef = useRef<HTMLDivElement | null>(null);
+  const [cols, setCols] = useState(1);
+  const [focusIdx, setFocusIdx] = useState(0);
+  const itemRefs = useRef<Array<HTMLButtonElement | null>>([]);
+
+  useEffect(() => {
+    if (!gridRef.current) return;
+    const el = gridRef.current;
+    const compute = () => {
+      const w = el.clientWidth || 1;
+      const minCol = 240;
+      setCols(Math.max(1, Math.floor(w / minCol)));
+    };
+    compute();
+    const ro = new ResizeObserver(compute);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [view]);
+
+  // Reset focus list on view/data changes
+  useEffect(() => {
+    itemRefs.current = [];
+  }, [view, orderedItems.length, recommended.length]);
+
+  // Set initial focus idx when entering a grid view; prefer selected item if present
+  useEffect(() => {
+    if (view === "recommended") {
+      const idx = Math.max(
+        0,
+        recommended.findIndex((i) => i.id === selectedId)
+      );
+      setFocusIdx(idx);
+      // focus after DOM paints
+      setTimeout(() => itemRefs.current[idx]?.focus(), 0);
+    } else if (view === "all") {
+      const idx = Math.max(
+        0,
+        orderedItems.findIndex((i) => i.id === selectedId)
+      );
+      setFocusIdx(idx);
+      setTimeout(() => itemRefs.current[idx]?.focus(), 0);
+    }
+  }, [view, selectedId, recommended, orderedItems]);
+
+  const onKeyDownItem =
+    (list: LayoutItem[]) =>
+    (e: React.KeyboardEvent<HTMLButtonElement>, idx: number) => {
+      if (!["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown", "Home", "End", "Enter", " "].includes(e.key))
+        return;
+      e.preventDefault();
+
+      const last = list.length - 1;
+      let next = idx;
+
+      switch (e.key) {
+        case "ArrowLeft":  next = Math.max(0, idx - 1); break;
+        case "ArrowRight": next = Math.min(last, idx + 1); break;
+        case "ArrowUp":    next = Math.max(0, idx - cols); break;
+        case "ArrowDown":  next = Math.min(last, idx + cols); break;
+        case "Home":       next = 0; break;
+        case "End":        next = last; break;
+        case "Enter":
+        case " ":
+          handleSelect(list[idx].id);
+          return;
+      }
+
+      setFocusIdx(next);
+      itemRefs.current[next]?.focus();
+    };
+
+  const commonThumbProps = { pageW: page.width, pageH: page.height };
 
   return (
     <div className="space-y-2">
@@ -101,10 +183,10 @@ export default function LayoutPicker({
                 <LayoutThumb
                   layout={chosen}
                   width={largeWidth}
-                  pageW={page.width}
-                  pageH={page.height}
+                  {...commonThumbProps}
                   selected
                   onSelect={() => setView("recommended")}
+                  tabIndex={0}
                 />
               ) : (
                 <div className="rounded-xl border p-4 text-sm text-gray-600 bg-white">
@@ -129,17 +211,19 @@ export default function LayoutPicker({
       {/* Recommended view */}
       {view === "recommended" && (
         <>
-          <SectionHeader label="Recommended" />
-          <Grid>
-            {recommended.map((it) => (
+          <SectionHeader id={recHdrId} label="Recommended" />
+          <Grid innerRef={gridRef} ariaLabelledBy={recHdrId}>
+            {recommended.map((it, idx) => (
               <LayoutThumb
                 key={it.id}
                 layout={it}
                 width={gridWidth}
-                pageW={page.width}
-                pageH={page.height}
+                {...commonThumbProps}
                 selected={it.id === (selectedItem?.id ?? "")}
                 onSelect={() => handleSelect(it.id)}
+                tabIndex={focusIdx === idx ? 0 : -1}
+                onKeyDown={(e) => onKeyDownItem(recommended)(e, idx)}
+                ref={(el) => { itemRefs.current[idx] = el; }}
               />
             ))}
           </Grid>
@@ -159,17 +243,19 @@ export default function LayoutPicker({
       {/* All layouts */}
       {view === "all" && (
         <>
-          <SectionHeader label="All layouts" />
-          <Grid>
-            {orderedItems.map((it) => (
+          <SectionHeader id={allHdrId} label="All layouts" />
+          <Grid innerRef={gridRef} ariaLabelledBy={allHdrId}>
+            {orderedItems.map((it, idx) => (
               <LayoutThumb
                 key={it.id}
                 layout={it}
                 width={gridWidth}
-                pageW={page.width}
-                pageH={page.height}
+                {...commonThumbProps}
                 selected={it.id === (selectedItem?.id ?? "")}
                 onSelect={() => handleSelect(it.id)}
+                tabIndex={focusIdx === idx ? 0 : -1}
+                onKeyDown={(e) => onKeyDownItem(orderedItems)(e, idx)}
+                ref={(el) => { itemRefs.current[idx] = el; }}
               />
             ))}
           </Grid>
@@ -184,11 +270,22 @@ export default function LayoutPicker({
   );
 }
 
-function Grid({ children }: { children: React.ReactNode }) {
+function Grid({
+  children,
+  innerRef,
+  ariaLabelledBy,
+}: {
+  children: React.ReactNode;
+  innerRef?: React.Ref<HTMLDivElement>;
+  ariaLabelledBy: string;
+}) {
   return (
     <div
+      ref={innerRef as any}
+      role="radiogroup"
+      aria-labelledby={ariaLabelledBy}
       className="grid gap-3"
-      style={{ gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))" }}
+      style={{ gridTemplateColumns: "repeat(auto-fill, minmax(240px, 1fr))" }}
     >
       {children}
     </div>

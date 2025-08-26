@@ -46,7 +46,19 @@ export async function requestWithMeta<T>(
   }
 
   const url = join(API_BASE, path);
-  const res = await fetch(url, { ...init, headers });
+  let res: Response;
+  try {
+    res = await fetch(url, { ...init, headers });
+  } catch (err: any) {
+    // Uniform network error
+    throw new ApiError(err?.message || "Network request failed", {
+      status: 0,
+      url,
+      requestId: null,
+      serverTiming: null,
+      detail: { kind: "network", error: String(err) },
+    });
+  }
 
   const meta: HttpMeta = {
     requestId: res.headers.get("x-request-id"),
@@ -59,7 +71,10 @@ export async function requestWithMeta<T>(
     const detail = await parseErrorDetail(res);
     const message =
       (detail && typeof detail === "object" && (detail as any).message) ||
-      `${res.status} ${res.statusText}${detail ? ` — ${typeof detail === "string" ? detail : JSON.stringify(detail)}` : ""}`;
+      `${res.status} ${res.statusText}${
+        detail ? ` — ${typeof detail === "string" ? detail : JSON.stringify(detail)}`
+               : ""
+      }`;
 
     throw new ApiError(message, {
       status: res.status,

@@ -9,7 +9,7 @@ import "./index.css";
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
     <ToastProvider>
-      <ErrorBoundary>
+      <ErrorBoundary resetKeys={[location.pathname /* or step, deck?.id, etc. */]}>
         <GlobalErrorCatcher />
         <App />
       </ErrorBoundary>

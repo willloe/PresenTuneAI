@@ -1,4 +1,13 @@
-import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  memo,
+  forwardRef,
+  type CSSProperties,
+  type KeyboardEvent,
+} from "react";
 import type { LayoutItem } from "../../lib/api";
 import { normalizeFrames, type Frame } from "./utils";
 
@@ -10,20 +19,28 @@ type ThumbProps = {
   pageH?: number;
   selected?: boolean;
   onSelect?: (id: string) => void;
+
+  // a11y/keyboard (from parent)
+  tabIndex?: number;
+  onKeyDown?: (e: KeyboardEvent<HTMLButtonElement>) => void;
 };
 
-export default function LayoutThumb({
-  layout,
-  width = 320,           // acts as a maxWidth now
-  pageW = 1280,
-  pageH = 720,
-  selected,
-  onSelect,
-}: ThumbProps) {
+function LayoutThumbImpl(
+  {
+    layout,
+    width = 320,
+    pageW = 1280,
+    pageH = 720,
+    selected,
+    onSelect,
+    tabIndex = -1,
+    onKeyDown,
+  }: ThumbProps,
+  ref: React.Ref<HTMLButtonElement>
+) {
   const stageRef = useRef<HTMLDivElement | null>(null);
-  const [stageW, setStageW] = useState<number>(width); // measured content width
+  const [stageW, setStageW] = useState<number>(width); // content-box width
 
-  // Observe the rendered width so we can scale fonts/icons correctly
   useEffect(() => {
     if (!stageRef.current) return;
     const el = stageRef.current;
@@ -35,40 +52,43 @@ export default function LayoutThumb({
     return () => ro.disconnect();
   }, [stageW]);
 
-  const { title, text, images } = useMemo(() => normalizeFrames(layout?.frames), [layout?.frames]);
+  const { title, text, images } = useMemo(
+    () => normalizeFrames(layout?.frames),
+    [layout?.frames]
+  );
 
-  // helpers: percentage placement
   const pct = (n: number, base: number) => `${(n / base) * 100}%`;
-
-  // scale to use for typography/icons
-  const s = (stageW || width) / (pageW || 1280);
+  const s = useMemo(() => (stageW || width) / (pageW || 1280), [stageW, width, pageW]);
 
   if (!layout) {
     return (
       <div className="w-full rounded-2xl border border-gray-200 bg-white p-3" aria-busy>
         <div
-          className="mx-auto rounded-xl border border-gray-300/70 bg-gray-50 animate-pulse"
-          style={{
-            width: "100%",
-            maxWidth: width,
-            aspectRatio: `${pageW}/${pageH}`,
-          }}
+          className="mx-auto rounded-xl bg-gray-50 animate-pulse"
+          style={{ width: "100%", maxWidth: width, aspectRatio: `${pageW}/${pageH}` }}
         />
         <div className="mt-2 h-3 w-2/3 rounded bg-gray-100" />
       </div>
     );
   }
 
-  const stageStyle: CSSProperties = {
-    // responsive, centered stage that never exceeds its column
-    width: "100%",
-    maxWidth: width,
-    aspectRatio: `${pageW}/${pageH}`,
-    position: "relative",
-    background: "#fff",
-    borderRadius: 12,
-    overflow: "hidden",
-  };
+  // Stage: no borders/padding; content-box; line-height:0; centered
+  const stageStyle: CSSProperties = useMemo(() => {
+    const h = Math.round(pageH * s);
+    return {
+      width: "100%",
+      maxWidth: width,
+      height: h,
+      position: "relative",
+      background: "#fff",
+      borderRadius: 12,
+      overflow: "hidden",
+      boxSizing: "content-box",
+      lineHeight: 0,
+      marginLeft: "auto",
+      marginRight: "auto",
+    };
+  }, [pageH, s, width]);
 
   const box = (f: Frame): CSSProperties => ({
     position: "absolute",
@@ -82,19 +102,25 @@ export default function LayoutThumb({
 
   return (
     <button
+      ref={ref}
       type="button"
       onClick={() => onSelect?.(layout.id)}
-      className={`w-full text-left rounded-2xl border bg-white p-3 shadow-sm hover:shadow ${
+      onKeyDown={onKeyDown}
+      role="radio"
+      aria-checked={!!selected}
+      aria-label={`${layout.name}${selected ? " (selected)" : ""}`}
+      tabIndex={tabIndex}
+      className={`w-full text-left rounded-2xl border bg-white p-3 shadow-sm hover:shadow focus:outline-none focus:ring-2 focus:ring-blue-600 ${
         selected ? "ring-2 ring-blue-600 border-blue-600" : "border-gray-200"
       }`}
       title={layout.name}
     >
-      <div ref={stageRef} className="mx-auto border border-gray-300/70 rounded-xl" style={stageStyle}>
+      <div ref={stageRef} className="mx-auto" style={stageStyle} data-s={s.toFixed(3)}>
         {title && (
           <div style={{ ...box(title), background: "#0f172a" }}>
             <div
               style={{
-                fontSize: Math.max(10, 28 * s), // scales with real width
+                fontSize: Math.max(10, 28 * s),
                 color: "white",
                 fontWeight: 700,
                 padding: Math.max(4, 6 * s),
@@ -149,8 +175,8 @@ export default function LayoutThumb({
             <svg
               viewBox="0 0 24 24"
               style={{
-                width: Math.min(48, (f.w * (stageW || width)) / pageW * 0.4),
-                height: Math.min(48, (f.h * (stageW || width)) / pageH * 0.4),
+                width: Math.min(48, ((f.w * (stageW || width)) / pageW) * 0.4),
+                height: Math.min(48, ((f.h * (stageW || width)) / pageH) * 0.4),
                 opacity: 0.6,
               }}
               aria-hidden
@@ -168,3 +194,5 @@ export default function LayoutThumb({
     </button>
   );
 }
+
+export default memo(forwardRef<HTMLButtonElement, ThumbProps>(LayoutThumbImpl));
