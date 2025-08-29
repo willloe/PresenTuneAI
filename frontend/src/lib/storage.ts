@@ -1,6 +1,7 @@
 // Persist the last successful export so it survives refreshes
 export type LastExportMeta = {
   path: string;
+  url: string;
   format: string;
   bytes: number;
   at: number;

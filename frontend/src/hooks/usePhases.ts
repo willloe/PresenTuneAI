@@ -21,18 +21,21 @@ export type UsePhasesArgs = {
 type PhaseId = 1 | 2 | 3 | 4 | 5;
 const clampStep = (n: number): PhaseId => (Math.max(1, Math.min(5, Math.floor(n))) as PhaseId);
 
-export function usePhases({
-  editConfirmed,
-  haveExtract,
-  uploadPages,
-  haveDeck,
-  deckSlideCount,
-  selectionComplete,
-  haveEditor,
-  haveExport,
-  storageKey = "phaseStep",
-  initialStep = 1,
-}: UsePhasesArgs) {
+// ⬇️ Accept partial args and default safely so the hook can be called with no params
+export function usePhases(args: Partial<UsePhasesArgs> = {}) {
+  const {
+    editConfirmed = false,
+    haveExtract = false,
+    uploadPages = null,
+    haveDeck = false,
+    deckSlideCount = null,
+    selectionComplete = false,
+    haveEditor = false,
+    haveExport = false,
+    storageKey = "phaseStep",
+    initialStep = 1,
+  } = args;
+
   // Persist the user's requested step
   const [requested, setRequested] = useLocalStorage<number>(storageKey, initialStep);
 

@@ -5,7 +5,6 @@ import {
   type ExportResp,
   type LayoutItem,
   type EditorBuildResponse,
-  exportDownloadUrl as buildDownloadUrl,
 } from "./lib/api";
 import { uploadFile, type UploadResponse } from "./lib/upload";
 import type { Deck } from "./types/deck";
@@ -322,11 +321,6 @@ export default function App() {
     [deck, setImageForSlide]
   );
 
-  const downloadUrl = useMemo(() => {
-    const p = exportInfo?.path;
-    return p ? buildDownloadUrl(p) : null;
-  }, [exportInfo?.path]);
-
   /* ------------------------------ UI ------------------------------ */
   return (
     <div className="min-h-screen bg-gray-50 text-gray-900">
@@ -463,14 +457,7 @@ export default function App() {
           step={5}
           currentStep={step}
         >
-          <FinalizeSection
-            editorResp={editorResp}
-            runExport={runExport}
-            exporting={exporting}
-            exportErr={exportErr}
-            exportInfo={exportInfo}
-            downloadUrl={downloadUrl}
-          />
+          <FinalizeSection editorResp={editorResp} />
         </PhaseContainer>
       </main>
 

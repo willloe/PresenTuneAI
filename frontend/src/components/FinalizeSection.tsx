@@ -1,20 +1,41 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import EditorPreview from "./EditorPreview";
 import type { EditorBuildResponse } from "../lib/api";
 import { useExport } from "../hooks/useExport";
 import { usePhases } from "../hooks/usePhases";
+import { openInGoogleSlides } from "../integrations/externalEditor";
+import { ensureGoogleDriveToken } from "../integrations/oauth/google";
+import { getConfig } from "../config";
 
 type Props = {
   editorResp: EditorBuildResponse | null;
 };
 
 export default function FinalizeSection({ editorResp }: Props) {
-  const { setStep } = usePhases?.() ?? { setStep: undefined };
-  const { ready, theme, exporting, exportErr, exportInfo, downloadUrl, lastExport, runExport } = useExport({ editorResp });
+  const { setStep } = usePhases();
+  const { ready, theme, exporting, exportErr, exportInfo, downloadUrl, lastExport, runExport } =
+    useExport({ editorResp });
   const [copied, setCopied] = useState(false);
+  const [opening, setOpening] = useState<null | "google">(null);
+  const [googleConfigured, setGoogleConfigured] = useState<boolean>(true);
+
+  useEffect(() => {
+    // Detect presence of GOOGLE_CLIENT_ID to gate the button nicely
+    (async () => {
+      try {
+        const { GOOGLE_CLIENT_ID } = await getConfig();
+        setGoogleConfigured(!!GOOGLE_CLIENT_ID);
+      } catch {
+        setGoogleConfigured(false);
+      }
+    })();
+  }, []);
 
   const slidesCount = editorResp?.editor?.slides?.length ?? 0;
-  const statusLabel = useMemo(() => (ready ? `Editor: ✓ built ${slidesCount} slide${slidesCount === 1 ? "" : "s"}` : "Editor: not ready"), [ready, slidesCount]);
+  const statusLabel = useMemo(
+    () => (ready ? `Editor: ✓ built ${slidesCount} slide${slidesCount === 1 ? "" : "s"}` : "Editor: not ready"),
+    [ready, slidesCount]
+  );
 
   function rebuildEditor() {
     setStep?.(4);
@@ -28,6 +49,22 @@ export default function FinalizeSection({ editorResp }: Props) {
     } catch {}
   }
 
+  // --- Google helper flow ---
+  async function fetchExportBlob(url: string): Promise<Blob> {
+    const r = await fetch(url, { credentials: "include" });
+    if (!r.ok) throw new Error(`Download failed: ${r.status}`);
+    return await r.blob();
+  }
+  async function getGoogleAccessToken(): Promise<string | null> {
+    try {
+      return await ensureGoogleDriveToken(); // scope: drive.file
+    } catch (e) {
+      console.error(e);
+      return null;
+    }
+  }
+  // ---------------------------
+
   return (
     <div className="space-y-3">
       {/* Status bar */}
@@ -39,7 +76,10 @@ export default function FinalizeSection({ editorResp }: Props) {
           {!!editorResp?.warnings?.length && (
             <>
               <span className="text-gray-400">•</span>
-              <button className="text-amber-700 underline underline-offset-2 hover:no-underline" onClick={rebuildEditor}>
+              <button
+                className="text-amber-700 underline underline-offset-2 hover:no-underline"
+                onClick={rebuildEditor}
+              >
                 {editorResp.warnings.length} warning{editorResp.warnings.length === 1 ? "" : "s"} — Review in Step 4
               </button>
             </>
@@ -49,7 +89,9 @@ export default function FinalizeSection({ editorResp }: Props) {
         <button
           onClick={runExport}
           disabled={exporting || !ready}
-          className={`rounded-xl px-4 py-2 text-white ${exporting || !ready ? "bg-gray-400 cursor-not-allowed" : "bg-black hover:opacity-90"}`}
+          className={`rounded-xl px-4 py-2 text-white ${
+            exporting || !ready ? "bg-gray-400 cursor-not-allowed" : "bg-black hover:opacity-90"
+          }`}
           title={!ready ? "Build the editor doc first (Step 4)" : "Export deck"}
         >
           {exporting ? "Exporting…" : "Export"}
@@ -61,7 +103,9 @@ export default function FinalizeSection({ editorResp }: Props) {
         <div className="font-medium mb-1">Editor build result</div>
         {editorResp ? (
           <>
-            <div>Slides: <b>{slidesCount}</b></div>
+            <div>
+              Slides: <b>{slidesCount}</b>
+            </div>
             {editorResp.warnings?.length ? (
               <div className="text-amber-700">
                 Warnings: {editorResp.warnings.length} —{" "}
@@ -153,6 +197,37 @@ export default function FinalizeSection({ editorResp }: Props) {
               title="Copy download URL"
             >
               {copied ? "Copied!" : "Copy URL"}
+            </button>
+
+            {/* Open in Google Slides */}
+            <button
+              className="inline-flex items-center text-xs rounded-md border px-2 py-1 hover:bg-gray-50 disabled:opacity-50"
+              disabled={!lastExport.url || opening !== null || !googleConfigured}
+              title={
+                googleConfigured
+                  ? "Upload and open in Google Slides"
+                  : "Configure GOOGLE_CLIENT_ID in /app-config.json"
+              }
+              onClick={async () => {
+                if (!lastExport.url || !lastExport.path) return;
+                try {
+                  setOpening("google");
+                  const blob = await fetchExportBlob(lastExport.url);
+                  await openInGoogleSlides({
+                    blob,
+                    name: "Deck.pptx",
+                    artifactKey: lastExport.path,
+                    getGoogleAccessToken,
+                  });
+                } catch (e) {
+                  console.error(e);
+                  alert((e as Error).message || "Google Slides open failed");
+                } finally {
+                  setOpening(null);
+                }
+              }}
+            >
+              {opening === "google" ? "Opening…" : "Open in Google Slides"}
             </button>
           </div>
         </div>
