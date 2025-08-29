@@ -62,12 +62,17 @@ function LayoutThumbImpl(
 
   if (!layout) {
     return (
-      <div className="w-full rounded-2xl border border-gray-200 bg-white p-3" aria-busy>
+      <div className="w-full rounded-2xl border bg-white p-3" aria-busy style={{ borderColor: "var(--border)" }}>
         <div
-          className="mx-auto rounded-xl bg-gray-50 animate-pulse"
-          style={{ width: "100%", maxWidth: width, aspectRatio: `${pageW}/${pageH}` }}
+          className="mx-auto rounded-xl animate-pulse"
+          style={{
+            width: "100%",
+            maxWidth: width,
+            aspectRatio: `${pageW}/${pageH}`,
+            background: "var(--surface)",
+          }}
         />
-        <div className="mt-2 h-3 w-2/3 rounded bg-gray-100" />
+        <div className="mt-2 h-3 w-2/3 rounded" style={{ background: "var(--accent-soft)" }} />
       </div>
     );
   }
@@ -80,7 +85,7 @@ function LayoutThumbImpl(
       maxWidth: width,
       height: h,
       position: "relative",
-      background: "#fff",
+      background: "var(--surface)",
       borderRadius: 12,
       overflow: "hidden",
       boxSizing: "content-box",
@@ -110,19 +115,26 @@ function LayoutThumbImpl(
       aria-checked={!!selected}
       aria-label={`${layout.name}${selected ? " (selected)" : ""}`}
       tabIndex={tabIndex}
-      className={`w-full text-left rounded-2xl border bg-white p-3 shadow-sm hover:shadow focus:outline-none focus:ring-2 focus:ring-blue-600 ${
-        selected ? "ring-2 ring-blue-600 border-blue-600" : "border-gray-200"
+      className={`w-full text-left rounded-2xl border p-3 shadow-sm hover:shadow focus:outline-none focus:ring-2 focus:ring-blue-600 ${
+        selected ? "ring-2 ring-blue-600 border-blue-600" : ""
       }`}
+      style={{
+        background: "var(--surface)",
+        color: "var(--text)",
+        ...(selected ? {} : { borderColor: "var(--border)" }),
+      }}
       title={layout.name}
     >
       <div ref={stageRef} className="mx-auto" style={stageStyle} data-s={s.toFixed(3)}>
         {title && (
-          <div style={{ ...box(title), background: "#0f172a" }}>
+          <div style={{ ...box(title), background: "var(--accent)" }}>
             <div
               style={{
                 fontSize: Math.max(10, 28 * s),
-                color: "white",
+                color: "var(--accent-contrast)",
                 fontWeight: 700,
+                fontFamily: "var(--font-heading)",
+                letterSpacing: "var(--font-tracking)",
                 padding: Math.max(4, 6 * s),
                 lineHeight: 1.1,
                 whiteSpace: "nowrap",
@@ -140,8 +152,8 @@ function LayoutThumbImpl(
             key={`t${idx}`}
             style={{
               ...box(f),
-              background: "rgba(251,191,36,0.22)",
-              border: "1px solid rgba(245,158,11,0.55)",
+              background: "transparent",
+              border: "1px solid var(--border)",
             }}
           >
             <div style={{ padding: Math.max(4, 6 * s) }}>
@@ -152,7 +164,7 @@ function LayoutThumbImpl(
                     height: Math.max(3, 5 * s),
                     marginBottom: Math.max(5, 8 * s),
                     width: `${80 - i * 8}%`,
-                    background: "#cbd5e1",
+                    background: "var(--accent-soft)",
                     borderRadius: 3,
                   }}
                 />
@@ -166,8 +178,8 @@ function LayoutThumbImpl(
             key={`i${idx}`}
             style={{
               ...box(f),
-              background: "rgba(59,130,246,0.18)",
-              border: "1px solid rgba(59,130,246,0.35)",
+              background: "var(--accent-soft)",
+              border: "1px solid var(--border)",
               display: "grid",
               placeItems: "center",
             }}
@@ -177,7 +189,8 @@ function LayoutThumbImpl(
               style={{
                 width: Math.min(48, ((f.w * (stageW || width)) / pageW) * 0.4),
                 height: Math.min(48, ((f.h * (stageW || width)) / pageH) * 0.4),
-                opacity: 0.6,
+                opacity: 0.75,
+                color: "var(--accent)",
               }}
               aria-hidden
             >
@@ -190,7 +203,9 @@ function LayoutThumbImpl(
         ))}
       </div>
 
-      <div className="mt-2 text-xs text-gray-700 truncate">{layout.name}</div>
+      <div className="mt-2 text-xs truncate" style={{ color: "var(--muted-text)" }}>
+        {layout.name}
+      </div>
     </button>
   );
 }

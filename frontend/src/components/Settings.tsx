@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { THEME_KEYS, THEMES, type ThemeKey } from "../theme/themes";
 import Modal from "./ui/Modal";
 
 type SettingsProps = {
@@ -13,7 +14,6 @@ type SettingsProps = {
   apiBase: string;
 };
 
-const THEME_PRESETS = ["default", "minimal", "corporate", "dark", "gradient", "serif"] as const;
 const clamp = (n: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, n));
 
 export default function Settings({
@@ -27,20 +27,18 @@ export default function Settings({
   setShowImages,
   apiBase,
 }: SettingsProps) {
-  const isCustomTheme = useMemo(
-    () => !THEME_PRESETS.includes(theme as (typeof THEME_PRESETS)[number]),
-    [theme]
-  );
+  const isCustomTheme = useMemo(() => !THEME_KEYS.includes(theme as ThemeKey), [theme]);
+
   const [themeMode, setThemeMode] = useState<"preset" | "custom">(isCustomTheme ? "custom" : "preset");
-  const [preset, setPreset] = useState<string>(isCustomTheme ? THEME_PRESETS[0] : theme);
+  const [preset, setPreset] = useState<ThemeKey>(isCustomTheme ? THEME_KEYS[0] : (theme as ThemeKey));
   const [customTheme, setCustomTheme] = useState<string>(isCustomTheme ? theme : "");
 
   // Sync external theme -> local controls when opening
   useEffect(() => {
     if (!open) return;
-    const custom = !THEME_PRESETS.includes(theme as any);
+    const custom = !THEME_KEYS.includes(theme as ThemeKey);
     setThemeMode(custom ? "custom" : "preset");
-    setPreset(custom ? THEME_PRESETS[0] : theme);
+    setPreset(custom ? THEME_KEYS[0] : (theme as ThemeKey));
     setCustomTheme(custom ? theme : "");
   }, [open, theme]);
 
@@ -58,12 +56,21 @@ export default function Settings({
           <label htmlFor="slide-count" className="block text-sm font-medium mb-1">Slide count</label>
           <div className="flex items-center gap-3">
             <input
-              id="slide-count" type="range" min={1} max={15} value={count}
+              id="slide-count"
+              type="range"
+              min={1}
+              max={15}
+              value={count}
               onChange={(e) => setCount(clamp(parseInt(e.target.value || "5", 10), 1, 15))}
-              className="w-full" aria-describedby={countHelpId}
+              className="w-full"
+              aria-describedby={countHelpId}
             />
             <input
-              type="number" min={1} max={15} inputMode="numeric" value={count}
+              type="number"
+              min={1}
+              max={15}
+              inputMode="numeric"
+              value={count}
               onChange={(e) => {
                 const v = parseInt(e.target.value, 10);
                 setCount(clamp(Number.isNaN(v) ? count : v, 1, 15));
@@ -81,18 +88,22 @@ export default function Settings({
         <div>
           <div className="flex items-center justify-between">
             <label className="block text-sm font-medium">Export theme</label>
-            <div className="text-xs text-gray-500">Sent with <code className="px-1 rounded bg-gray-100">/export</code></div>
+            <div className="text-xs text-gray-500">
+              Sent with <code className="px-1 rounded bg-gray-100">/export</code>
+            </div>
           </div>
 
           <div className="mt-2 flex gap-3" role="group" aria-label="Theme mode">
             <button
               onClick={() => {
                 setThemeMode("preset");
-                const next = THEME_PRESETS.includes(theme as any) ? theme : THEME_PRESETS[0];
-                setPreset(next); setTheme(next);
+                const next = THEME_KEYS.includes(theme as ThemeKey) ? (theme as ThemeKey) : THEME_KEYS[0];
+                setPreset(next);
+                setTheme(next);
               }}
               className={`rounded-lg border px-3 py-1 text-sm ${themeMode === "preset" ? "bg-black text-white" : "hover:bg-gray-50"}`}
-              aria-pressed={themeMode === "preset"} type="button"
+              aria-pressed={themeMode === "preset"}
+              type="button"
             >
               Presets
             </button>
@@ -103,7 +114,8 @@ export default function Settings({
                 setTheme(isCustomTheme ? theme : "");
               }}
               className={`rounded-lg border px-3 py-1 text-sm ${themeMode === "custom" ? "bg-black text-white" : "hover:bg-gray-50"}`}
-              aria-pressed={themeMode === "custom"} type="button"
+              aria-pressed={themeMode === "custom"}
+              type="button"
             >
               Custom
             </button>
@@ -111,16 +123,25 @@ export default function Settings({
 
           {themeMode === "preset" && (
             <div className="mt-3 flex flex-wrap gap-2" aria-describedby={themeHelpId}>
-              {THEME_PRESETS.map((t) => (
-                <button
-                  key={t}
-                  onClick={() => { setPreset(t); setTheme(t); }}
-                  className={`rounded-full border px-3 py-1 text-sm capitalize ${preset === t ? "bg-black text-white" : "hover:bg-gray-50"}`}
-                  title={t} type="button" aria-pressed={preset === t}
-                >
-                  {t}
-                </button>
-              ))}
+              {THEME_KEYS.map((t) => {
+                const tok = THEMES[t];
+                return (
+                  <button
+                    key={t}
+                    onClick={() => {
+                      setPreset(t);
+                      setTheme(t);
+                    }}
+                    className={`rounded-full border px-3 py-1 text-sm capitalize flex items-center gap-2 ${preset === t ? "bg-black text-white" : "hover:bg-gray-50"}`}
+                    title={t}
+                    type="button"
+                    aria-pressed={preset === t}
+                  >
+                    <span className="inline-block h-3 w-3 rounded-full" style={{ background: tok.colors.accent }} />
+                    {t}
+                  </button>
+                );
+              })}
             </div>
           )}
 
@@ -128,7 +149,11 @@ export default function Settings({
             <div className="mt-3" aria-describedby={themeHelpId}>
               <input
                 value={customTheme}
-                onChange={(e) => { const v = e.target.value; setCustomTheme(v); setTheme(v.trim()); }}
+                onChange={(e) => {
+                  const v = e.target.value;
+                  setCustomTheme(v);
+                  setTheme(v.trim());
+                }}
                 placeholder="e.g., brand-a, oceanic, sunrise"
                 className="w-full rounded-xl border px-3 py-2 outline-none focus:ring"
                 aria-label="Custom theme name"
@@ -150,7 +175,12 @@ export default function Settings({
             </div>
           </div>
           <label className="inline-flex items-center gap-2">
-            <input type="checkbox" checked={showImages} onChange={(e) => setShowImages(e.target.checked)} className="h-4 w-4 accent-black" />
+            <input
+              type="checkbox"
+              checked={showImages}
+              onChange={(e) => setShowImages(e.target.checked)}
+              className="h-4 w-4 accent-black"
+            />
             <span className="text-sm">{showImages ? "On" : "Off"}</span>
           </label>
         </div>
@@ -158,7 +188,10 @@ export default function Settings({
         {/* API base (read-only) */}
         <div>
           <div className="text-sm font-medium mb-1">API base</div>
-          <code className="block truncate rounded-lg bg-gray-50 px-2 py-1 text-sm border" aria-describedby={apiBaseHelpId}>
+          <code
+            className="block truncate rounded-lg bg-gray-50 px-2 py-1 text-sm border"
+            aria-describedby={apiBaseHelpId}
+          >
             {apiBase}
           </code>
           <p id={apiBaseHelpId} className="mt-1 text-xs text-gray-500">

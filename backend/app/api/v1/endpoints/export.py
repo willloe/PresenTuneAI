@@ -29,8 +29,13 @@ async def export(req: ExportRequest) -> ExportResponse:
     count = len(req.slides or []) or len(getattr(req.editor, "slides", []) or [])
     if not count:
         raise HTTPException(400, "Provide either 'slides' or 'editor'")
+
+    # Prefer explicit payload -> fall back to editor.doc theme_meta
+    eff_theme_meta = req.theme_meta or (getattr(req.editor, "theme_meta", None) if req.editor else None)
+
     async with aspan("export_endpoint", theme=theme, slide_count=count):
-        return await export_to_pptx(slides=req.slides, editor=req.editor, theme=theme)
+        # If your export_to_pptx already accepts theme_meta, pass it; else update its signature.
+        return await export_to_pptx(slides=req.slides, editor=req.editor, theme=theme, theme_meta=eff_theme_meta)
 
 @router.get("/{filename}", response_class=FileResponse)
 def download(

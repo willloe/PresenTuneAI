@@ -1,6 +1,14 @@
+// frontend/src/hooks/useExport.ts
 import { useCallback, useEffect, useState } from "react";
-import { api, exportDownloadUrl, type ExportResp, type EditorBuildResponse } from "../lib/api";
+import {
+  api,
+  exportDownloadUrl,
+  type ExportResp,
+  type EditorBuildResponse,
+} from "../lib/api";
 import { loadLastExport, saveLastExport, type LastExportMeta } from "../lib/storage";
+import { themeKeyToMeta, type ThemeMeta } from "../theme/meta";
+import { THEMES, type ThemeKey } from "../theme/themes";
 
 type Args = {
   editorResp: EditorBuildResponse | null;
@@ -13,8 +21,15 @@ export function useExport({ editorResp }: Args) {
   const [downloadUrl, setDownloadUrl] = useState<string | null>(null);
   const [lastExport, setLastExport] = useState<LastExportMeta | null>(null);
 
-  const ready = !!editorResp?.editor && Array.isArray(editorResp.editor.slides) && editorResp.editor.slides.length > 0;
-  const theme = editorResp?.editor?.theme ?? lastExport?.theme ?? "default";
+  const ready =
+    !!editorResp?.editor &&
+    Array.isArray(editorResp.editor.slides) &&
+    editorResp.editor.slides.length > 0;
+
+  // Prefer editor theme; fall back to last export; then default
+  const themeKey: ThemeKey =
+    (editorResp?.editor?.theme as ThemeKey) ??
+    ((lastExport?.theme as ThemeKey) || "default");
 
   useEffect(() => {
     setLastExport(loadLastExport());
@@ -25,10 +40,16 @@ export function useExport({ editorResp }: Args) {
     setExporting(true);
     setExportErr(null);
     try {
-      // Use your existing API exactly
-      const { data } = await api.exportEditor({
-        editor: editorResp!.editor,
-        theme: editorResp!.editor?.theme,
+      // Build a full ThemeMeta from the selected key
+      const resolvedKey: ThemeKey = (THEMES as any)[themeKey] ? themeKey : "default";
+      const themeMeta: ThemeMeta = themeKeyToMeta(resolvedKey);
+
+      const { data } = await api.exportDeck({
+        editor: {
+          ...(editorResp!.editor as any),
+          theme_meta: editorResp!.editor?.theme_meta ?? themeMeta,
+        },
+        theme: resolvedKey,
       });
 
       setExportInfo(data);
@@ -40,7 +61,7 @@ export function useExport({ editorResp }: Args) {
         url,
         format: data.format,
         bytes: data.bytes,
-        theme: data.theme ?? editorResp!.editor?.theme,
+        theme: data.theme ?? resolvedKey,
         at: Date.now(),
       };
       saveLastExport(meta);
@@ -50,12 +71,12 @@ export function useExport({ editorResp }: Args) {
     } finally {
       setExporting(false);
     }
-  }, [editorResp, ready, exporting]);
+  }, [editorResp, ready, exporting, themeKey]);
 
   return {
     // state
     ready,
-    theme,
+    theme: themeKey,
     exporting,
     exportErr,
     exportInfo,

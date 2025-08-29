@@ -1,9 +1,34 @@
-# app/models/schemas/export.py
 from __future__ import annotations
 
 from typing import Optional, Literal, List
 from pydantic import BaseModel, Field, model_validator
 from app.models.schemas.slide import Slide
+
+# ───────── Theme metadata (typed, all fields optional for flexibility) ─────────
+class ThemeFonts(BaseModel):
+    heading: Optional[str] = None
+    body: Optional[str] = None
+    weightHeading: Optional[int] = None  # e.g., 700
+    weightBody: Optional[int] = None     # e.g., 400
+
+
+class ThemeColors(BaseModel):
+    appBg: Optional[str] = None
+    surface: Optional[str] = None
+    text: Optional[str] = None
+    mutedText: Optional[str] = None
+    border: Optional[str] = None
+    accent: Optional[str] = None
+    accentContrast: Optional[str] = None
+    accentSoft: Optional[str] = None
+
+
+class ThemeMeta(BaseModel):
+    fonts: Optional[ThemeFonts] = None
+    colors: Optional[ThemeColors] = None
+    # room to grow without breaking clients:
+    # radius: Optional[int] = None
+    # shadow: Optional[str] = None
 
 
 # ───────── Minimal "Editor" input models (fields we need to render) ─────────
@@ -43,10 +68,11 @@ class EditorDocIn(BaseModel):
     editor_id: Optional[str] = None
     deck_id: Optional[str] = None
     version: Optional[str] = None
-    page: Optional[dict] = None  # expect {"width": 1280, "height": 720, "unit": "px"}
+    page: Optional[dict] = None  # {"width": 1280, "height": 720, "unit": "px"}
     theme: Optional[str] = None
     slides: List[EditorSlideIn] = Field(default_factory=list)
     meta: Optional[dict] = None
+    theme_meta: Optional[ThemeMeta] = None  # ← carries design tokens
 
 
 # ─────────────────────────── Public request/response ─────────────────────────
@@ -55,8 +81,9 @@ class ExportRequest(BaseModel):
     slides: Optional[list[Slide]] = None
     editor: Optional[EditorDocIn] = None
 
-    # Optional theme tag
+    # Optional theme tag & tokens
     theme: Optional[str] = None
+    theme_meta: Optional[ThemeMeta] = None
 
     @model_validator(mode="after")
     def _validate_exactly_one(self) -> "ExportRequest":

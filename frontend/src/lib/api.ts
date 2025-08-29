@@ -3,6 +3,9 @@ import { request, requestWithMeta } from "./http";
 export type { HttpMeta as ApiMeta } from "./http";
 export { ApiError } from "./errors";
 
+// NEW: serializable theme tokens shape
+import type { ThemeMeta } from "../theme/meta";
+
 /** Narrow Slide type from Deck for convenience */
 export type Slide = Deck["slides"][number];
 
@@ -13,25 +16,16 @@ export const API_BASE: string =
 
 /** Build a download URL from a server path or filename */
 export function exportDownloadUrl(serverPath: string) {
-  // Tolerate absolute URLs
   if (/^https?:\/\//i.test(serverPath)) return serverPath;
-
-  // Works for Unix/Windows paths: take final segment as the filename
   const name = serverPath.split(/[\\/]/).pop()!;
   const base = String(API_BASE).replace(/\/$/, "");
   return `${base}/export/${encodeURIComponent(name)}`;
 }
 
 /* -------------------- Health -------------------- */
-
-export type HealthResp = {
-  status: string;
-  schema_version?: string;
-  time?: string;
-};
+export type HealthResp = { status: string; schema_version?: string; time?: string };
 
 /* -------------------- Export (new schema) -------------------- */
-
 export type ExportResp = {
   path: string;
   format: "pptx" | "txt";
@@ -40,7 +34,6 @@ export type ExportResp = {
 };
 
 /* -------------------- Layout / Editor types -------------------- */
-
 export type Frame = { x: number; y: number; w: number; h: number };
 
 export type LayoutItem = {
@@ -92,6 +85,8 @@ export type EditorDocOut = {
   theme: string;
   slides: EditorSlideOut[];
   meta?: Record<string, any>;
+  /** serialized theme settings for the exporter (optional) */
+  theme_meta?: ThemeMeta;
 };
 
 export type EditorBuildResponse = {
@@ -101,7 +96,6 @@ export type EditorBuildResponse = {
 };
 
 /* -------------------- API client -------------------- */
-
 export const api = {
   // Health
   health: () => request<HealthResp>("/health"),
@@ -114,33 +108,35 @@ export const api = {
     requestWithMeta<Deck>("/outline", { method: "POST", body: JSON.stringify(body) }),
 
   // Regenerate a specific slide
-  regenerateSlide: (
-    index: number,
-    body: { topic?: string; text?: string; slide_count?: number }
-  ) =>
+  regenerateSlide: (index: number, body: { topic?: string; text?: string; slide_count?: number }) =>
     request<Slide>(`/outline/${index}/regenerate`, {
       method: "POST",
       body: JSON.stringify(body),
     }),
-  regenerateSlideWithMeta: (
-    index: number,
-    body: { topic?: string; text?: string; slide_count?: number }
-  ) =>
+  regenerateSlideWithMeta: (index: number, body: { topic?: string; text?: string; slide_count?: number }) =>
     requestWithMeta<Slide>(`/outline/${index}/regenerate`, {
       method: "POST",
       body: JSON.stringify(body),
     }),
 
   /* -------------------- Export (new schema) -------------------- */
-  // Enforce "either slides or editor" at the type level for callers
-  exportDeck: (payload: { slides?: Deck["slides"]; editor?: EditorDocOut; theme?: string | null }) =>
+  exportDeck: (payload: {
+    slides?: Deck["slides"];
+    editor?: EditorDocOut;
+    theme?: string | null;
+    theme_meta?: ThemeMeta; // ← allow tokens even for slides-only export
+  }) =>
     requestWithMeta<ExportResp>("/export", {
       method: "POST",
       body: JSON.stringify(payload),
     }),
 
-  // Alternate export for explicit editor payload (kept for convenience)
-  exportEditor: (payload: { editor: EditorDocOut; theme?: string | null }) =>
+  // UPDATED: allow theme_meta
+  exportEditor: (payload: {
+    editor: EditorDocOut;
+    theme?: string | null;
+    theme_meta?: ThemeMeta;
+  }) =>
     requestWithMeta<ExportResp>("/export", {
       method: "POST",
       body: JSON.stringify(payload),
@@ -160,12 +156,14 @@ export const api = {
       body: JSON.stringify(body),
     }),
 
+  // UPDATED: allow theme_meta in builder so doc carries tokens
   buildEditor: (
     payload: {
       deck: Deck;
       selections: Array<{ slide_id: string; layout_id?: string }>;
       theme?: string;
       policy?: "best_fit" | "strict";
+      theme_meta?: ThemeMeta;
     },
     opts?: { idempotencyKey?: string }
   ) => {

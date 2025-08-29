@@ -126,16 +126,17 @@ export default function FinalizeSection({ editorResp }: Props) {
         )}
       </div>
 
-      {/* Optional visual preview */}
       {editorResp?.editor && (
-        <EditorPreview
-          doc={editorResp.editor}
-          cols={2}
-          minFontPx={12}
-          showFrames={false}
-          showImages={true}
-          maxThumbH={220}
-        />
+        <div className="themed-card p-3 anim-in" style={{ fontFamily: "var(--font-body)", letterSpacing: "var(--font-tracking)" }}>
+          <EditorPreview
+            doc={editorResp.editor}
+            cols={2}
+            minFontPx={12}
+            showFrames={false}
+            showImages={true}
+            maxThumbH={220}
+          />
+        </div>
       )}
 
       {/* Current export result (immediate) */}

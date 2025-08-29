@@ -16,6 +16,9 @@ import { usePhases } from "./hooks/usePhases";
 import { clamp } from "./utils/clamp";
 import { safeUUID } from "./utils/safeUUID";
 import { copyToClipboard } from "./utils/clipboard";
+import ThemeRoot from "./theme/ThemeRoot";
+import { themeKeyToMeta } from "./theme/meta";
+import { THEMES, type ThemeKey } from "./theme/themes";
 
 import {
   HeaderBar,
@@ -231,8 +234,10 @@ export default function App() {
         slide_id: s.id,
         layout_id: selection[s.id] || undefined,
       }));
+      const themeMeta = themeKeyToMeta((THEMES as any)[theme] ? (theme as ThemeKey) : "default");
+
       const { data } = await api.buildEditor(
-        { deck, selections, theme, policy: "best_fit" },
+        { deck, selections, theme, policy: "best_fit", theme_meta: themeMeta },
         { idempotencyKey: idemKeyRef.current }
       );
       setEditorResp(data);
@@ -256,9 +261,10 @@ export default function App() {
     setExportInfo(null);
     setExportErr(null);
     try {
+      const themeMeta = themeKeyToMeta((THEMES as any)[theme] ? (theme as ThemeKey) : "default");
       const body = editorResp?.editor
-        ? { editor: editorResp.editor, theme }
-        : { slides: deck.slides, theme };
+        ? { editor: { ...editorResp.editor, theme_meta: editorResp.editor.theme_meta ?? themeMeta }, theme }
+        : { slides: deck.slides, theme, theme_meta: themeMeta };
       const { data } = await api.exportDeck(body);
       setExportInfo(data);
       const kb = Math.max(1, Math.round(data.bytes / 1024));
@@ -323,7 +329,8 @@ export default function App() {
 
   /* ------------------------------ UI ------------------------------ */
   return (
-    <div className="min-h-screen bg-gray-50 text-gray-900">
+    <div className="min-h-screen text-gray-900" style={{ background: "var(--app-bg)" }}>
+      <ThemeRoot themeKey={theme as any} />
       <HeaderBar
         health={health}
         schemaVersion={schemaVersion}

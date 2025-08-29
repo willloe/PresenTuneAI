@@ -1,14 +1,6 @@
 import { useMemo, useState } from "react";
+import { THEME_KEYS, THEMES, type ThemeKey } from "../../theme/themes";
 import Button from "../ui/Button";
-
-const THEME_PRESETS = [
-  "default",
-  "minimal",
-  "corporate",
-  "dark",
-  "gradient",
-  "serif",
-] as const;
 
 export default function ThemeSelector({
   theme,
@@ -17,16 +9,13 @@ export default function ThemeSelector({
   theme: string;
   setTheme?: (t: string) => void;
 }) {
-  const isCustom = useMemo(
-    () => !!theme && !THEME_PRESETS.includes(theme as (typeof THEME_PRESETS)[number]),
-    [theme]
-  );
+  const isCustom = useMemo(() => !!theme && !THEME_KEYS.includes(theme as ThemeKey), [theme]);
 
   const [mode, setMode] = useState<"preset" | "custom">(isCustom ? "custom" : "preset");
-  const [preset, setPreset] = useState<string>(isCustom ? THEME_PRESETS[0] : theme || THEME_PRESETS[0]);
+  const [preset, setPreset] = useState<ThemeKey>(isCustom ? THEME_KEYS[0] : ((theme || THEME_KEYS[0]) as ThemeKey));
   const [customTheme, setCustomTheme] = useState<string>(isCustom ? theme : "");
 
-  function applyPreset(t: string) {
+  function applyPreset(t: ThemeKey) {
     setPreset(t);
     setTheme?.(t);
     setMode("preset");
@@ -47,7 +36,8 @@ export default function ThemeSelector({
           variant={mode === "preset" ? "solid" : "outline"}
           onClick={() => {
             setMode("preset");
-            applyPreset(THEME_PRESETS.includes(theme as any) ? (theme as string) : THEME_PRESETS[0]);
+            const next = THEME_KEYS.includes(theme as ThemeKey) ? (theme as ThemeKey) : THEME_KEYS[0];
+            applyPreset(next);
           }}
         >
           Presets
@@ -67,18 +57,25 @@ export default function ThemeSelector({
 
       {mode === "preset" && (
         <div className="mt-3 flex flex-wrap gap-2">
-          {THEME_PRESETS.map((t) => (
-            <Button
-              key={t}
-              size="sm"
-              variant={preset === t ? "solid" : "outline"}
-              onClick={() => applyPreset(t)}
-              className="capitalize"
-              title={t}
-            >
-              {t}
-            </Button>
-          ))}
+          {THEME_KEYS.map((t) => {
+            const tok = THEMES[t];
+            return (
+              <Button
+                key={t}
+                size="sm"
+                variant={preset === t ? "solid" : "outline"}
+                onClick={() => applyPreset(t)}
+                className="capitalize flex items-center gap-2"
+                title={t}
+              >
+                <span
+                  className="inline-block h-3 w-3 rounded-full"
+                  style={{ background: tok.colors.accent }}
+                />
+                {t}
+              </Button>
+            );
+          })}
         </div>
       )}
 

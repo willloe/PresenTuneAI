@@ -1,3 +1,4 @@
+// frontend/src/components/editor/LayerView.tsx
 import { useState, type CSSProperties } from "react";
 import type { EditorLayer } from "../../lib/api";
 
@@ -15,6 +16,7 @@ export default function LayerView({
   showImage: boolean;
 }) {
   const f = (layer.frame as any) || { x: 0, y: 0, w: 0, h: 0 };
+
   const base: CSSProperties = {
     position: "absolute",
     left: f.x * scale,
@@ -29,21 +31,51 @@ export default function LayerView({
   };
 
   if (layer.kind === "textbox") {
-    const style = (layer.style as any) || {};
-    const align = style.align || style.textAlign || "left";
-    const fontSizeRaw = typeof style.size === "number" ? style.size * scale : 20 * scale;
+    const st = (layer.style as any) || {};
+    const align = (st.align || st.textAlign || "left") as CSSProperties["textAlign"];
+    const fontSizeRaw =
+      typeof st.size === "number"
+        ? st.size * scale
+        : typeof st.fontSize === "number"
+        ? st.fontSize * scale
+        : 20 * scale;
     const fontSize = Math.max(minFontPx, fontSizeRaw);
 
+    const padding =
+      typeof st.padding === "number"
+        ? Math.max(0, st.padding * scale)
+        : 6; // sensible default
+    const bgFill = st.bg || st.background || st.fill || "transparent";
+    const letterSpacing =
+      typeof st.letterSpacing === "number" ? st.letterSpacing * scale : undefined;
+    const lineHeight =
+      typeof st.lineHeight === "number" ? st.lineHeight : 1.25;
+    const borderRadius =
+      typeof st.radius === "number"
+        ? st.radius * scale
+        : typeof st.borderRadius === "number"
+        ? st.borderRadius * scale
+        : undefined;
+
     const textStyle: CSSProperties = {
-      fontFamily: style.font || "Inter, ui-sans-serif, system-ui",
+      fontFamily: st.font || st.fontFamily || "Inter, ui-sans-serif, system-ui",
       fontSize,
-      fontWeight: style.weight || 400,
-      lineHeight: 1.25,
-      color: style.color || "#111",
-      padding: 6,
+      fontWeight: st.weight || st.fontWeight || 400,
+      lineHeight,
+      letterSpacing,
+      color: st.color || "#111",
+      padding,
       whiteSpace: "pre-wrap",
-      textAlign: align as CSSProperties["textAlign"],
+      textAlign: align,
       wordBreak: "break-word",
+      background: bgFill,
+      border:
+        st.stroke || st.border
+          ? `${Math.max(1, (st.strokeWidth || st.borderWidth || 1) * scale)}px solid ${
+              st.stroke || st.border
+            }`
+          : undefined,
+      borderRadius,
     };
 
     const isPlaceholder = (layer.text || "").trim().startsWith("- placeholder");
@@ -59,8 +91,27 @@ export default function LayerView({
   if (layer.kind === "image") {
     const url = (layer.source as any)?.url || "";
     const fit = (layer.fit as any) || "cover";
+    const st = (layer.style as any) || {};
+
+    const wrapStyle: CSSProperties = {
+      ...base,
+      borderRadius:
+        typeof st.radius === "number"
+          ? st.radius * scale
+          : typeof st.borderRadius === "number"
+          ? st.borderRadius * scale
+          : base.borderRadius,
+      border:
+        st.stroke || st.border
+          ? `${Math.max(1, (st.strokeWidth || st.borderWidth || 1) * scale)}px solid ${
+              st.stroke || st.border
+            }`
+          : base.border,
+      background: st.bg || st.background || base.background,
+    };
+
     return (
-      <div style={base}>
+      <div style={wrapStyle}>
         {showImage && url ? (
           <SafeImage src={url} alt={layer.id || "image"} fit={fit} />
         ) : (
@@ -75,6 +126,29 @@ export default function LayerView({
     );
   }
 
+  if (layer.kind === "shape") {
+    // Minimal rectangle shape support
+    const st = (layer.style as any) || {};
+    const shapeStyle: CSSProperties = {
+      ...base,
+      background: st.fill || "#ffffff",
+      border:
+        st.stroke || st.border
+          ? `${Math.max(1, (st.strokeWidth || st.borderWidth || 1) * scale)}px solid ${
+              st.stroke || st.border
+            }`
+          : undefined,
+      borderRadius:
+        typeof st.radius === "number"
+          ? st.radius * scale
+          : typeof st.borderRadius === "number"
+          ? st.borderRadius * scale
+          : base.borderRadius,
+    };
+    return <div style={shapeStyle} />;
+  }
+
+  // Fallback (unknown kind)
   return <div style={base} />;
 }
 
