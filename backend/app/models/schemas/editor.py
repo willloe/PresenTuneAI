@@ -1,6 +1,6 @@
 from __future__ import annotations
 from typing import List, Literal, Optional, Dict, Any
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 class EditorLayer(BaseModel):
@@ -17,7 +17,7 @@ class EditorLayer(BaseModel):
 class EditorSlide(BaseModel):
     id: str
     name: str
-    background: dict = {"fill": "#FFFFFF"}
+    background: dict = Field(default_factory=dict)
     layers: List[EditorLayer]
     meta: dict = {}
 

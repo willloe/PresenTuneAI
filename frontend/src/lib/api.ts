@@ -172,7 +172,7 @@ export const api = {
     return requestWithMeta<EditorBuildResponse>("/editor/build", {
       method: "POST",
       headers,
-      body: JSON.stringify({ theme: "default", policy: "best_fit", ...payload }),
+      body: JSON.stringify({ theme: payload.theme ? payload.theme : "default", policy: payload.policy ? payload.policy : "best_fit", ...payload }),
     });
   },
 };

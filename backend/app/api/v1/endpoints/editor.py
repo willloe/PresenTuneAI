@@ -14,12 +14,29 @@ from app.core.config import settings
 from app.core.telemetry import aspan, span
 from app.models.schemas.slide import Deck
 from app.models.schemas.editor import EditorDoc, EditorSlide, EditorLayer
-from app.api.v1.endpoints.layouts import get_layout_library  # ⬅️ Option B: import the getter
+from app.api.v1.endpoints.layouts import get_layout_library
 
 router = APIRouter(
     tags=["editor"],
     dependencies=([Depends(require_token)] if settings.AUTH_ENABLED else []),
 )
+
+THEME_PRESETS = {
+    "default": {
+        "colors": {
+            "surface": "#ffffff",
+            "text": "#111827",      # slate-900-ish
+            "mutedText": "#475569", # slate-600-ish
+        }
+    },
+    "dark": {
+        "colors": {
+            "surface": "#0f172a",   # slate-900/blue-900
+            "text": "#e2e8f0",      # slate-200
+            "mutedText": "#94a3b8", # slate-400
+        }
+    },
+}
 
 # Lightweight idempotency cache for dev
 _IDEMP_CACHE: dict[str, tuple[float, dict]] = {}
@@ -64,6 +81,12 @@ async def build_editor_doc(
 
         lib = get_layout_library()
 
+        # pick theme tokens
+        T = THEME_PRESETS.get(payload.theme, THEME_PRESETS["default"])
+        surface = T["colors"]["surface"]
+        text = T["colors"]["text"]
+        muted = T["colors"]["mutedText"]
+
         for s in deck.slides:
             with span("layout_apply_slide", slide_id=s.id):
                 layout_id = layout_by_slide.get(s.id) or "title_bullets_left"
@@ -71,90 +94,82 @@ async def build_editor_doc(
 
                 if not layout and payload.policy == "best_fit":
                     layout = max(lib.items, key=lambda li: li.weight)
-                    warnings.append(
-                        {
-                            "slide_id": s.id,
-                            "reason": "unknown_layout_best_fit_substitution",
-                            "layout_id": layout.id,
-                        }
-                    )
+                    warnings.append({
+                        "slide_id": s.id,
+                        "reason": "unknown_layout_best_fit_substitution",
+                        "layout_id": layout.id,
+                    })
                 elif not layout and payload.policy == "strict":
-                    raise HTTPException(
-                        status_code=400,
-                        detail=f"Unknown layout_id {layout_id} for slide {s.id}",
-                    )
+                    raise HTTPException(status_code=400, detail=f"Unknown layout_id {layout_id} for slide {s.id}")
 
                 layers: List[EditorLayer] = []
 
                 # Title
-                if "title" in layout.frames and layout.frames["title"]:
-                    layers.append(
-                        EditorLayer(
-                            id=f"ly_{s.id}_title",
-                            kind="textbox",
-                            frame=layout.frames["title"],
-                            text=s.title,
-                            style={"font": "Inter", "size": 36, "weight": 700, "align": "left"},
-                            z=10,
-                        )
-                    )
+                if layout.frames.get("title"):
+                    layers.append(EditorLayer(
+                        id=f"ly_{s.id}_title",
+                        kind="textbox",
+                        frame=layout.frames["title"],
+                        text=s.title,
+                        style={"font": "Inter", "size": 36, "weight": 700, "align": "left", "color": text},
+                        z=10,
+                    ))
 
                 # Bullets
-                if "bullets" in layout.frames and s.bullets:
-                    bullet_frames = layout.frames.get("bullets") or []
-                    bf0 = bullet_frames[0] if isinstance(bullet_frames, list) and bullet_frames else None
+                if layout.frames.get("bullets") and s.bullets:
+                    bf0 = (layout.frames.get("bullets") or [None])[0]
                     if bf0:
-                        layers.append(
-                            EditorLayer(
-                                id=f"ly_{s.id}_bullets",
-                                kind="textbox",
-                                frame=bf0,
-                                text="\n".join([f"- {b}" for b in s.bullets]),
-                                style={"font": "Inter", "size": 20},
-                                z=9,
-                            )
-                        )
+                        layers.append(EditorLayer(
+                            id=f"ly_{s.id}_bullets",
+                            kind="textbox",
+                            frame=bf0,
+                            text="\n".join([f"- {b}" for b in s.bullets]),
+                            style={"font": "Inter", "size": 20, "color": muted},
+                            z=9,
+                        ))
 
-                # First image (if any)
-                if "images" in layout.frames and s.media:
+                # First image(s)
+                if layout.frames.get("images") and s.media:
                     frames = list(layout.frames["images"] or [])
-                    # keep only dict-like media with a url (your Slide.media already allows a list)
                     imgs = []
                     for m in (s.media or []):
                         if isinstance(m, dict):
                             u = m.get("url")
-                            if u:
-                                imgs.append({"url": u, "source": m.get("source"), "asset_id": m.get("asset_id")})
+                            if u: imgs.append({"url": u, "source": m.get("source"), "asset_id": m.get("asset_id")})
                         else:
                             u = getattr(m, "url", None)
-                            if u:
-                                imgs.append({"url": u, "source": getattr(m, "source", None), "asset_id": getattr(m, "asset_id", None)})
+                            if u: imgs.append({"url": u, "source": getattr(m, "source", None), "asset_id": getattr(m, "asset_id", None)})
 
                     for j, (m, fr) in enumerate(zip(imgs, frames)):
-                        layers.append(
-                            EditorLayer(
-                                id=f"ly_{s.id}_img{j}",
-                                kind="image",
-                                frame=fr,
-                                source={"type": m.get("source") or "external", "asset_id": m.get("asset_id"), "url": m["url"]},
-                                fit="cover",
-                                z=6,
-                            )
-                        )
+                        layers.append(EditorLayer(
+                            id=f"ly_{s.id}_img{j}",
+                            kind="image",
+                            frame=fr,
+                            source={"type": m.get("source") or "external", "asset_id": m.get("asset_id"), "url": m["url"]},
+                            fit="cover",
+                            z=6,
+                        ))
 
-                # Append the composed slide
-                slides_out.append(
-                    EditorSlide(id=s.id, name=s.title, layers=layers, meta={"layout_id": layout.id})
-                )
+                # Compose slide with theme surface background
+                slides_out.append(EditorSlide(
+                    id=s.id,
+                    name=s.title,
+                    background={"fill": surface},
+                    layers=layers,
+                    meta={"layout_id": layout.id},
+                ))
 
-        # Compose the full EditorDoc
+        # Page + theme meta
+        page = {**payload.page, "background": {"fill": surface}}
+
         editor = EditorDoc(
             editor_id=f"ed_{uuid.uuid4().hex[:12]}",
             deck_id=f"dk_{uuid.uuid4().hex[:8]}",
-            page=payload.page,
+            page=page,
             theme=payload.theme,
             slides=slides_out,
             meta={"created_at": time.strftime("%Y-%m-%dT%H:%M:%SZ")},
+            theme_meta=T,  # optional; your UI can read this
         )
 
     resp = {"editor": editor, "warnings": warnings}
