@@ -1,4 +1,3 @@
-# backend/app/main.py
 from __future__ import annotations
 
 import asyncio
@@ -65,7 +64,7 @@ def create_app() -> FastAPI:
         lifespan=lifespan,
     )
 
-    # CORS (expose perf/correlation headers to browser DevTools)
+    # CORS (expose perf/correlation headers + upload id to browser)
     allow_origins = ["*"] if settings.ALLOW_ALL_CORS else settings.CORS_ALLOW_ORIGINS
     app.add_middleware(
         CORSMiddleware,
@@ -73,9 +72,15 @@ def create_app() -> FastAPI:
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],
-        expose_headers=["X-Request-Id", "X-Response-Time-Ms", "Server-Timing"],
+        expose_headers=[
+            "X-Upload-Id",        # ← needed by frontend to read upload id
+            "X-Request-Id",
+            "X-Response-Time-Ms",
+            "Server-Timing",
+        ],
     )
 
+    # Static
     static_dir = (Path(__file__).parent / "static").resolve()
     static_dir.mkdir(parents=True, exist_ok=True)
     app.mount("/static", StaticFiles(directory=str(static_dir)), name="static")
@@ -126,9 +131,6 @@ def create_app() -> FastAPI:
     api.include_router(editor_router)
     api.include_router(assets_router)
     app.include_router(api)
-
-    app.mount("/static", StaticFiles(directory="app/static"), name="static")
-
 
     return app
 

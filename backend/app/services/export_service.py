@@ -52,7 +52,7 @@ def _strip_slide_prefix(s: str) -> str:
 
 
 def _export_dir() -> Path:
-    d = (Path(settings.STORAGE_DIR) / "exports").resolve()
+    d = (Path(settings.STORAGE_DIR).parent / "exports").resolve()
     d.mkdir(parents=True, exist_ok=True)
     return d
 

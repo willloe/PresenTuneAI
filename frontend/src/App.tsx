@@ -33,7 +33,7 @@ import LayoutSelectionList from "./components/layout/LayoutSelectionList";
 import FinalizeSection from "./components/FinalizeSection";
 import { useToast } from "./components/ui/Toast";
 
-// NEW: media library drawer
+// Media library drawer
 import MediaLibraryDrawer from "./components/media/MediaLibraryDrawer";
 
 export default function App() {
@@ -50,6 +50,7 @@ export default function App() {
   // Upload
   const [uploadMeta, setUploadMeta] = useState<UploadResponse | null>(null);
   const [uploadErr, setUploadErr] = useState<string | null>(null);
+  const uploadId = uploadMeta?.uploadId ?? null; // ← convenience
 
   // Outline
   const { deck, loading, error, meta, generate, regenerate, updateSlide, clearError, setDeck } =
@@ -74,7 +75,7 @@ export default function App() {
   // Regen
   const [regenIndex, setRegenIndex] = useState<number | null>(null);
 
-  // NEW: which slide is opening the media library (null = closed)
+  // Which slide is opening the media library (null = closed)
   const [openLibForSlide, setOpenLibForSlide] = useState<number | null>(null);
 
   // Derived
@@ -84,8 +85,8 @@ export default function App() {
   // Toasts
   const { show } = useToast();
 
-  // Phase orchestration (persisted + guardrails + auto-back)
-  const haveExtract = !!uploadMeta;
+  // Phase orchestration
+  const haveExtract = !!uploadMeta; // we only use text/pages gating for the wizard
   const haveDeck = slides.length > 0;
   const selectionComplete = useMemo(
     () => haveDeck && slides.every((s) => !!selection[s.id]),
@@ -127,10 +128,11 @@ export default function App() {
     setSelection({});
     setEditConfirmed(false);
     clearError();
+    setOpenLibForSlide(null); // ← close any open drawer when starting a new upload
     setStep(1);
 
     try {
-      const meta = await uploadFile(f); // now returns { ...json, uploadId } from X-Upload-Id
+      const meta = await uploadFile(f); // returns { ...json, uploadId }
       setUploadMeta(meta);
       setTopic(meta.filename.replace(/\.[^.]+$/, ""));
       show({ tone: "success", title: "Uploaded", description: meta.filename });
@@ -301,12 +303,31 @@ export default function App() {
     [deck, setDeck]
   );
 
+  // Replace the whole media array with a single image (used by URL box or AI quick-generate)
   const setImageForSlide = useCallback(
     (idx: number, url: string, alt?: string) => {
       updateSlide(idx, (prev) => ({
         ...prev,
         media: url ? [{ type: "image", url, alt: alt ?? prev.title }] : [],
       }) as any);
+      setEditorResp(null);
+      setEditConfirmed(false);
+    },
+    [updateSlide]
+  );
+
+  // NEW: Append an image to the media array (used by Media Library)
+  const addImageToSlide = useCallback(
+    (idx: number, url: string, alt?: string) => {
+      updateSlide(idx, (prev) => {
+        const current = Array.isArray(prev.media) ? [...prev.media] : [];
+        // optional: avoid duplicates by URL
+        if (current.some((m: any) => m?.url === url)) return prev;
+        return {
+          ...prev,
+          media: [...current, { type: "image", url, alt: alt ?? prev.title }],
+        } as any;
+      });
       setEditorResp(null);
       setEditConfirmed(false);
     },
@@ -416,8 +437,8 @@ export default function App() {
             onSetImage={setImageForSlide}
             onRemoveImage={removeImageForSlide}
             onGenerateImage={generateImageForSlide}
-            // NEW: pass uploadId and a handler to open the media library for a specific slide
-            uploadId={uploadMeta?.uploadId ?? null}
+            // Media library wiring
+            uploadId={uploadId}
             onOpenMediaLibrary={(idx: number) => setOpenLibForSlide(idx)}
           />
         </PhaseContainer>
@@ -477,13 +498,16 @@ export default function App() {
         </PhaseContainer>
       </main>
 
-      {/* NEW: single Media Library drawer mounted once here */}
+      {/* Media Library drawer (only opens when we also have an uploadId) */}
       <MediaLibraryDrawer
-        open={openLibForSlide !== null}
+        open={openLibForSlide !== null && !!uploadId}
         onClose={() => setOpenLibForSlide(null)}
-        uploadId={uploadMeta?.uploadId ?? null}
+        uploadId={uploadId}
         onSelect={(url) => {
-          if (openLibForSlide !== null) setImageForSlide(openLibForSlide, url);
+          if (openLibForSlide !== null) {
+            // APPEND, don't replace
+            addImageToSlide(openLibForSlide, url);
+          }
           setOpenLibForSlide(null);
         }}
       />

@@ -31,6 +31,9 @@ type Props = {
   onSetImage?: (index: number, url: string, alt?: string) => void;
   onRemoveImage?: (index: number) => void;
   onGenerateImage?: (index: number) => void;
+
+  // NEW: open media library for this slide
+  onOpenMediaLibrary?: (index: number) => void;
 };
 
 export default function SlideCard({
@@ -47,6 +50,7 @@ export default function SlideCard({
   onSetImage,
   onRemoveImage,
   onGenerateImage,
+  onOpenMediaLibrary,
 }: Props) {
   const [editing, setEditing] = useState(false);
   const [title, setTitle] = useState(slide.title);
@@ -237,8 +241,12 @@ export default function SlideCard({
       {/* First image preview */}
       {showImages && !editing && (media[0] ? (
         <div className="mt-2">
-          <img src={media[0].url} alt={media[0].alt ?? slide.title}
-               className="w-full h-40 object-cover rounded-lg border bg-gray-100" loading="lazy" />
+          <img
+            src={media[0].url}
+            alt={media[0].alt ?? slide.title}
+            className="w-full h-40 object-cover rounded-lg border bg-gray-100"
+            loading="lazy"
+          />
           {media[0].alt && <div className="mt-1 text-xs text-gray-500">{media[0].alt}</div>}
         </div>
       ) : showSkeleton ? (
@@ -257,7 +265,7 @@ export default function SlideCard({
         />
       </div>
 
-      {/* Legacy quick image actions */}
+      {/* Legacy quick image actions + New From Library */}
       {!editing && (
         <div className="mt-3 flex flex-wrap items-center gap-2">
           <input
@@ -291,6 +299,16 @@ export default function SlideCard({
               Remove
             </Button>
           ) : null}
+
+          {onOpenMediaLibrary && (
+            <Button
+              onClick={() => onOpenMediaLibrary(index)}
+              size="sm"
+              title="Choose from extracted images"
+            >
+              From Library
+            </Button>
+          )}
         </div>
       )}
     </li>

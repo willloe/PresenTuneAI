@@ -76,7 +76,12 @@ async def upload(request: Request, response: Response, file: UploadFile = File(.
     assets_dir = upload_dir / "assets"
     new_assets = []
     try:
-        new_assets = extract_images(str(dest_path), str(assets_dir), upload_id)
+        new_assets = extract_images(
+            str(dest_path),
+            str(assets_dir),
+            upload_id,
+            use_pdffigures2=settings.USE_PDFFIGURES2,
+        )
     except Exception:
         # You can log this with your telemetry/logging if desired
         new_assets = []

@@ -22,13 +22,13 @@ type Props = {
   layoutNameBySlide?: Record<string, string>;
   onReorder?: (from: number, to: number) => void;
 
-  // Legacy single-image helpers (optional; SlideCard can operate without them)
+  // Legacy single-image helpers (optional)
   onSetImage?: (index: number, url: string, alt?: string) => void;
   onRemoveImage?: (index: number) => void;
   onGenerateImage?: (index: number) => void;
 
-  // NEW: media library plumbing
-  uploadId?: string | null; // not used here, but accepted so App.tsx compiles cleanly
+  // Media library plumbing
+  uploadId?: string | null;                 // ← USE this now
   onOpenMediaLibrary?: (index: number) => void;
 };
 
@@ -49,7 +49,7 @@ export default function Preview({
   onSetImage,
   onRemoveImage,
   onGenerateImage,
-  // NEW props (unused var suppressed by not referencing uploadId)
+  uploadId,                                  // ← using it
   onOpenMediaLibrary,
 }: Props) {
   const pretty = (s: string) => s.replace(/[_-]+/g, " ").replace(/\s+/g, " ").trim();
@@ -93,10 +93,11 @@ export default function Preview({
               onSetImage={onSetImage}
               onRemoveImage={onRemoveImage}
               onGenerateImage={onGenerateImage}
+              onOpenMediaLibrary={onOpenMediaLibrary}
             />
 
-            {/* NEW: Media Library button (shown only if provided) */}
-            {onOpenMediaLibrary && (
+            {/* Show library button only if we can actually open & load assets */}
+            {onOpenMediaLibrary && !!uploadId && (
               <div className="flex gap-2 pl-2">
                 <button
                   className="rounded-lg border px-3 py-1 text-sm hover:bg-gray-50"
