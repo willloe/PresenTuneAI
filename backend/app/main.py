@@ -27,6 +27,7 @@ from app.api.v1.endpoints.layouts import router as layouts_router
 from app.api.v1.endpoints.editor import router as editor_router
 from app.api.v1.endpoints.ops import router as ops_router
 from app.api.v1.endpoints.schema import router as schema_router
+from app.api.v1.endpoints.assets import router as assets_router
 
 # background worker
 from app.workers.retention import retention_loop
@@ -78,7 +79,7 @@ def create_app() -> FastAPI:
     static_dir = (Path(__file__).parent / "static").resolve()
     static_dir.mkdir(parents=True, exist_ok=True)
     app.mount("/static", StaticFiles(directory=str(static_dir)), name="static")
-    
+
     # Observability (x-request-id, Server-Timing aggregation)
     app.add_middleware(ObservabilityMiddleware)
 
@@ -123,6 +124,7 @@ def create_app() -> FastAPI:
     api.include_router(ops_router)
     api.include_router(layouts_router)
     api.include_router(editor_router)
+    api.include_router(assets_router)
     app.include_router(api)
 
     app.mount("/static", StaticFiles(directory="app/static"), name="static")

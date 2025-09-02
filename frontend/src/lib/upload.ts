@@ -1,20 +1,22 @@
-// frontend/src/lib/upload.ts
 import { API_BASE } from "./api";
 
 export type ParsedPreview = {
   kind: "pdf" | "docx" | "text";
   pages: number;
-  text: string;         // full raw text
+  text: string;
   text_length: number;
-  text_preview: string; // ~1000 chars
+  text_preview: string;
 };
 
 export type UploadResponse = {
   filename: string;
-  size: number;                 // bytes
-  content_type: string;         // e.g., application/pdf
-  path?: string | null;         // null in non-debug
+  size: number;
+  content_type: string;
+  path?: string | null;
   parsed: ParsedPreview;
+
+  // NEW: optional uploadId (from response header)
+  uploadId?: string;
 };
 
 export async function uploadFile(file: File): Promise<UploadResponse> {
@@ -30,14 +32,13 @@ export async function uploadFile(file: File): Promise<UploadResponse> {
       const j = await res.clone().json();
       detail = (j?.detail as string) ?? JSON.stringify(j);
     } catch {
-      try {
-        detail = await res.text();
-      } catch {
-        detail = "";
-      }
+      try { detail = await res.text(); } catch {}
     }
     throw new Error(`${res.status} ${res.statusText}${detail ? ` — ${detail}` : ""}`);
   }
 
-  return (await res.json()) as UploadResponse;
+  const json = (await res.json()) as Omit<UploadResponse, "uploadId">;
+  const uploadId = res.headers.get("X-Upload-Id") ?? undefined;
+
+  return { ...json, uploadId };
 }

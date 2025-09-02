@@ -26,6 +26,10 @@ type Props = {
   onSetImage?: (index: number, url: string, alt?: string) => void;
   onRemoveImage?: (index: number) => void;
   onGenerateImage?: (index: number) => void;
+
+  // NEW: media library plumbing
+  uploadId?: string | null; // not used here, but accepted so App.tsx compiles cleanly
+  onOpenMediaLibrary?: (index: number) => void;
 };
 
 export default function Preview({
@@ -45,6 +49,8 @@ export default function Preview({
   onSetImage,
   onRemoveImage,
   onGenerateImage,
+  // NEW props (unused var suppressed by not referencing uploadId)
+  onOpenMediaLibrary,
 }: Props) {
   const pretty = (s: string) => s.replace(/[_-]+/g, " ").replace(/\s+/g, " ").trim();
   if (!slides.length) return null;
@@ -71,23 +77,36 @@ export default function Preview({
 
       <ul className="space-y-3">
         {slides.map((s, i) => (
-          <SlideCard
-            key={s.id ?? i}
-            slide={s}
-            index={i}
-            total={slides.length}
-            loading={loading}
-            regenIndex={regenIndex}
-            showImages={showImages}
-            onRegenerate={onRegenerate}
-            onUpdate={(idx, next) => onUpdateSlide(idx, next)}
-            layoutName={layoutNameBySlide?.[s.id]}
-            onReorder={onReorder}
-            // Legacy single-image hooks (optional; SlideCard will fallback to local ops)
-            onSetImage={onSetImage}
-            onRemoveImage={onRemoveImage}
-            onGenerateImage={onGenerateImage}
-          />
+          <li key={s.id ?? i} className="space-y-2">
+            <SlideCard
+              slide={s}
+              index={i}
+              total={slides.length}
+              loading={loading}
+              regenIndex={regenIndex}
+              showImages={showImages}
+              onRegenerate={onRegenerate}
+              onUpdate={(idx, next) => onUpdateSlide(idx, next)}
+              layoutName={layoutNameBySlide?.[s.id]}
+              onReorder={onReorder}
+              // Legacy single-image hooks
+              onSetImage={onSetImage}
+              onRemoveImage={onRemoveImage}
+              onGenerateImage={onGenerateImage}
+            />
+
+            {/* NEW: Media Library button (shown only if provided) */}
+            {onOpenMediaLibrary && (
+              <div className="flex gap-2 pl-2">
+                <button
+                  className="rounded-lg border px-3 py-1 text-sm hover:bg-gray-50"
+                  onClick={() => onOpenMediaLibrary(i)}
+                >
+                  Add from Library
+                </button>
+              </div>
+            )}
+          </li>
         ))}
       </ul>
     </section>

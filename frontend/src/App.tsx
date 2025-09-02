@@ -33,6 +33,9 @@ import LayoutSelectionList from "./components/layout/LayoutSelectionList";
 import FinalizeSection from "./components/FinalizeSection";
 import { useToast } from "./components/ui/Toast";
 
+// NEW: media library drawer
+import MediaLibraryDrawer from "./components/media/MediaLibraryDrawer";
+
 export default function App() {
   // Health + schema
   const { health, schemaVersion } = useHealth();
@@ -70,6 +73,9 @@ export default function App() {
 
   // Regen
   const [regenIndex, setRegenIndex] = useState<number | null>(null);
+
+  // NEW: which slide is opening the media library (null = closed)
+  const [openLibForSlide, setOpenLibForSlide] = useState<number | null>(null);
 
   // Derived
   const slides: Deck["slides"] = deck?.slides ?? [];
@@ -124,7 +130,7 @@ export default function App() {
     setStep(1);
 
     try {
-      const meta = await uploadFile(f);
+      const meta = await uploadFile(f); // now returns { ...json, uploadId } from X-Upload-Id
       setUploadMeta(meta);
       setTopic(meta.filename.replace(/\.[^.]+$/, ""));
       show({ tone: "success", title: "Uploaded", description: meta.filename });
@@ -410,6 +416,9 @@ export default function App() {
             onSetImage={setImageForSlide}
             onRemoveImage={removeImageForSlide}
             onGenerateImage={generateImageForSlide}
+            // NEW: pass uploadId and a handler to open the media library for a specific slide
+            uploadId={uploadMeta?.uploadId ?? null}
+            onOpenMediaLibrary={(idx: number) => setOpenLibForSlide(idx)}
           />
         </PhaseContainer>
 
@@ -467,6 +476,17 @@ export default function App() {
           <FinalizeSection editorResp={editorResp} />
         </PhaseContainer>
       </main>
+
+      {/* NEW: single Media Library drawer mounted once here */}
+      <MediaLibraryDrawer
+        open={openLibForSlide !== null}
+        onClose={() => setOpenLibForSlide(null)}
+        uploadId={uploadMeta?.uploadId ?? null}
+        onSelect={(url) => {
+          if (openLibForSlide !== null) setImageForSlide(openLibForSlide, url);
+          setOpenLibForSlide(null);
+        }}
+      />
 
       <Settings
         open={settingsOpen}
