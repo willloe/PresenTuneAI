@@ -20,7 +20,6 @@ export default function FinalizeSection({ editorResp }: Props) {
   const [googleConfigured, setGoogleConfigured] = useState<boolean>(true);
 
   useEffect(() => {
-    // Detect presence of GOOGLE_CLIENT_ID to gate the button nicely
     (async () => {
       try {
         const { GOOGLE_CLIENT_ID } = await getConfig();
@@ -127,7 +126,10 @@ export default function FinalizeSection({ editorResp }: Props) {
       </div>
 
       {editorResp?.editor && (
-        <div className="themed-card p-3 anim-in" style={{ fontFamily: "var(--font-body)", letterSpacing: "var(--font-tracking)" }}>
+        <div
+          className="themed-card p-3 anim-in"
+          style={{ fontFamily: "var(--font-body)", letterSpacing: "var(--font-tracking)" }}
+        >
           <EditorPreview
             doc={editorResp.editor}
             cols={2}
@@ -154,13 +156,14 @@ export default function FinalizeSection({ editorResp }: Props) {
           <span className="text-sm text-gray-700">
             Exported <b>.{exportInfo.format}</b> • {prettyBytes(exportInfo.bytes)} —{" "}
             <a
-              href={downloadUrl ?? "#"}
-              className="underline"
+              href={exporting ? "#" : (downloadUrl ?? "#")}
+              className={`underline ${exporting ? "pointer-events-none opacity-50" : ""}`}
               download
               target="_blank"
               rel="noreferrer"
+              aria-disabled={exporting || !downloadUrl}
               onClick={(e) => {
-                if (!downloadUrl) e.preventDefault();
+                if (exporting || !downloadUrl) e.preventDefault();
               }}
             >
               Download file
@@ -179,23 +182,27 @@ export default function FinalizeSection({ editorResp }: Props) {
             </span>
 
             <a
-              className="ml-auto inline-flex items-center text-xs rounded-md border px-2 py-1 hover:bg-gray-50 disabled:opacity-50"
-              href={lastExport.url ?? "#"}
+              className={`ml-auto inline-flex items-center text-xs rounded-md border px-2 py-1 hover:bg-gray-50 ${
+                exporting ? "pointer-events-none opacity-50" : ""
+              }`}
+              href={exporting ? "#" : (lastExport.url ?? "#")}
               rel="noreferrer"
               target="_blank"
               download
+              aria-disabled={exporting || !lastExport.url}
               onClick={(e) => {
-                if (!lastExport.url) e.preventDefault();
+                if (exporting || !lastExport.url) e.preventDefault();
               }}
+              title={exporting ? "Export in progress…" : "Download"}
             >
               Download
             </a>
 
             <button
               className="inline-flex items-center text-xs rounded-md border px-2 py-1 hover:bg-gray-50 disabled:opacity-50"
-              disabled={!lastExport.url}
+              disabled={exporting || !lastExport.url}
               onClick={() => lastExport.url && copyUrl(lastExport.url)}
-              title="Copy download URL"
+              title={exporting ? "Export in progress…" : "Copy download URL"}
             >
               {copied ? "Copied!" : "Copy URL"}
             </button>
@@ -203,9 +210,11 @@ export default function FinalizeSection({ editorResp }: Props) {
             {/* Open in Google Slides */}
             <button
               className="inline-flex items-center text-xs rounded-md border px-2 py-1 hover:bg-gray-50 disabled:opacity-50"
-              disabled={!lastExport.url || opening !== null || !googleConfigured}
+              disabled={exporting || !lastExport.url || opening !== null || !googleConfigured}
               title={
-                googleConfigured
+                exporting
+                  ? "Export in progress…"
+                  : googleConfigured
                   ? "Upload and open in Google Slides"
                   : "Configure GOOGLE_CLIENT_ID in /app-config.json"
               }

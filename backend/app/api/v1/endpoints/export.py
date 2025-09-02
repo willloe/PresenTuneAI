@@ -1,10 +1,12 @@
 from __future__ import annotations
 
 import logging
+import os
+import shutil
 from pathlib import Path
 from typing import Optional, Iterable
 
-from fastapi import APIRouter, HTTPException, Depends, Path as PathParam, Request
+from fastapi import APIRouter, HTTPException, Depends, Path as PathParam, Request, Response
 from fastapi.responses import FileResponse
 
 from app.core.auth import require_token
@@ -15,14 +17,18 @@ from app.services.export_service import export_to_pptx
 
 log = logging.getLogger("app.export")
 
-DATA_ROOT = Path(settings.STORAGE_DIR).parent.resolve()     # <…>/data
-_EXPORT_DIR = (DATA_ROOT / "exports").resolve()             # <…>/data/exports
-_EXPORT_DIR.mkdir(parents=True, exist_ok=True)
+# STORAGE_DIR might be /app/data/uploads → DATA_ROOT = /app/data
+DATA_ROOT: Path = Path(settings.STORAGE_DIR).parent.resolve()
+# Canonical location where downloads are served from:
+EXPORT_DIR: Path = (DATA_ROOT / "exports").resolve()
+EXPORT_DIR.mkdir(parents=True, exist_ok=True)
+
 
 router = APIRouter(
     prefix="/export", tags=["export"],
     dependencies=([Depends(require_token)] if settings.AUTH_ENABLED else []),
 )
+
 
 def _media_type_for(path: Path) -> str:
     ext = path.suffix.lower()
@@ -32,15 +38,26 @@ def _media_type_for(path: Path) -> str:
         return "text/plain; charset=utf-8"
     return "application/octet-stream"
 
+
 def _candidate_roots() -> Iterable[Path]:
-    yield _EXPORT_DIR
-    yield settings.STORAGE_DIR / "exports"         # legacy
-    yield DATA_ROOT / "uploads" / "exports"        # legacy alt
-    yield Path.cwd()
-    yield Path("/tmp")
+    # 1) Canonical (served from here)
+    yield EXPORT_DIR
+    # 2) Where the exporter currently writes, if different (e.g., STORAGE_DIR/exports)
+    yield (Path(settings.STORAGE_DIR) / "exports").resolve()
+    # 3) Legacy alt that some older builds used
+    yield (DATA_ROOT / "uploads" / "exports").resolve()
+    # 4) A couple of generic fallbacks
+    yield Path.cwd().resolve()
+    yield Path("/tmp").resolve()
+
 
 def _find_by_name(name: str) -> Optional[Path]:
+    """
+    Find a file by name across our known export roots.
+    Name is sanitized to just the basename.
+    """
     name = Path(name).name
+    # exact checks in candidate roots
     for root in _candidate_roots():
         try:
             p = (root / name).resolve()
@@ -48,21 +65,42 @@ def _find_by_name(name: str) -> Optional[Path]:
             continue
         if p.exists() and p.is_file():
             return p
-    # light rglob fallback
-    for root in {DATA_ROOT, Path.cwd()}:
+    # last-ditch scan under data root or cwd
+    for root in {DATA_ROOT, Path.cwd().resolve()}:
         try:
             for p in root.rglob(name):
                 if p.is_file():
-                    return p
+                    return p.resolve()
         except Exception:
             pass
     return None
 
+
 def _normalize_to_exports(src: Path, as_name: str) -> Path:
-    dst = (_EXPORT_DIR / Path(as_name).name).resolve()
-    if src.resolve() != dst:
-        dst.write_bytes(src.read_bytes())
-    return dst
+    """
+    Ensure the file lives under EXPORT_DIR with the expected name.
+    Prefer atomic rename when possible; fall back to copy on cross-device moves.
+    """
+    dst = (EXPORT_DIR / Path(as_name).name).resolve()
+    try:
+        if src.resolve() == dst:
+            return dst
+    except Exception:
+        pass
+
+    # Try an atomic move first
+    try:
+        os.replace(src, dst)  # works if on same filesystem
+        return dst
+    except Exception:
+        # Cross-device or permission issues → copy
+        try:
+            shutil.copy2(src, dst)
+            return dst
+        except Exception as e:
+            log.exception("Failed to place export into canonical dir: %s → %s", src, dst)
+            raise HTTPException(500, f"Failed to stage export: {type(e).__name__}") from e
+
 
 @router.post("", response_model=ExportResponse, summary="Export slides or editor doc to PPTX")
 async def export(req: Request, body: ExportRequest) -> ExportResponse:
@@ -78,14 +116,13 @@ async def export(req: Request, body: ExportRequest) -> ExportResponse:
             slides=body.slides, editor=body.editor, theme=theme, theme_meta=eff_theme_meta
         )
 
-    # Derive filename RELIABLY from the path the exporter returned
+    # Exporter returns a filesystem path; derive the filename from it.
     src_path_str = getattr(res, "path", "") or ""
     if not src_path_str:
         raise HTTPException(500, "Exporter returned no path")
-    src_path = Path(src_path_str).resolve()
-    filename = src_path.name
+    src_path = Path(src_path_str)
 
-    # Ensure the file exists; if not, search all likely places by name
+    filename = src_path.name
     produced = src_path if src_path.exists() else _find_by_name(filename)
     if produced is None:
         with span("export_locate_failed", filename=filename, hint="path_missing", path=src_path_str):
@@ -100,6 +137,7 @@ async def export(req: Request, body: ExportRequest) -> ExportResponse:
     try:
         res = res.model_copy(update={"download_url": download_url})
     except Exception:
+        # Pydantic v1 fallback or plain object
         setattr(res, "download_url", download_url)
 
     with span("export_ready", filename=filename, path=str(final_path), bytes=final_path.stat().st_size):
@@ -107,17 +145,18 @@ async def export(req: Request, body: ExportRequest) -> ExportResponse:
 
     return res
 
-@router.get(
+
+@router.api_route(
     "/{filename}",
+    methods=["GET", "HEAD"],
     response_class=FileResponse,
     summary="Download a previously exported file by filename",
 )
-def download(
-    filename: str = PathParam(
-        ..., pattern=r"^[A-Za-z0-9._-]+\.(pptx|txt)$",
-        description="Exported filename (e.g. deck_20250101_121314_default.pptx)",
-    )
-):
+def download(request: Request,
+             filename: str = PathParam(
+                 ..., pattern=r"^[A-Za-z0-9._-]+\.(pptx|txt)$",
+                 description="Exported filename (e.g. deck_20250101_121314_default.pptx)",
+             )):
     safe = Path(filename).name
 
     found = _find_by_name(safe)
@@ -127,14 +166,26 @@ def download(
 
     # Re-home into canonical dir for future requests
     try:
-        if found.parent.resolve() != _EXPORT_DIR:
+        if found.parent.resolve() != EXPORT_DIR:
             found = _normalize_to_exports(found, safe)
     except Exception:
         pass
 
     media_type = _media_type_for(found)
+
+    # HEAD: return headers only (FastAPI will also do this automatically, but we add span clarity)
+    if request.method == "HEAD":
+        size = found.stat().st_size
+        with span("export_head", filename=safe, path=str(found), bytes=size, media=media_type):
+            return Response(status_code=200, headers={
+                "content-type": media_type,
+                "content-length": str(size),
+                "content-disposition": f'attachment; filename="{safe}"',
+            })
+
     with span("export_download", filename=safe, path=str(found), bytes=found.stat().st_size, media=media_type):
         return FileResponse(str(found), media_type=media_type, filename=safe)
+
 
 # --- OPTIONAL: tiny debug helper
 @router.get("/_debug/list")
