@@ -16,9 +16,9 @@ permissions:
 
 jobs:
   api:
-    name: Backend • lint / types / tests / schemas
+    name: Backend • lint / types / tests / schemas / smoke
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
     defaults:
       run:
         working-directory: backend
@@ -37,18 +37,18 @@ jobs:
           python -m pip install -U pip
           pip install -r requirements.txt ruff mypy pytest
 
-      # Fail on style issues but also produce inline GitHub annotations
+      # Style + formatting
       - name: Ruff (lint)
         run: |
           ruff check --output-format=github app
           ruff format --check app
 
-      # Keep mypy non-blocking for Week 1; flip to strict later
+      # Keep mypy non-blocking for now (tighten later)
       - name: Mypy (types)
         run: mypy app || true
 
+      # Minimal pytest smoke using TestClient (kept from your config)
       - name: Create smoke test
-        working-directory: backend
         env:
           PYTHONPATH: .
         run: |
@@ -64,7 +64,6 @@ jobs:
           PY
 
       - name: Run pytest (quiet, ignore deprecations)
-        working-directory: backend
         env:
           PYTHONPATH: .
         run: pytest -q -W ignore::DeprecationWarning
@@ -80,6 +79,71 @@ jobs:
           name: schemas-json
           path: backend/docs/schema/*.json
           if-no-files-found: warn
+
+      # ─────────────── NEW: live API smoke (real uvicorn + curl) ───────────────
+      - name: Install tools for smoke (jq, curl)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y jq curl
+
+      - name: Launch API in background
+        env:
+          PYTHONPATH: .
+        run: |
+          # Start uvicorn on 127.0.0.1:8000 and write PID
+          nohup uvicorn app.main:app --host 127.0.0.1 --port 8000 > uvicorn.out 2>&1 &
+          echo $! > uvicorn.pid
+          sleep 1
+          ps -p $(cat uvicorn.pid) || (echo "uvicorn failed to start" && exit 1)
+
+      - name: Wait for /health
+        run: |
+          for i in {1..40}; do
+            code=$(curl -s -o /dev/null -w "%{http_code}" http://127.0.0.1:8000/v1/health || true)
+            if [ "$code" = "200" ]; then
+              echo "API healthy."
+              exit 0
+            fi
+            sleep 0.5
+          done
+          echo "API did not become healthy in time"
+          echo "::group::uvicorn.out"
+          tail -n +1 uvicorn.out || true
+          echo "::endgroup::"
+          exit 1
+
+      - name: Smoke • outline → export → download
+        run: |
+          set -euo pipefail
+          API=http://127.0.0.1:8000/v1
+
+          echo "Outline…"
+          OUTLINE=$(curl -sS -X POST "$API/outline" -H 'Content-Type: application/json' \
+            -d '{"topic":"CI Smoke","slide_count":3}')
+          echo "$OUTLINE" | jq -r '.version,.slide_count'
+
+          echo "Build export payload…"
+          SLIDES=$(echo "$OUTLINE" | jq '.slides')
+          PAYLOAD=$(jq -n --argjson slides "$SLIDES" '{slides:$slides, theme:"default"}')
+
+          echo "Export…"
+          EXPORT=$(curl -sS -X POST "$API/export" -H 'Content-Type: application/json' -d "$PAYLOAD")
+          echo "$EXPORT" | jq -r '.format,.bytes,.path'
+          NAME=$(echo "$EXPORT" | jq -r '.path | capture("(?<n>[^/\\\\]+)$").n')
+
+          echo "HEAD download…"
+          curl -sSI "$API/export/$NAME" | head -n 20
+
+      - name: Stop API
+        if: always()
+        run: |
+          if [ -f uvicorn.pid ]; then
+            kill $(cat uvicorn.pid) || true
+            sleep 1
+          fi
+          echo "::group::uvicorn.out"
+          tail -n +1 uvicorn.out || true
+          echo "::endgroup::"
 
   ui:
     name: Frontend • typecheck / build
@@ -107,6 +171,9 @@ jobs:
         run: npx tsc --noEmit
 
       - name: Build
+        env:
+          # Safe default; only used at build-time for embedding
+          VITE_API_BASE: http://localhost:8000/v1
         run: npm run build
 
       - name: Upload UI build artifact
