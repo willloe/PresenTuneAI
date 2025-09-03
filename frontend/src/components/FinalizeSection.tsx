@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import EditorPreview from "./EditorPreview";
 import type { EditorBuildResponse } from "../lib/api";
 import { useExport } from "../hooks/useExport";
@@ -19,6 +19,7 @@ export default function FinalizeSection({ editorResp }: Props) {
   const [opening, setOpening] = useState<null | "google">(null);
   const [googleConfigured, setGoogleConfigured] = useState<boolean>(true);
 
+  // ---- detect if Google is configured
   useEffect(() => {
     (async () => {
       try {
@@ -30,11 +31,37 @@ export default function FinalizeSection({ editorResp }: Props) {
     })();
   }, []);
 
+  // ---- build a lightweight fingerprint for the current editor build
+  const autoExportKey = useMemo(() => {
+    const ed = editorResp?.editor;
+    if (!ed) return null;
+    const ids = (ed.slides || []).map((s) => s.id || "").join(",");
+    return `${theme}|${(ed.slides || []).length}|${ids}`;
+  }, [editorResp?.editor, theme]);
+
+  // ---- run export automatically once per unique editor build
+  const autoRanForKey = useRef<string | null>(null);
+  useEffect(() => {
+    if (!ready || exporting || !autoExportKey) return;
+    if (autoRanForKey.current === autoExportKey) return;
+    autoRanForKey.current = autoExportKey;
+    (async () => {
+      try {
+        await runExport();
+      } catch {
+        // allow retry if user re-enters or re-builds
+        autoRanForKey.current = null;
+      }
+    })();
+  }, [ready, exporting, autoExportKey, runExport]);
+
   const slidesCount = editorResp?.editor?.slides?.length ?? 0;
   const statusLabel = useMemo(
     () => (ready ? `Editor: ✓ built ${slidesCount} slide${slidesCount === 1 ? "" : "s"}` : "Editor: not ready"),
     [ready, slidesCount]
   );
+
+  const exportBtnLabel = exporting ? "Exporting…" : exportInfo ? "Re-export" : "Export";
 
   function rebuildEditor() {
     setStep?.(4);
@@ -93,11 +120,11 @@ export default function FinalizeSection({ editorResp }: Props) {
           }`}
           title={!ready ? "Build the editor doc first (Step 4)" : "Export deck"}
         >
-          {exporting ? "Exporting…" : "Export"}
+          {exportBtnLabel}
         </button>
       </div>
 
-      {/* Build result/debug (kept) */}
+      {/* Build result/debug */}
       <div className="rounded-xl border p-3 bg-gray-50 text-sm">
         <div className="font-medium mb-1">Editor build result</div>
         {editorResp ? (
