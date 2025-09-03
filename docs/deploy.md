@@ -247,3 +247,78 @@ services:
 Explain what it calls (`/v1/health`) and typical failure causes (import errors, static dir missing).
 
 ---
+
+---
+
+## What changed recently
+
+- **Exports location** — PPTX is written to `{DATA_ROOT}/exports` (sibling to `STORAGE_DIR`).  
+  With defaults this is `backend/data/exports` inside the container.
+- **Assets API & media library** — the frontend lists extracted images for the current upload via `/v1/assets` using the `X-Upload-Id` header returned by `/v1/upload`.
+- **Google Slides button** — optional; enabled when `GOOGLE_CLIENT_ID` is present in the served `/app-config.json` (frontend).
+
+## Docker compose tips
+
+For persistent artifacts during local development, bind‑mount **both** uploads and exports:
+
+```yaml
+services:
+  backend:
+    volumes:
+      - ./backend/data/uploads:/app/data/uploads      # uploads & per-upload assets
+      - ./backend/data/exports:/app/data/exports      # exported PPTX files
+      - ./backend/app/static:/app/app/static:ro       # optional layout library
+```
+
+> If you don’t mount `data/exports`, files still download fine, but will disappear when the container is rebuilt.
+
+### CORS header for `X-Upload-Id`
+
+If your UI is served from a different origin, ensure `app/main.py` exposes the header:
+
+```py
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=allow_origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+    expose_headers=["X-Request-Id","X-Response-Time-Ms","Server-Timing","X-Upload-Id"],
+)
+```
+
+### Smoke test: assets + export
+
+```bash
+API=http://localhost:8000/v1
+
+# Upload a file and capture upload id
+HDRS=$(mktemp)
+curl -i -F "file=@/path/to/file.docx" $API/upload | tee $HDRS >/dev/null
+UP=$(awk -F': ' '/X-Upload-Id/ {print $2}' $HDRS | tr -d '
+')
+
+# List assets (should be >=0)
+curl -s "$API/assets?upload_id=$UP" | jq '.count'
+
+# Build a quick editor doc (omitted here) then export
+# ... after POST /editor/build, use its .editor in a /export call
+
+# Debug exported files on server
+curl -s $API/export/_debug/list | jq .
+```
+
+### Troubleshooting additions
+
+- **404 when clicking “Open in Google Slides”**  
+  Usually no export exists yet. Click **Export** first (or wait for the auto‑export in Step 5 to finish) — the **Latest export** card should appear with a download link.
+
+- **Upload worked but assets are empty**  
+  For TXT files this is expected. For PDF/DOCX ensure the extractor ran (check logs) and that `/app/data/uploads/<upload_id>/assets/index.json` exists inside the container.
+
+- **Can’t read `X-Upload-Id` in the browser**  
+  Your CORS config is not exposing the header; see the snippet above.
+
+- **Exports missing after container rebuild**  
+  Bind‑mount `./backend/data/exports:/app/data/exports` during development.
+
