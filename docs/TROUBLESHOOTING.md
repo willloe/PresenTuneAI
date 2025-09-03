@@ -141,3 +141,56 @@ Tell users to download immediately after export, or disable retention in dev.
 **Cause:** Broken URL or CORS restrictions.
 
 **Fix:** Click “Replace” and use a direct, public image URL. The preview component intentionally hides the broken-image icon and shows a friendly placeholder.
+
+---
+
+## Addendum: More Scenarios & Fixes (2025-09-03)
+
+### 13) Export 404 / “Export not found” right after export
+- Use `GET /v1/export/_debug/list` to see where files are stored.
+- The API now *normalizes* files into `data/exports`, but if discovery fails you’ll see 404.
+  Confirm the file exists in one of:
+  - `/app/data/exports` (canonical)
+  - `/app/data/uploads/exports` (legacy)
+  - process CWD or `/tmp` (rare)
+- Also check whether retention removed the file (see **config.md → retention**).
+
+### 14) Assets endpoint 500 with JSONDecodeError
+- Older runs could leave a truncated `index.json`. The loader is now tolerant and returns `[]`
+  instead of 500. If you’re on an older image, remove or recreate the file:
+  ```bash
+  rm -f backend/data/uploads/<upload_id>/assets/index.json
+  ```
+
+### 15) Media Library image doesn’t export (AI placeholder works)
+- Ensure the image URL is public and doesn’t require cookies/referrers.
+- Editor export reads image **layers**; verify the slide actually has `media` items
+  (the UI’s “Add from Library” button now **appends** instead of **replacing**).
+- The exporter normalizes images via Pillow; make sure `Pillow` is installed (it is via
+  `python-pptx` dependency) and the format is supported.
+
+### 16) “Open in Google Slides” button disabled
+- The button is gated by the presence of `GOOGLE_CLIENT_ID` in `/app-config.json`.
+- Acquire a token via the popup; the code uses Drive scope `drive.file` (upload only).
+- If popup is blocked, allow popups for `localhost`.
+
+### 17) Finalize section didn’t trigger export
+- The Finalize section now kicks off export automatically on first mount (if an editor doc exists).
+- While exporting, **download buttons stay disabled** until the export completes.
+
+### 18) Exports folder confusion
+- Exports live in `/app/data/exports`. Uploads live in `/app/data/uploads`.
+- The route `/v1/export/{filename}` **discovers** files by name across known roots and
+  normalizes them into the canonical folder.
+
+### 19) Windows volume mappings
+Use relative paths in `docker-compose.yml`:
+```yaml
+volumes:
+  - ./backend/app/static:/app/app/static
+  - ./backend/data/uploads:/app/data/uploads
+```
+
+### 20) sbt / pdffigures2 build errors
+If you enable the Scala-based figure extractor, install `sbt` (via Coursier) **inside the build stage**.
+By default, the system falls back to Python-based DOCX/PDF extraction and doesn’t require `sbt`.

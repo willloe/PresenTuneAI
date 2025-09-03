@@ -148,3 +148,102 @@ See **observability.md** for details on `X-Request-Id`, `X-Response-Time-Ms`, an
 - EditorDoc currently supports **title, bullets, images**. More layer kinds (shapes, tables, charts) can be added in `export/editor` and the frontend preview.
 - The image “AI Generate” is a placeholder that uses `picsum.photos`. Swap in a real provider behind `FEATURE_IMAGE_API` when ready.
 - The scoring for `/layouts/filter` is heuristic‑based; tune weights/ranges to taste.
+
+---
+
+## Addendum: Expanded Notes & Week 2 Updates (2025-09-03)
+
+This section **adds** details without removing existing README content. It documents
+the latest backend/frontend improvements and how to operate them.
+
+### Highlights
+- **Media Library & Assets API** — Uploading a PDF/DOCX/TXT extracts embedded images as *assets*
+  under `{STORAGE_DIR}/<upload_id>/assets/` with an `index.json`. Frontend reads them and lets you
+  add/append images to slides.
+- **Editor-accurate PPTX export** — The exporter now respects the editor document’s frames/layers
+  (text, shapes, images), with reliable background fills that survive Google Slides import.
+- **Stable exports folder** — Exports are written to `data/exports` (sibling to uploads).
+  The API returns a `download_url` field and the `/v1/export/{filename} ` route can locate files
+  across legacy and current locations.
+- **“Open in Google Slides”** — Optional OAuth flow (Drive `drive.file` scope) to upload
+  the exported PPTX directly and open it.
+- **Observability** — Uniform `X-Request-Id`, `X-Response-Time-Ms`, and `Server-Timing` spans
+  across upload/outline/layout/editor/export. See *observability.md* for usage.
+- **Retention worker** — Optional cleanup of old files under `{STORAGE_DIR}` and `data/exports`.
+
+### Quickstart (Docker)
+```bash
+docker compose up -d --build
+docker compose logs -f backend   # watch for startup / errors
+# Frontend: http://localhost:5173
+# Backend:  http://localhost:8000/v1/health
+```
+
+### Environment (.env) essentials
+```
+# Where uploads live. Exports are stored in the PARENT's "exports" dir.
+STORAGE_DIR=/app/data/uploads
+
+# CORS / auth
+ALLOW_ALL_CORS=true
+AUTH_ENABLED=false
+API_TOKEN=changeme-if-auth-enabled
+
+# Observability
+TIMING_ALLOW_ORIGIN=*
+DEBUG=true
+
+# Optional housekeeping
+ENABLE_RETENTION=false
+RETENTION_DAYS=1
+RETENTION_SWEEP_MINUTES=30
+
+# Optional Google Slides integration
+GOOGLE_CLIENT_ID=your-oauth-client-id.apps.googleusercontent.com
+```
+
+### Assets API (used by Media Library)
+- `GET /v1/assets?upload_id=<id>` → list assets (`{ items, count }`)
+- `GET /v1/assets/{asset_id}/file?upload_id=<id>` → returns the image file
+
+**Paths on disk**
+```
+/app/data/uploads/<upload_id>/assets/            # images (*.png, …)
+/app/data/uploads/<upload_id>/assets/index.json  # tolerant index
+```
+
+### Export API
+- `POST /v1/export` — Accepts either `slides` (legacy) **or** an `editor` document.
+  Returns `{ "path": "...", "format": "pptx", "bytes": N, "download_url": "..." }`.
+- `GET  /v1/export/{filename}` — Streams a previously exported file.
+- `GET  /v1/export/_debug/list` — Lists candidate export directories for debugging.
+
+**Export locations**
+```
+/app/data/exports      # canonical
+/app/data/uploads/exports   # legacy (auto-discovered)
+/tmp, CWD                         # final fallbacks for discovery
+```
+
+### Typical flow
+1) **Upload** a source document → `X-Upload-Id` response header is captured by the UI.  
+2) **Outline** → **Edit** (add/replace images or open *Media Library*).  
+3) **Build Editor Doc** (Step 4).  
+4) **Finalize** (Step 5) — Export is now automatically triggered on first arrival; “Download / Open
+   in Google Slides” become active when ready.
+
+### Dev tips
+- Inspect timings in DevTools Network → Timing (look for spans like `editor_build`, `export_pptx_editor`).
+- Exec into the running backend container:
+  ```bash
+  docker compose exec backend sh
+  # then:
+  python - <<'PY'
+  from app.services.parsing_service import extract_images
+  from pathlib import Path
+  assets = extract_images("/app/data/Testing.docx", "/app/data/uploads/devtest/assets", "devtest", use_pdffigures2=False)
+  print(len(assets), "asset(s)")
+  PY
+  ```
+- If a download 404s, use `GET /v1/export/_debug/list` to see where files actually landed.
+
