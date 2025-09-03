@@ -1,278 +1,528 @@
-import { useEffect, useState } from "react";
-import { api, ApiError } from "./lib/api";
+import { useCallback, useMemo, useRef, useState } from "react";
+import {
+  api,
+  API_BASE,
+  type ExportResp,
+  type LayoutItem,
+  type EditorBuildResponse,
+} from "./lib/api";
 import { uploadFile, type UploadResponse } from "./lib/upload";
 import type { Deck } from "./types/deck";
+import { useOutline, type OutlineRequest } from "./hooks/useOutline";
+import { useLocalStorage } from "./hooks/useLocalStorage";
+import { useHealth } from "./hooks/useHealth";
+import { useLayouts } from "./hooks/useLayout";
+import { usePhases } from "./hooks/usePhases";
+import { clamp } from "./utils/clamp";
+import { safeUUID } from "./utils/safeUUID";
+import { copyToClipboard } from "./utils/clipboard";
+import ThemeRoot from "./theme/ThemeRoot";
+import { themeKeyToMeta } from "./theme/meta";
+import { THEMES, type ThemeKey } from "./theme/themes";
+
+import {
+  HeaderBar,
+  UploadSection,
+  OutlineControls,
+  Preview,
+  Settings,
+} from "./components";
+import PhaseBar from "./components/PhaseBar";
+import PhaseContainer from "./components/PhaseContainer";
+import LayoutSelectionList from "./components/layout/LayoutSelectionList";
+import FinalizeSection from "./components/FinalizeSection";
+import { useToast } from "./components/ui/Toast";
+
+// Media library drawer
+import MediaLibraryDrawer from "./components/media/MediaLibraryDrawer";
 
 export default function App() {
-  // Health
-  const [health, setHealth] = useState<"checking" | "ok" | "error">("checking");
+  // Health + schema
+  const { health, schemaVersion } = useHealth();
 
-  // Inputs
+  // App settings
   const [topic, setTopic] = useState("AI Hackathon");
-  const [count, setCount] = useState(5);
-  const [theme, setTheme] = useState("default"); // <-- export theme
+  const [count, setCount] = useLocalStorage<number>("slideCount", 5);
+  const [theme, setTheme] = useLocalStorage<string>("exportTheme", "default");
+  const [showImages, setShowImages] = useLocalStorage<boolean>("showImages", true);
+  const [settingsOpen, setSettingsOpen] = useState(false);
 
   // Upload
   const [uploadMeta, setUploadMeta] = useState<UploadResponse | null>(null);
   const [uploadErr, setUploadErr] = useState<string | null>(null);
+  const uploadId = uploadMeta?.uploadId ?? null; // ← convenience
 
-  // Results
-  const [deck, setDeck] = useState<Deck | null>(null);
-  const [err, setErr] = useState<string | null>(null);
-  const [generating, setGenerating] = useState(false);
-  const [lastReqId, setLastReqId] = useState<string | null>(null);
-  const [lastServerTiming, setLastServerTiming] = useState<string | null | undefined>(null);
+  // Outline
+  const { deck, loading, error, meta, generate, regenerate, updateSlide, clearError, setDeck } =
+    useOutline();
+
+  // Layouts & Editor
+  const { items: layouts } = useLayouts();
+  const [selection, setSelection] = useState<Record<string, string>>({});
+  const [editorResp, setEditorResp] = useState<EditorBuildResponse | null>(null);
+  const [building, setBuilding] = useState(false);
+  const [buildErr, setBuildErr] = useState<string | null>(null);
+  const idemKeyRef = useRef<string>(safeUUID());
+
+  const [editConfirmed, setEditConfirmed] = useState(false);
+  const [confirming, setConfirming] = useState(false);
 
   // Export
-  type ExportResp = { path: string; format: string; theme?: string | null; bytes: number };
   const [exportInfo, setExportInfo] = useState<ExportResp | null>(null);
   const [exporting, setExporting] = useState(false);
+  const [exportErr, setExportErr] = useState<string | null>(null);
 
-  const displayTopic = deck?.topic || topic || (uploadMeta?.filename ?? "Untitled");
-  const pretty = (s: string) => s.replace(/[_-]+/g, " ").replace(/\s+/g, " ").trim();
+  // Regen
+  const [regenIndex, setRegenIndex] = useState<number | null>(null);
 
-  // Health check
-  useEffect(() => {
-    api.health().then(() => setHealth("ok")).catch(() => setHealth("error"));
-  }, []);
+  // Which slide is opening the media library (null = closed)
+  const [openLibForSlide, setOpenLibForSlide] = useState<number | null>(null);
 
-  // Upload handler
-  const onPick = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  // Derived
+  const slides: Deck["slides"] = deck?.slides ?? [];
+  const displayTopic = (deck?.topic || topic || uploadMeta?.filename || "Untitled") as string;
+
+  // Toasts
+  const { show } = useToast();
+
+  // Phase orchestration
+  const haveExtract = !!uploadMeta; // we only use text/pages gating for the wizard
+  const haveDeck = slides.length > 0;
+  const selectionComplete = useMemo(
+    () => haveDeck && slides.every((s) => !!selection[s.id]),
+    [haveDeck, slides, selection]
+  );
+  const haveEditor = !!editorResp;
+  const haveExport = !!exportInfo;
+
+  const {
+    step,
+    phases,
+    canNext,
+    next,
+    setStep,
+  } = usePhases({
+    editConfirmed,
+    haveExtract,
+    uploadPages: uploadMeta?.parsed?.pages ?? null,
+    haveDeck,
+    deckSlideCount: deck?.slide_count ?? null,
+    selectionComplete,
+    haveEditor,
+    haveExport,
+    storageKey: "phaseStep",
+    initialStep: 1,
+  });
+
+  /* --------------------------- handlers --------------------------- */
+  const onPick = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
     const input = e.currentTarget;
     const f = input.files?.[0];
     if (!f) return;
 
     setUploadErr(null);
     setUploadMeta(null);
-    setExportInfo(null); // clear any old export since input changed
+    setExportInfo(null);
+    setExportErr(null);
+    setEditorResp(null);
+    setSelection({});
+    setEditConfirmed(false);
+    clearError();
+    setOpenLibForSlide(null); // ← close any open drawer when starting a new upload
+    setStep(1);
 
     try {
-      const meta = await uploadFile(f);
+      const meta = await uploadFile(f); // returns { ...json, uploadId }
       setUploadMeta(meta);
       setTopic(meta.filename.replace(/\.[^.]+$/, ""));
+      show({ tone: "success", title: "Uploaded", description: meta.filename });
     } catch (err: any) {
-      setUploadErr(err.message || "upload failed");
+      const msg = err?.message || "upload failed";
+      setUploadErr(msg);
+      show({ tone: "danger", title: "Upload failed", description: msg });
     } finally {
       if (input) input.value = "";
     }
-  };
+  }, [clearError, show, setStep]);
 
-  // Generate outline
-  const runOutline = async () => {
-    setErr(null);
-    setDeck(null);
-    setLastReqId(null);
-    setLastServerTiming(null);
-    setExportInfo(null); // new outline -> previous export is stale
-    setGenerating(true);
+  const runOutline = useCallback(async () => {
+    setExportInfo(null);
+    setExportErr(null);
+    setEditorResp(null);
+    setBuildErr(null);
+    setSelection({});
+    setEditConfirmed(false);
+    clearError();
 
+    const body: OutlineRequest = {
+      topic,
+      slide_count: clamp(count, 1, 15),
+      text: uploadMeta?.parsed?.text ?? undefined,
+    };
     try {
-      const body: { topic?: string; text?: string; slide_count?: number } = {
-        topic,
-        slide_count: count,
-      };
-      if (uploadMeta?.parsed?.text) body.text = uploadMeta.parsed.text;
-
-      const { data, meta } = await api.outlineWithMeta(body);
-      setDeck(data);
-      setLastReqId(meta.requestId ?? null);
-      setLastServerTiming(meta.serverTiming);
-    } catch (e: any) {
-      if (e instanceof ApiError) {
-        setLastReqId(e.meta.requestId ?? null);
-        setErr(e.message);
-      } else {
-        setErr(e?.message || "failed");
-      }
-    } finally {
-      setGenerating(false);
+      await generate(body);
+      show({ tone: "success", title: "Outline ready", description: "Draft slides generated." });
+    } catch (err: any) {
+      show({ tone: "danger", title: "Generate failed", description: err?.message || "Could not generate outline." });
+      throw err;
     }
-  };
+  }, [topic, count, uploadMeta?.parsed?.text, generate, clearError, show]);
 
-  // Export
-  const copy = async (text: string) => {
-    try { await navigator.clipboard.writeText(text); } catch {}
-  };
+  const suggestLayoutsFromDeck = useCallback(async (d: Deck) => {
+    const nextSel: Record<string, string> = {};
+    await Promise.all(
+      d.slides.map(async (s) => {
+        const text_count = Math.max(0, (s.bullets || []).length);
+        const image_count = Math.max(0, (s.media || []).length);
+        try {
+          const { data } = await api.filterLayouts({
+            components: { text_count, image_count },
+            top_k: 1,
+          });
+          nextSel[s.id] = data.candidates?.[0] || layouts?.[0]?.id || "";
+        } catch {
+          nextSel[s.id] = layouts?.[0]?.id || "";
+        }
+      })
+    );
+    setSelection(nextSel);
+  }, [layouts]);
 
-  const runExport = async () => {
+  const confirmEdits = useCallback(async () => {
+    if (!deck) return;
+    setConfirming(true);
+    try {
+      await suggestLayoutsFromDeck(deck);
+      setEditConfirmed(true);
+      setStep(4);
+      show({ tone: "info", title: "Edits confirmed", description: "Initial layouts suggested." });
+    } catch (err: any) {
+      show({ tone: "danger", title: "Confirm failed", description: err?.message || "Could not confirm edits." });
+      throw err;
+    } finally {
+      setConfirming(false);
+    }
+  }, [deck, suggestLayoutsFromDeck, show, setStep]);
+
+  const runRegen = useCallback(
+    async (i: number) => {
+      if (!deck) return;
+      setRegenIndex(i);
+      try {
+        await regenerate(i, {
+          topic: deck.topic ?? topic,
+          text: uploadMeta?.parsed?.text ?? undefined,
+          slide_count: deck.slide_count ?? clamp(count, 1, 15),
+        });
+        setEditorResp(null);
+        setSelection((old) => {
+          const cp = { ...old };
+          delete cp[deck.slides[i].id];
+          return cp;
+        });
+        setEditConfirmed(false);
+        show({ tone: "info", title: "Slide regenerated", description: `Slide #${i + 1}` });
+      } catch (err: any) {
+        show({ tone: "danger", title: "Regenerate failed", description: err?.message || `Slide #${i + 1}` });
+        throw err;
+      } finally {
+        setRegenIndex(null);
+      }
+    },
+    [deck, topic, uploadMeta?.parsed?.text, count, regenerate, show]
+  );
+
+  const runBuildEditor = useCallback(async () => {
+    if (!deck) return;
+    setBuilding(true);
+    setBuildErr(null);
+    setEditorResp(null);
+    try {
+      const selections = deck.slides.map((s) => ({
+        slide_id: s.id,
+        layout_id: selection[s.id] || undefined,
+      }));
+      const themeMeta = themeKeyToMeta((THEMES as any)[theme] ? (theme as ThemeKey) : "default");
+
+      const { data } = await api.buildEditor(
+        { deck, selections, theme, policy: "best_fit", theme_meta: themeMeta },
+        { idempotencyKey: idemKeyRef.current }
+      );
+      setEditorResp(data);
+      const n = data.editor?.slides?.length ?? 0;
+      show({ tone: "success", title: "Editor built", description: `${n} slide(s)` });
+      if (data.warnings?.length) {
+        show({ tone: "info", title: "Build warnings", description: `${data.warnings.length} warning(s)` });
+      }
+    } catch (e: any) {
+      const msg = e?.message || "build failed";
+      setBuildErr(msg);
+      show({ tone: "danger", title: "Build failed", description: msg });
+    } finally {
+      setBuilding(false);
+    }
+  }, [deck, selection, theme, show]);
+
+  const runExport = useCallback(async () => {
     if (!deck) return;
     setExporting(true);
     setExportInfo(null);
+    setExportErr(null);
     try {
-      const { data } = await api.exportDeck({ slides: deck.slides, theme });
+      const themeMeta = themeKeyToMeta((THEMES as any)[theme] ? (theme as ThemeKey) : "default");
+      const body = editorResp?.editor
+        ? { editor: { ...editorResp.editor, theme_meta: editorResp.editor.theme_meta ?? themeMeta }, theme }
+        : { slides: deck.slides, theme, theme_meta: themeMeta };
+      const { data } = await api.exportDeck(body);
       setExportInfo(data);
+      const kb = Math.max(1, Math.round(data.bytes / 1024));
+      show({ tone: "success", title: "Exported", description: `.${data.format} — ${kb} KB` });
     } catch (e: any) {
-      setErr(e?.message || "export failed");
+      const msg = e?.message || "export failed";
+      setExportErr(msg);
+      show({ tone: "danger", title: "Export failed", description: msg });
     } finally {
       setExporting(false);
     }
-  };
+  }, [deck, editorResp?.editor, theme, show]);
 
-  const slides = deck?.slides ?? [];
+  const moveSlide = useCallback(
+    (from: number, to: number) => {
+      if (!deck) return;
+      if (to < 0 || to >= deck.slides.length || from === to) return;
+      setDeck((prev) => {
+        if (!prev) return prev;
+        const nextSlides = [...prev.slides];
+        const [spliced] = nextSlides.splice(from, 1);
+        nextSlides.splice(to, 0, spliced);
+        return { ...prev, slides: nextSlides, slide_count: nextSlides.length };
+      });
+      setEditorResp(null);
+      setEditConfirmed(false);
+    },
+    [deck, setDeck]
+  );
 
+  // Replace the whole media array with a single image (used by URL box or AI quick-generate)
+  const setImageForSlide = useCallback(
+    (idx: number, url: string, alt?: string) => {
+      updateSlide(idx, (prev) => ({
+        ...prev,
+        media: url ? [{ type: "image", url, alt: alt ?? prev.title }] : [],
+      }) as any);
+      setEditorResp(null);
+      setEditConfirmed(false);
+    },
+    [updateSlide]
+  );
+
+  // NEW: Append an image to the media array (used by Media Library)
+  const addImageToSlide = useCallback(
+    (idx: number, url: string, alt?: string) => {
+      updateSlide(idx, (prev) => {
+        const current = Array.isArray(prev.media) ? [...prev.media] : [];
+        // optional: avoid duplicates by URL
+        if (current.some((m: any) => m?.url === url)) return prev;
+        return {
+          ...prev,
+          media: [...current, { type: "image", url, alt: alt ?? prev.title }],
+        } as any;
+      });
+      setEditorResp(null);
+      setEditConfirmed(false);
+    },
+    [updateSlide]
+  );
+
+  const removeImageForSlide = useCallback(
+    (idx: number) => {
+      updateSlide(idx, (prev) => ({ ...prev, media: [] } as any));
+      setEditorResp(null);
+      setEditConfirmed(false);
+    },
+    [updateSlide]
+  );
+
+  const generateImageForSlide = useCallback(
+    (idx: number) => {
+      if (!deck) return;
+      const s = deck.slides[idx];
+      const seed = s.id || `${idx}-${Date.now()}`;
+      const url = `https://picsum.photos/seed/${encodeURIComponent(seed)}/800/400`;
+      setImageForSlide(idx, url, s.title);
+    },
+    [deck, setImageForSlide]
+  );
+
+  /* ------------------------------ UI ------------------------------ */
   return (
-    <div className="min-h-screen bg-gray-50 text-gray-900">
-      <header className="mx-auto max-w-4xl px-6 py-8">
-        <h1 className="text-2xl font-semibold">PresenTuneAI</h1>
-        <p className="text-sm text-gray-600">
-          API:{" "}
-          <span className={health === "ok" ? "text-green-600" : "text-amber-600"}>
-            {health === "checking" ? "checking..." : health}
-          </span>
-        </p>
-      </header>
+    <div className="min-h-screen text-gray-900" style={{ background: "var(--app-bg)" }}>
+      <ThemeRoot themeKey={theme as any} />
+      <HeaderBar
+        health={health}
+        schemaVersion={schemaVersion}
+        onOpenSettings={() => setSettingsOpen(true)}
+      />
 
       <main className="mx-auto max-w-4xl px-6">
-        {/* Upload */}
-        <section className="rounded-2xl bg-white shadow-sm p-6 mb-6">
-          <h2 className="text-lg font-medium mb-4">Upload</h2>
-          <input
-            type="file"
-            accept=".pdf,.docx,.txt"
-            onChange={onPick}
-            className="block w-full rounded-xl border px-3 py-2"
+        <PhaseBar phases={phases} />
+
+        {/* Step 1: Upload */}
+        <PhaseContainer
+          title="Upload Extract"
+          subtitle="PDF, DOCX or plain text. We extract text and (optionally) images."
+          step={1}
+          currentStep={step}
+          onNext={next}
+          nextLabel="Continue to Outline"
+        >
+          <UploadSection uploadErr={uploadErr} uploadMeta={uploadMeta} onPick={onPick} />
+        </PhaseContainer>
+
+        {/* Step 2: Outline Generate */}
+        <PhaseContainer
+          title="Outline Generate"
+          subtitle="Set slide count & theme, then generate."
+          step={2}
+          currentStep={step}
+          onNext={next}
+          nextLabel="Proceed to Editing"
+          nextDisabled={!canNext}
+        >
+          <OutlineControls
+            topic={topic}
+            setTopic={setTopic}
+            loading={loading}
+            onGenerate={runOutline}
+            hasSlides={slides.length > 0}
+            showInlineSettings
+            showSettingsButton={false}
+            theme={theme}
+            setTheme={setTheme}
+            count={count}
+            setCount={(n: number) => setCount(clamp(n, 1, 15))}
+            showImages={showImages}
+            setShowImages={setShowImages}
+            exporting={exporting}
+            exportInfo={exportInfo}
+            exportErr={exportErr || error}
+            onExport={runExport}
+            meta={meta}
+            copyToClipboard={copyToClipboard}
           />
-          {uploadErr && <p className="mt-2 text-sm text-red-600">{uploadErr}</p>}
-          {uploadMeta && (
-            <div className="mt-3 text-sm">
-              <div className="font-medium">{uploadMeta.filename}</div>
-              <div className="text-gray-600">
-                {Math.round(uploadMeta.size / 1024)} KB • {uploadMeta.content_type} • kind:{" "}
-                {uploadMeta.parsed.kind} • pages: {uploadMeta.parsed.pages}
-              </div>
-              <pre className="mt-2 whitespace-pre-wrap rounded-lg bg-gray-50 p-3 border">
-                {uploadMeta.parsed.text_preview}
-              </pre>
-            </div>
-          )}
-        </section>
+        </PhaseContainer>
 
-        {/* Outline */}
-        <section className="rounded-2xl bg-white shadow-sm p-6 mb-6">
-          <h2 className="text-lg font-medium mb-4">Generate Outline</h2>
-          <div className="grid gap-4 sm:grid-cols-3">
-            <label className="sm:col-span-2">
-              <span className="block text-sm mb-1">Topic</span>
-              <input
-                value={topic}
-                onChange={(e) => setTopic(e.target.value)}
-                className="w-full rounded-xl border px-3 py-2 outline-none focus:ring"
+        {/* Step 3: Edit & Assign */}
+        <PhaseContainer
+          title="Edit & Assign"
+          subtitle="Reorder slides, refine text, attach/AI-generate images. Confirm to move on."
+          step={3}
+          currentStep={step}
+          onNext={confirmEdits}
+          nextLabel="Confirm edits → Layouts"
+          nextDisabled={!canNext || confirming}
+        >
+          <Preview
+            deck={deck}
+            slides={slides}
+            displayTopic={displayTopic}
+            loading={loading}
+            meta={meta}
+            theme={theme}
+            showImages={showImages}
+            regenIndex={regenIndex}
+            onRegenerate={runRegen}
+            onUpdateSlide={(idx, nextSlide) => updateSlide(idx, () => nextSlide)}
+            onReorder={moveSlide}
+            onSetImage={setImageForSlide}
+            onRemoveImage={removeImageForSlide}
+            onGenerateImage={generateImageForSlide}
+            // Media library wiring
+            uploadId={uploadId}
+            onOpenMediaLibrary={(idx: number) => setOpenLibForSlide(idx)}
+          />
+        </PhaseContainer>
+
+        {/* Step 4: Layout Selection */}
+        <PhaseContainer
+          title="Layout Selection"
+          subtitle="Pick a layout per slide, then build an editor doc."
+          step={4}
+          currentStep={step}
+          onNext={next}
+          nextLabel="Proceed to Finalize"
+          nextDisabled={!canNext}
+        >
+          {slides.length > 0 && (
+            <>
+              <LayoutSelectionList
+                slides={slides}
+                layouts={layouts as LayoutItem[]}
+                selection={selection}
+                onSelect={(slideId, layoutId) => setSelection((x) => ({ ...x, [slideId]: layoutId }))}
               />
-            </label>
-            <label>
-              <span className="block text-sm mb-1">Slide count</span>
-              <input
-                type="number"
-                min={1}
-                max={15}
-                value={count}
-                onChange={(e) => setCount(Number(e.target.value))}
-                className="w-full rounded-xl border px-3 py-2 outline-none focus:ring"
-              />
-            </label>
-          </div>
-
-          {/* Export controls (theme + buttons) */}
-          <div className="flex items-center gap-3 mt-4">
-            <button
-              onClick={runOutline}
-              disabled={generating}
-              className={`rounded-xl px-4 py-2 text-white ${
-                generating ? "bg-gray-400 cursor-not-allowed" : "bg-black hover:opacity-90"
-              }`}
-            >
-              {generating ? "Generating…" : "Generate"}
-            </button>
-
-            {!!slides.length && (
-              <>
-                <label className="text-sm text-gray-700 flex items-center gap-2">
-                  Theme
-                  <input
-                    value={theme}
-                    onChange={(e) => setTheme(e.target.value)}
-                    className="rounded-lg border px-2 py-1"
-                  />
-                </label>
-
+              <div className="mt-4 flex items-center gap-3 flex-wrap">
                 <button
-                  onClick={runExport}
-                  disabled={exporting}
-                  className={`rounded-xl px-4 py-2 border ${
-                    exporting ? "opacity-50 cursor-not-allowed" : "hover:bg-gray-50"
+                  onClick={runBuildEditor}
+                  disabled={building || !haveDeck || !selectionComplete}
+                  className={`rounded-xl px-4 py-2 text-white ${
+                    building ? "bg-gray-400 cursor-not-allowed" : "bg-black hover:opacity-90"
                   }`}
                 >
-                  {exporting ? "Exporting…" : `Export (.${exportInfo?.format ?? "txt"})`}
+                  {building ? "Building…" : "Build Editor Doc"}
                 </button>
-              </>
-            )}
-          </div>
 
-          {err && (
-            <p className="mt-3 text-sm text-red-600">
-              {err}
-              {lastReqId && (
-                <span className="ml-2 inline-block rounded bg-red-50 text-red-700 px-2 py-0.5">
-                  req: {lastReqId}
-                </span>
-              )}
-            </p>
-          )}
+                {buildErr && <span className="text-sm text-red-600">{buildErr}</span>}
 
-          {lastServerTiming && (
-            <p className="mt-2 text-xs text-gray-500">server-timing: {lastServerTiming}</p>
-          )}
-
-          {exportInfo && (
-            <p className="mt-3 text-sm text-gray-700 flex items-center gap-2 flex-wrap">
-              <span>
-                Exported <strong>.{exportInfo.format}</strong>
-                {exportInfo.theme ? ` (theme: ${exportInfo.theme})` : ""} —
-                {Math.max(1, Math.round(exportInfo.bytes / 1024))} KB
-              </span>
-              <code className="bg-gray-50 px-2 py-0.5 rounded">{exportInfo.path}</code>
-              <button
-                onClick={() => copy(exportInfo.path)}
-                className="text-xs border rounded px-2 py-1 hover:bg-gray-50"
-                title="Copy path"
-              >
-                Copy
-              </button>
-            </p>
-          )}
-        </section>
-
-        {/* Preview */}
-        {!!slides.length && (
-          <section className="rounded-2xl bg-white shadow-sm p-6">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-base font-medium">Preview</h3>
-              <div className="text-sm text-gray-600">
-                {pretty(displayTopic)} • {deck?.slide_count ?? slides.length} slides
-                {lastReqId && (
-                  <span className="ml-2 inline-block rounded bg-gray-100 text-gray-700 px-2 py-0.5">
-                    req: {lastReqId}
+                {editorResp && (
+                  <span className="text-sm text-gray-700">
+                    Editor slides: <b>{editorResp.editor?.slides?.length ?? 0}</b>
+                    {editorResp.warnings?.length ? (
+                      <span className="ml-2 text-amber-700">Warnings: {editorResp.warnings.length}</span>
+                    ) : null}
                   </span>
                 )}
               </div>
-            </div>
-            <ul className="space-y-3">
-              {slides.map((s, i) => (
-                <li key={s.id ?? i} className="border rounded-xl p-4">
-                  <div className="font-semibold">{s.title}</div>
-                  {!!s.bullets?.length && (
-                    <ul className="list-disc ml-6">
-                      {s.bullets.map((b, j) => (
-                        <li key={j}>{b}</li>
-                      ))}
-                    </ul>
-                  )}
-                </li>
-              ))}
-            </ul>
-          </section>
-        )}
+            </>
+          )}
+        </PhaseContainer>
+
+        {/* Step 5: Finalize & Export */}
+        <PhaseContainer
+          title="Finalize & Export"
+          subtitle="Review the built editor doc and export a PPTX."
+          step={5}
+          currentStep={step}
+        >
+          <FinalizeSection editorResp={editorResp} />
+        </PhaseContainer>
       </main>
+
+      {/* Media Library drawer (only opens when we also have an uploadId) */}
+      <MediaLibraryDrawer
+        open={openLibForSlide !== null && !!uploadId}
+        onClose={() => setOpenLibForSlide(null)}
+        uploadId={uploadId}
+        onSelect={(url) => {
+          if (openLibForSlide !== null) {
+            // APPEND, don't replace
+            addImageToSlide(openLibForSlide, url);
+          }
+          setOpenLibForSlide(null);
+        }}
+      />
+
+      <Settings
+        open={settingsOpen}
+        onClose={() => setSettingsOpen(false)}
+        theme={theme}
+        setTheme={setTheme}
+        count={count}
+        setCount={(n) => setCount(clamp(n, 1, 15))}
+        showImages={showImages}
+        setShowImages={setShowImages}
+        apiBase={API_BASE}
+      />
     </div>
   );
 }

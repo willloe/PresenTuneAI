@@ -1,20 +1,36 @@
 # backend/app/core/config.py
-from pydantic_settings import BaseSettings, SettingsConfigDict
-from typing import List
+from __future__ import annotations
+
+from typing import List, Optional, Literal
 from pathlib import Path
+import shutil
+import os
+
+from pydantic import field_validator, model_validator, ValidationError
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 # Resolve the backend project root (…/backend)
 BACKEND_ROOT = Path(__file__).resolve().parents[2]
 
 
 class Settings(BaseSettings):
+    """Centralized runtime configuration.
+
+    Loads from environment (see .env / platform env), with safe defaults for local dev.
+    """
+
+    # ─────────────────────────── Runtime ───────────────────────────
     ENV: str = "local"
     DEBUG: bool = True
 
-    # Single API base
+    # API mount prefix
     API_BASE: str = "/v1"
 
-    # CORS for Vite + fallback ports
+    # ─────────────────────────── Auth (optional, Week 2) ──────────
+    AUTH_ENABLED: bool = False
+    API_TOKEN: str = "dev-token"
+
+    # ─────────────────────────── CORS ──────────────────────────────
     ALLOW_ALL_CORS: bool = False
     CORS_ALLOW_ORIGINS: List[str] = [
         "http://localhost:5173",
@@ -23,18 +39,77 @@ class Settings(BaseSettings):
         "http://127.0.0.1:3000",
     ]
 
+    # ─────────────────────────── Storage / Uploads ─────────────────
     STORAGE_DIR: Path = BACKEND_ROOT / "data" / "uploads"
     MAX_UPLOAD_MB: int = 20
 
-    # Retention knobs (from earlier)
+    # ─────────────────────────── Retention (housekeeping) ──────────
     ENABLE_RETENTION: bool = True
     RETENTION_DAYS: int = 7
     RETENTION_SWEEP_MINUTES: int = 30
 
+    # ─────────────────────────── Outline strategy (Week 2) ─────────
+    FEATURE_USE_MODEL: bool = False
+    AGENT_URL: str = "http://agent:8001"
+    AGENT_TIMEOUT_MS: int = 10_000
+
+    # ─────────────────────────── Image enrichment (Week 2) ─────────
+    FEATURE_IMAGE_API: bool = True
+    IMAGE_PROVIDER: Literal["stub", "pexels"] = "stub"
+    PEXELS_API_KEY: Optional[str] = None
+
+    # ─────────────────────────── Figures extraction (CORE) ─────────
+    USE_PDFFIGURES2: bool = True
+    PDFFIGURES2_BIN: Optional[str] = "/usr/local/bin/pdffigures2"
+
+    # ─────────────────────────── Observability ─────────────────────
+    TIMING_ALLOW_ORIGIN: str = "*"
+
+    # pydantic-settings configuration
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",
     )
+
+    # ─────────────────────────── Validators / Normalizers ──────────
+    @field_validator("STORAGE_DIR", mode="before")
+    @classmethod
+    def _abs_storage_dir(cls, v: Path | str) -> Path:
+        p = Path(v)
+        return p if p.is_absolute() else (BACKEND_ROOT / p).resolve()
+
+    @field_validator("MAX_UPLOAD_MB")
+    @classmethod
+    def _positive_upload_cap(cls, v: int) -> int:
+        if v <= 0:
+            raise ValueError("MAX_UPLOAD_MB must be > 0")
+        return v
+
+    @field_validator("AGENT_URL")
+    @classmethod
+    def _trim_agent_url(cls, v: str) -> str:
+        return (v or "").strip()
+
+    @model_validator(mode="after")
+    def _auth_require_token(self) -> "Settings":
+        if self.AUTH_ENABLED and not (self.API_TOKEN and self.API_TOKEN.strip()):
+            raise ValueError("AUTH_ENABLED=true requires API_TOKEN to be set.")
+        return self
+
+    @model_validator(mode="after")
+    def _pdffigures2_required_when_enabled(self) -> "Settings":
+        if self.USE_PDFFIGURES2:
+            bin_path = (self.PDFFIGURES2_BIN or "").strip()
+            found = bin_path if bin_path and Path(bin_path).exists() else shutil.which("pdffigures2")
+            if not found:
+                raise ValueError(
+                    "USE_PDFFIGURES2=true but pdffigures2 is not available. "
+                    "Set PDFFIGURES2_BIN or ensure it's on PATH."
+                )
+            self.PDFFIGURES2_BIN = str(Path(found).resolve())
+            # ensure downstream code + subprocess can discover it
+            os.environ.setdefault("PDFFIGURES2_BIN", self.PDFFIGURES2_BIN)
+        return self
 
 
 settings = Settings()

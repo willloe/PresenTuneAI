@@ -1,0 +1,6 @@
+{
+  "GOOGLE_CLIENT_ID": "700546781116-p7mo0a4dk312eho0mva294anrcn64a72.apps.googleusercontent.com",
+  "MSAL_CLIENT_ID": "YOUR_AZURE_APP_CLIENT_ID",
+  "MSAL_TENANT": "common",
+  "MSAL_REDIRECT_URI": "http://localhost:5173"
+}

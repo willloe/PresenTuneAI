@@ -1,0 +1,103 @@
+{
+  "$defs": {
+    "Media": {
+      "properties": {
+        "type": {
+          "const": "image",
+          "default": "image",
+          "enum": [
+            "image"
+          ],
+          "title": "Type",
+          "type": "string"
+        },
+        "url": {
+          "format": "uri",
+          "maxLength": 2083,
+          "minLength": 1,
+          "title": "Url",
+          "type": "string"
+        },
+        "alt": {
+          "anyOf": [
+            {
+              "maxLength": 160,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Alt"
+        }
+      },
+      "required": [
+        "url"
+      ],
+      "title": "Media",
+      "type": "object"
+    }
+  },
+  "properties": {
+    "id": {
+      "description": "Client/UI-generated id (uuid/ulid)",
+      "title": "Id",
+      "type": "string"
+    },
+    "title": {
+      "maxLength": 200,
+      "minLength": 1,
+      "title": "Title",
+      "type": "string"
+    },
+    "bullets": {
+      "description": "Bullet points",
+      "items": {
+        "type": "string"
+      },
+      "maxItems": 12,
+      "title": "Bullets",
+      "type": "array"
+    },
+    "notes": {
+      "anyOf": [
+        {
+          "maxLength": 4000,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Notes"
+    },
+    "layout": {
+      "default": "title-bullets",
+      "enum": [
+        "title",
+        "title-bullets",
+        "two-col"
+      ],
+      "title": "Layout",
+      "type": "string"
+    },
+    "media": {
+      "items": {
+        "$ref": "#/$defs/Media"
+      },
+      "title": "Media",
+      "type": "array"
+    }
+  },
+  "required": [
+    "id",
+    "title"
+  ],
+  "title": "Slide",
+  "type": "object",
+  "$id": "https://presen-tune-ai.local/schema/slide.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "x-schema-version": "1.0"
+}
