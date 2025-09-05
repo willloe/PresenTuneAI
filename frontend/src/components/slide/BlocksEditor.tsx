@@ -1,3 +1,4 @@
+import { useState } from "react";
 import type { TextSection } from "../../types/deck";
 import {
   BULLETS_MAX,
@@ -8,12 +9,14 @@ import {
 import Button from "../ui/Button";
 import IconButton from "../ui/IconButton";
 import Select from "../ui/Select";
+import { useToast } from "../ui/Toast";
 
 type Props = {
   sections: TextSection[];
   onChange: (next: TextSection[]) => void;
-  onRequestSave: () => void;   // for Cmd/Ctrl+S
-  onRequestCancel: () => void; // for Esc
+  onRequestSave: () => void | Promise<void>;   // can be async or sync
+  onRequestCancel: () => void;                 // sync is fine here
+  showActions?: boolean;
 };
 
 export default function BlocksEditor({
@@ -21,7 +24,38 @@ export default function BlocksEditor({
   onChange,
   onRequestSave,
   onRequestCancel,
+  showActions = true, 
 }: Props) {
+  const { show } = useToast();
+  const [saving, setSaving] = useState(false);
+
+  async function handleSave() {
+    try {
+      setSaving(true);
+      // support both sync and async handlers from parent
+      await Promise.resolve(onRequestSave());
+      show({
+        title: "Saved",
+        description: "Text sections updated.",
+        tone: "success",
+        timeoutMs: 1600,
+      });
+    } catch (err: any) {
+      show({
+        title: "Couldn't save",
+        description: err?.message ?? "Please try again.",
+        tone: "danger",
+      });
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  function handleCancel() {
+    onRequestCancel();
+    show({ title: "Changes discarded", tone: "info", timeoutMs: 1400 });
+  }
+
   function addSection(kind: TextSection["kind"]) {
     const base: TextSection =
       kind === "paragraph"
@@ -152,10 +186,10 @@ export default function BlocksEditor({
                 onKeyDown={(e) => {
                   if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "s") {
                     e.preventDefault();
-                    onRequestSave();
+                    handleSave(); // toast-aware save
                   } else if (e.key === "Escape") {
                     e.preventDefault();
-                    onRequestCancel();
+                    handleCancel(); // toast-aware cancel
                   }
                 }}
                 rows={Math.max(2, Math.min(8, (s.text ?? "").split(/\r?\n/).length))}
@@ -174,23 +208,33 @@ export default function BlocksEditor({
                 onKeyDown={(e) => {
                   if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "s") {
                     e.preventDefault();
-                    onRequestSave();
+                    handleSave();
                   } else if (e.key === "Escape") {
                     e.preventDefault();
-                    onRequestCancel();
+                    handleCancel();
                   }
                 }}
                 rows={Math.max(3, Math.min(10, (s.bullets ?? []).length || 3))}
                 className="mt-2 w-full rounded-xl border px-3 py-2 outline-none focus:ring bg-white"
                 placeholder={"- First point\n- Second point"}
               />
-              <div className="mt-1 text-[11px] text-gray-500">
+              <div className="mt-1 text-[11px] text-right text-gray-500">
                 {(s.bullets ?? []).length}/{BULLETS_MAX} bullets
               </div>
             </>
           )}
         </div>
       ))}
+
+      {/* Action row */}
+      {showActions && (
+        <div className="flex items-center gap-2 pt-1">
+          <Button variant="solid" onClick={handleSave} disabled={saving}>
+            {saving ? "Saving…" : "Save"}
+          </Button>
+          <Button onClick={handleCancel}>Cancel</Button>
+        </div>
+      )}
     </div>
   );
 }

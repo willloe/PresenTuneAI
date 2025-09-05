@@ -1,4 +1,3 @@
-// frontend/src/components/editor/LayerView.tsx
 import { useState, type CSSProperties } from "react";
 import type { EditorLayer } from "../../lib/api";
 
