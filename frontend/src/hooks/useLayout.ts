@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { api, type LayoutItem } from "../lib/api";
+import { api, type LayoutItem, type LayoutRecommendBatchResponse, type LayoutRecommendSlideSummary } from "../lib/api";
 
 export function useLayouts() {
   const [items, setItems] = useState<LayoutItem[]>([]);
@@ -24,4 +24,13 @@ export function useLayouts() {
   }, []);
 
   return { items, loading, error, refresh };
+}
+
+/** OPTIONAL helper: batch recommendation wrapper (Top-K + slots + reasons) */
+export async function recommendLayoutsBatch(
+  slides: LayoutRecommendSlideSummary[],
+  top_k = 5
+): Promise<LayoutRecommendBatchResponse> {
+  const { data } = await api.recommendLayoutsBatch({ slides, top_k });
+  return data;
 }

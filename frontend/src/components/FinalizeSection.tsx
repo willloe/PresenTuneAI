@@ -9,9 +9,10 @@ import { getConfig } from "../config";
 
 type Props = {
   editorResp: EditorBuildResponse | null;
+  onOpenWorkbench?: () => void;
 };
 
-export default function FinalizeSection({ editorResp }: Props) {
+export default function FinalizeSection({ editorResp, onOpenWorkbench }: Props) {
   const { setStep } = usePhases();
   const { ready, theme, exporting, exportErr, exportInfo, downloadUrl, lastExport, runExport } =
     useExport({ editorResp });
@@ -19,7 +20,6 @@ export default function FinalizeSection({ editorResp }: Props) {
   const [opening, setOpening] = useState<null | "google">(null);
   const [googleConfigured, setGoogleConfigured] = useState<boolean>(true);
 
-  // ---- detect if Google is configured
   useEffect(() => {
     (async () => {
       try {
@@ -31,7 +31,6 @@ export default function FinalizeSection({ editorResp }: Props) {
     })();
   }, []);
 
-  // ---- build a lightweight fingerprint for the current editor build
   const autoExportKey = useMemo(() => {
     const ed = editorResp?.editor;
     if (!ed) return null;
@@ -39,7 +38,6 @@ export default function FinalizeSection({ editorResp }: Props) {
     return `${theme}|${(ed.slides || []).length}|${ids}`;
   }, [editorResp?.editor, theme]);
 
-  // ---- run export automatically once per unique editor build
   const autoRanForKey = useRef<string | null>(null);
   useEffect(() => {
     if (!ready || exporting || !autoExportKey) return;
@@ -49,7 +47,6 @@ export default function FinalizeSection({ editorResp }: Props) {
       try {
         await runExport();
       } catch {
-        // allow retry if user re-enters or re-builds
         autoRanForKey.current = null;
       }
     })();
@@ -60,8 +57,6 @@ export default function FinalizeSection({ editorResp }: Props) {
     () => (ready ? `Editor: ✓ built ${slidesCount} slide${slidesCount === 1 ? "" : "s"}` : "Editor: not ready"),
     [ready, slidesCount]
   );
-
-  const exportBtnLabel = exporting ? "Exporting…" : exportInfo ? "Re-export" : "Export";
 
   function rebuildEditor() {
     setStep?.(4);
@@ -75,7 +70,6 @@ export default function FinalizeSection({ editorResp }: Props) {
     } catch {}
   }
 
-  // --- Google helper flow ---
   async function fetchExportBlob(url: string): Promise<Blob> {
     const r = await fetch(url, { credentials: "include" });
     if (!r.ok) throw new Error(`Download failed: ${r.status}`);
@@ -83,17 +77,15 @@ export default function FinalizeSection({ editorResp }: Props) {
   }
   async function getGoogleAccessToken(): Promise<string | null> {
     try {
-      return await ensureGoogleDriveToken(); // scope: drive.file
+      return await ensureGoogleDriveToken();
     } catch (e) {
       console.error(e);
       return null;
     }
   }
-  // ---------------------------
 
   return (
     <div className="space-y-3">
-      {/* Status bar */}
       <div className="flex items-center justify-between rounded-xl border bg-white p-3 text-sm">
         <div className="flex items-center gap-3 flex-wrap">
           <span className={ready ? "text-green-700" : "text-gray-700"}>{statusLabel}</span>
@@ -112,19 +104,29 @@ export default function FinalizeSection({ editorResp }: Props) {
           )}
         </div>
 
-        <button
-          onClick={runExport}
-          disabled={exporting || !ready}
-          className={`rounded-xl px-4 py-2 text-white ${
-            exporting || !ready ? "bg-gray-400 cursor-not-allowed" : "bg-black hover:opacity-90"
-          }`}
-          title={!ready ? "Build the editor doc first (Step 4)" : "Export deck"}
-        >
-          {exportBtnLabel}
-        </button>
+        <div className="flex items-center gap-2">
+          {editorResp?.editor && (
+            <button
+              onClick={onOpenWorkbench}
+              className="rounded-xl px-3 py-1 border hover:bg-gray-50"
+              title="Open the editor workbench"
+            >
+              Open Workbench
+            </button>
+          )}
+          <button
+            onClick={runExport}
+            disabled={exporting || !ready}
+            className={`rounded-xl px-4 py-2 text-white ${
+              exporting || !ready ? "bg-gray-400 cursor-not-allowed" : "bg-black hover:opacity-90"
+            }`}
+            title={!ready ? "Build the editor doc first (Step 4)" : "Export deck"}
+          >
+            {exporting ? "Exporting…" : exportInfo ? "Re-export" : "Export"}
+          </button>
+        </div>
       </div>
 
-      {/* Build result/debug */}
       <div className="rounded-xl border p-3 bg-gray-50 text-sm">
         <div className="font-medium mb-1">Editor build result</div>
         {editorResp ? (
@@ -168,7 +170,6 @@ export default function FinalizeSection({ editorResp }: Props) {
         </div>
       )}
 
-      {/* Current export result (immediate) */}
       <div className="mt-2 flex items-center gap-3 flex-wrap">
         {exportErr && (
           <>
@@ -199,7 +200,6 @@ export default function FinalizeSection({ editorResp }: Props) {
         )}
       </div>
 
-      {/* Latest successful export (persists across refresh) */}
       {lastExport && (
         <div className="rounded-xl border bg-white p-3">
           <div className="flex flex-wrap items-center gap-3">
@@ -234,7 +234,6 @@ export default function FinalizeSection({ editorResp }: Props) {
               {copied ? "Copied!" : "Copy URL"}
             </button>
 
-            {/* Open in Google Slides */}
             <button
               className="inline-flex items-center text-xs rounded-md border px-2 py-1 hover:bg-gray-50 disabled:opacity-50"
               disabled={exporting || !lastExport.url || opening !== null || !googleConfigured}

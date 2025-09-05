@@ -4,60 +4,65 @@ import { useLocalStorage } from "./useLocalStorage";
 
 export type UsePhasesArgs = {
   // Inputs that determine readiness / hints
-  editConfirmed: boolean;      // confirms done in step 3
+  /** (legacy; ignored in new flow) */
+  editConfirmed: boolean;
   haveExtract: boolean;
   uploadPages?: number | null;
   haveDeck: boolean;
   deckSlideCount?: number | null;
+  /** (legacy; ignored in new flow) */
   selectionComplete: boolean;
-  haveEditor: boolean;
+  haveEditor: boolean; // built editor doc
   haveExport: boolean;
 
   // Optional persistence key & initial step
-  storageKey?: string;         // default: "phaseStep"
-  initialStep?: number;        // default: 1
+  storageKey?: string;  // default: "phaseStep"
+  initialStep?: number; // default: 1
 };
 
-type PhaseId = 1 | 2 | 3 | 4 | 5;
-const clampStep = (n: number): PhaseId => (Math.max(1, Math.min(5, Math.floor(n))) as PhaseId);
+// 4 steps now: Upload → Outline → Workbench → Finalize
+type PhaseId = 1 | 2 | 3 | 4;
+const clampStep = (n: number): PhaseId => (Math.max(1, Math.min(4, Math.floor(n))) as PhaseId);
 
-// ⬇️ Accept partial args and default safely so the hook can be called with no params
+// New 4-step orchestrator
 export function usePhases(args: Partial<UsePhasesArgs> = {}) {
   const {
-    editConfirmed = false,
     haveExtract = false,
     uploadPages = null,
     haveDeck = false,
     deckSlideCount = null,
-    selectionComplete = false,
     haveEditor = false,
     haveExport = false,
+
     storageKey = "phaseStep",
     initialStep = 1,
   } = args;
 
-  // Persist the user's requested step
+  // Persist user's requested step
   const [requested, setRequested] = useLocalStorage<number>(storageKey, initialStep);
 
-  // Auto-back rules to ensure consistency with the current app state
+  // Auto-back rules to ensure consistency with current app state
   const safeStep: PhaseId = useMemo(() => {
     let s = clampStep(requested || 1);
-    if (s >= 5 && !haveEditor) s = 4;
-    if (s >= 4 && !editConfirmed) s = 3;
+    // Can't be in Finalize without an editor doc
+    if (s >= 4 && !haveEditor) s = 3;
+    // Can't be in Workbench without a deck
     if (s >= 3 && !haveDeck) s = 2;
+    // Can't be in Outline without an extract (optional guard)
+    if (s >= 2 && !haveExtract) s = 1;
     return s;
-  }, [requested, editConfirmed, haveEditor, haveDeck]);
+  }, [requested, haveEditor, haveDeck, haveExtract]);
 
   // Guardrails for moving forward
   const canNext: boolean = useMemo(() => {
     switch (safeStep) {
-      case 1: return true;                          // can proceed to Generate
-      case 2: return !!haveDeck;                    // need slides to leave Outline
-      case 3: return !!haveDeck;                    // allow Confirm button; the click sets editConfirmed & advances
-      case 4: return !!selectionComplete && !!haveEditor; // need layouts selected AND built editor
-      default: return false;                        // step 5 has no “next”
+      case 1: return true;           // proceed to Outline anytime
+      case 2: return !!haveDeck;     // need slides to leave Outline
+      case 3: return !!haveEditor;   // need a built editor doc to Finalize
+      case 4: return false;          // last step
+      default: return false;
     }
-  }, [safeStep, haveDeck, selectionComplete, haveEditor]);
+  }, [safeStep, haveDeck, haveEditor]);
 
   const canPrev = safeStep > 1;
 
@@ -65,16 +70,19 @@ export function usePhases(args: Partial<UsePhasesArgs> = {}) {
     if (!canNext) return false;
     setRequested(clampStep(safeStep + 1));
     return true;
-  }, [canNext, safeStep, setRequested]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [canNext, safeStep]);
 
   const prev = useCallback(() => {
     if (!canPrev) return;
     setRequested(clampStep(safeStep - 1));
-  }, [canPrev, safeStep, setRequested]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [canPrev, safeStep]);
 
   const setStep = useCallback((n: number) => {
     setRequested(clampStep(n));
-  }, [setRequested]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Phase bar data
   const statusFor = (id: number): Phase["status"] =>
@@ -96,24 +104,18 @@ export function usePhases(args: Partial<UsePhasesArgs> = {}) {
       },
       {
         id: 3,
-        title: "Edit & Assign",
+        title: "Editor Workbench",
         status: statusFor(3),
-        hint: "reorder / text / images",
+        hint: haveEditor ? "built" : "edit • layout • media",
       },
       {
         id: 4,
-        title: "Layout Selection",
-        status: statusFor(4),
-        hint: selectionComplete ? "ready" : undefined,
-      },
-      {
-        id: 5,
         title: "Finalize & Export",
-        status: statusFor(5),
+        status: statusFor(4),
         hint: haveExport ? "exported" : haveEditor ? "built" : undefined,
       },
     ],
-    [haveExtract, uploadPages, haveDeck, deckSlideCount, selectionComplete, haveExport, haveEditor, safeStep]
+    [haveExtract, uploadPages, haveDeck, deckSlideCount, haveEditor, haveExport, safeStep]
   );
 
   return {

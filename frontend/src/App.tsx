@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   api,
   API_BASE,
@@ -24,17 +24,20 @@ import {
   HeaderBar,
   UploadSection,
   OutlineControls,
-  Preview,
   Settings,
 } from "./components";
 import PhaseBar from "./components/PhaseBar";
 import PhaseContainer from "./components/PhaseContainer";
-import LayoutSelectionList from "./components/layout/LayoutSelectionList";
 import FinalizeSection from "./components/FinalizeSection";
 import { useToast } from "./components/ui/Toast";
 
 // Media library drawer
 import MediaLibraryDrawer from "./components/media/MediaLibraryDrawer";
+// Workbench (inline)
+import EditorWorkbench from "./components/editor/EditorWorkbench";
+
+// Slot-aware plan
+import { useMediaPlan } from "./hooks/useMediaPlan";
 
 export default function App() {
   // Health + schema
@@ -50,11 +53,10 @@ export default function App() {
   // Upload
   const [uploadMeta, setUploadMeta] = useState<UploadResponse | null>(null);
   const [uploadErr, setUploadErr] = useState<string | null>(null);
-  const uploadId = uploadMeta?.uploadId ?? null; // ← convenience
+  const uploadId = uploadMeta?.uploadId ?? null;
 
   // Outline
-  const { deck, loading, error, meta, generate, regenerate, updateSlide, clearError, setDeck } =
-    useOutline();
+  const { deck, loading, error, meta, generate, updateSlide, clearError } = useOutline();
 
   // Layouts & Editor
   const { items: layouts } = useLayouts();
@@ -64,29 +66,25 @@ export default function App() {
   const [buildErr, setBuildErr] = useState<string | null>(null);
   const idemKeyRef = useRef<string>(safeUUID());
 
-  const [editConfirmed, setEditConfirmed] = useState(false);
-  const [confirming, setConfirming] = useState(false);
-
   // Export
   const [exportInfo, setExportInfo] = useState<ExportResp | null>(null);
   const [exporting, setExporting] = useState(false);
   const [exportErr, setExportErr] = useState<string | null>(null);
 
-  // Regen
-  const [regenIndex, setRegenIndex] = useState<number | null>(null);
-
-  // Which slide is opening the media library (null = closed)
-  const [openLibForSlide, setOpenLibForSlide] = useState<number | null>(null);
+  // Media drawer target (slide + optional slot)
+  const [openLibTarget, setOpenLibTarget] = useState<{ slide: number; slot: number | null } | null>(null);
 
   // Derived
   const slides: Deck["slides"] = deck?.slides ?? [];
-  const displayTopic = (deck?.topic || topic || uploadMeta?.filename || "Untitled") as string;
 
   // Toasts
   const { show } = useToast();
 
+  // Slot-aware plan util (only used to register setSlot on changes)
+  const { setSlot } = useMediaPlan();
+
   // Phase orchestration
-  const haveExtract = !!uploadMeta; // we only use text/pages gating for the wizard
+  const haveExtract = !!uploadMeta;
   const haveDeck = slides.length > 0;
   const selectionComplete = useMemo(
     () => haveDeck && slides.every((s) => !!selection[s.id]),
@@ -102,7 +100,7 @@ export default function App() {
     next,
     setStep,
   } = usePhases({
-    editConfirmed,
+    editConfirmed: true, // workbench replaces confirm step
     haveExtract,
     uploadPages: uploadMeta?.parsed?.pages ?? null,
     haveDeck,
@@ -126,13 +124,12 @@ export default function App() {
     setExportErr(null);
     setEditorResp(null);
     setSelection({});
-    setEditConfirmed(false);
     clearError();
-    setOpenLibForSlide(null); // ← close any open drawer when starting a new upload
+    setOpenLibTarget(null);
     setStep(1);
 
     try {
-      const meta = await uploadFile(f); // returns { ...json, uploadId }
+      const meta = await uploadFile(f);
       setUploadMeta(meta);
       setTopic(meta.filename.replace(/\.[^.]+$/, ""));
       show({ tone: "success", title: "Uploaded", description: meta.filename });
@@ -151,7 +148,6 @@ export default function App() {
     setEditorResp(null);
     setBuildErr(null);
     setSelection({});
-    setEditConfirmed(false);
     clearError();
 
     const body: OutlineRequest = {
@@ -162,12 +158,14 @@ export default function App() {
     try {
       await generate(body);
       show({ tone: "success", title: "Outline ready", description: "Draft slides generated." });
+      setStep(3);
     } catch (err: any) {
       show({ tone: "danger", title: "Generate failed", description: err?.message || "Could not generate outline." });
       throw err;
     }
-  }, [topic, count, uploadMeta?.parsed?.text, generate, clearError, show]);
+  }, [topic, count, uploadMeta?.parsed?.text, generate, clearError, show, setStep]);
 
+  // Suggest a best layout per slide (fallback to local filter) — auto-runs when deck arrives
   const suggestLayoutsFromDeck = useCallback(async (d: Deck) => {
     const nextSel: Record<string, string> = {};
     await Promise.all(
@@ -179,58 +177,20 @@ export default function App() {
             components: { text_count, image_count },
             top_k: 1,
           });
-          nextSel[s.id] = data.candidates?.[0] || layouts?.[0]?.id || "";
+          nextSel[s.id] = data.candidates?.[0] || layouts?.[0]?.id || "AUTO";
         } catch {
-          nextSel[s.id] = layouts?.[0]?.id || "";
+          nextSel[s.id] = layouts?.[0]?.id || "AUTO";
         }
       })
     );
     setSelection(nextSel);
   }, [layouts]);
 
-  const confirmEdits = useCallback(async () => {
-    if (!deck) return;
-    setConfirming(true);
-    try {
-      await suggestLayoutsFromDeck(deck);
-      setEditConfirmed(true);
-      setStep(4);
-      show({ tone: "info", title: "Edits confirmed", description: "Initial layouts suggested." });
-    } catch (err: any) {
-      show({ tone: "danger", title: "Confirm failed", description: err?.message || "Could not confirm edits." });
-      throw err;
-    } finally {
-      setConfirming(false);
-    }
-  }, [deck, suggestLayoutsFromDeck, show, setStep]);
-
-  const runRegen = useCallback(
-    async (i: number) => {
-      if (!deck) return;
-      setRegenIndex(i);
-      try {
-        await regenerate(i, {
-          topic: deck.topic ?? topic,
-          text: uploadMeta?.parsed?.text ?? undefined,
-          slide_count: deck.slide_count ?? clamp(count, 1, 15),
-        });
-        setEditorResp(null);
-        setSelection((old) => {
-          const cp = { ...old };
-          delete cp[deck.slides[i].id];
-          return cp;
-        });
-        setEditConfirmed(false);
-        show({ tone: "info", title: "Slide regenerated", description: `Slide #${i + 1}` });
-      } catch (err: any) {
-        show({ tone: "danger", title: "Regenerate failed", description: err?.message || `Slide #${i + 1}` });
-        throw err;
-      } finally {
-        setRegenIndex(null);
-      }
-    },
-    [deck, topic, uploadMeta?.parsed?.text, count, regenerate, show]
-  );
+  useEffect(() => {
+    if (!deck?.slides?.length) return;
+    const haveAny = deck.slides.some((s) => !!selection[s.id]);
+    if (!haveAny) void suggestLayoutsFromDeck(deck);
+  }, [deck, selection, suggestLayoutsFromDeck]);
 
   const runBuildEditor = useCallback(async () => {
     if (!deck) return;
@@ -238,10 +198,10 @@ export default function App() {
     setBuildErr(null);
     setEditorResp(null);
     try {
-      const selections = deck.slides.map((s) => ({
-        slide_id: s.id,
-        layout_id: selection[s.id] || undefined,
-      }));
+      const selections = deck.slides.map((s) => {
+        const chosen = selection[s.id];
+        return { slide_id: s.id, layout_id: chosen && chosen !== "AUTO" ? chosen : undefined };
+      });
       const themeMeta = themeKeyToMeta((THEMES as any)[theme] ? (theme as ThemeKey) : "default");
 
       const { data } = await api.buildEditor(
@@ -286,85 +246,31 @@ export default function App() {
     }
   }, [deck, editorResp?.editor, theme, show]);
 
-  const moveSlide = useCallback(
-    (from: number, to: number) => {
+  // Place/replace at an exact slot index
+  const setImageForSlot = useCallback(
+    (slideIdx: number, slotIdx: number, url: string, alt?: string) => {
       if (!deck) return;
-      if (to < 0 || to >= deck.slides.length || from === to) return;
-      setDeck((prev) => {
-        if (!prev) return prev;
-        const nextSlides = [...prev.slides];
-        const [spliced] = nextSlides.splice(from, 1);
-        nextSlides.splice(to, 0, spliced);
-        return { ...prev, slides: nextSlides, slide_count: nextSlides.length };
-      });
-      setEditorResp(null);
-      setEditConfirmed(false);
-    },
-    [deck, setDeck]
-  );
-
-  // Replace the whole media array with a single image (used by URL box or AI quick-generate)
-  const setImageForSlide = useCallback(
-    (idx: number, url: string, alt?: string) => {
-      updateSlide(idx, (prev) => ({
-        ...prev,
-        media: url ? [{ type: "image", url, alt: alt ?? prev.title }] : [],
-      }) as any);
-      setEditorResp(null);
-      setEditConfirmed(false);
-    },
-    [updateSlide]
-  );
-
-  // NEW: Append an image to the media array (used by Media Library)
-  const addImageToSlide = useCallback(
-    (idx: number, url: string, alt?: string) => {
-      updateSlide(idx, (prev) => {
+      updateSlide(slideIdx, (prev) => {
         const current = Array.isArray(prev.media) ? [...prev.media] : [];
-        // optional: avoid duplicates by URL
-        if (current.some((m: any) => m?.url === url)) return prev;
-        return {
-          ...prev,
-          media: [...current, { type: "image", url, alt: alt ?? prev.title }],
-        } as any;
+        const img = { type: "image", url, alt: alt ?? prev.title } as any;
+        if (slotIdx < current.length) current[slotIdx] = img;
+        else current.push(img);
+        return { ...prev, media: current } as any;
       });
+      const slideId = deck.slides[slideIdx]?.id;
+      if (slideId) setSlot(slideId, slotIdx, { source: "library", url, alt });
       setEditorResp(null);
-      setEditConfirmed(false);
     },
-    [updateSlide]
-  );
-
-  const removeImageForSlide = useCallback(
-    (idx: number) => {
-      updateSlide(idx, (prev) => ({ ...prev, media: [] } as any));
-      setEditorResp(null);
-      setEditConfirmed(false);
-    },
-    [updateSlide]
-  );
-
-  const generateImageForSlide = useCallback(
-    (idx: number) => {
-      if (!deck) return;
-      const s = deck.slides[idx];
-      const seed = s.id || `${idx}-${Date.now()}`;
-      const url = `https://picsum.photos/seed/${encodeURIComponent(seed)}/800/400`;
-      setImageForSlide(idx, url, s.title);
-    },
-    [deck, setImageForSlide]
+    [deck, setSlot, updateSlide]
   );
 
   /* ------------------------------ UI ------------------------------ */
   return (
     <div className="min-h-screen text-gray-900" style={{ background: "var(--app-bg)" }}>
       <ThemeRoot themeKey={theme as any} />
-      <HeaderBar
-        health={health}
-        schemaVersion={schemaVersion}
-        onOpenSettings={() => setSettingsOpen(true)}
-      />
+      <HeaderBar health={health} schemaVersion={schemaVersion} onOpenSettings={() => setSettingsOpen(true)} />
 
-      <main className="mx-auto max-w-4xl px-6">
+      <main className="mx-auto max-w-5xl px-6">
         <PhaseBar phases={phases} />
 
         {/* Step 1: Upload */}
@@ -385,8 +291,8 @@ export default function App() {
           subtitle="Set slide count & theme, then generate."
           step={2}
           currentStep={step}
-          onNext={next}
-          nextLabel="Proceed to Editing"
+          onNext={() => setStep(3)}
+          nextLabel="Proceed to Workbench"
           nextDisabled={!canNext}
         >
           <OutlineControls
@@ -412,103 +318,109 @@ export default function App() {
           />
         </PhaseContainer>
 
-        {/* Step 3: Edit & Assign */}
+        {/* Step 3: Editor Workbench (INLINE) */}
         <PhaseContainer
-          title="Edit & Assign"
-          subtitle="Reorder slides, refine text, attach/AI-generate images. Confirm to move on."
+          title="Editor Workbench"
+          subtitle="Edit text, choose layouts, and manage images in one place. Build when ready."
           step={3}
           currentStep={step}
-          onNext={confirmEdits}
-          nextLabel="Confirm edits → Layouts"
-          nextDisabled={!canNext || confirming}
-        >
-          <Preview
-            deck={deck}
-            slides={slides}
-            displayTopic={displayTopic}
-            loading={loading}
-            meta={meta}
-            theme={theme}
-            showImages={showImages}
-            regenIndex={regenIndex}
-            onRegenerate={runRegen}
-            onUpdateSlide={(idx, nextSlide) => updateSlide(idx, () => nextSlide)}
-            onReorder={moveSlide}
-            onSetImage={setImageForSlide}
-            onRemoveImage={removeImageForSlide}
-            onGenerateImage={generateImageForSlide}
-            // Media library wiring
-            uploadId={uploadId}
-            onOpenMediaLibrary={(idx: number) => setOpenLibForSlide(idx)}
-          />
-        </PhaseContainer>
-
-        {/* Step 4: Layout Selection */}
-        <PhaseContainer
-          title="Layout Selection"
-          subtitle="Pick a layout per slide, then build an editor doc."
-          step={4}
-          currentStep={step}
           onNext={next}
-          nextLabel="Proceed to Finalize"
-          nextDisabled={!canNext}
+          nextLabel={editorResp ? "Proceed to Finalize" : "Build editor to continue"}
+          nextDisabled={!editorResp}
         >
-          {slides.length > 0 && (
-            <>
-              <LayoutSelectionList
+          {deck && slides.length > 0 ? (
+            <div className="rounded-2xl bg-white shadow-sm border p-4">
+              <EditorWorkbench
+                deck={deck}
                 slides={slides}
+                theme={theme}
                 layouts={layouts as LayoutItem[]}
                 selection={selection}
-                onSelect={(slideId, layoutId) => setSelection((x) => ({ ...x, [slideId]: layoutId }))}
+                onSelectLayout={(slideId: string, layoutId: string) =>
+                  setSelection((x) => ({ ...x, [slideId]: layoutId }))
+                }
+                onAutoFit={async (slideId: string) => {
+                  const s = deck.slides.find((sl) => sl.id === slideId);
+                  if (!s) return;
+                  const text_count = Math.max(0, (s.bullets || []).length);
+                  const image_count = Math.max(0, (s.media || []).length);
+                  try {
+                    const { data } = await api.filterLayouts({
+                      components: { text_count, image_count },
+                      top_k: 1,
+                    });
+                    const id = data.candidates?.[0] || layouts?.[0]?.id || "AUTO";
+                    setSelection((old) => ({ ...old, [slideId]: id }));
+                  } catch {
+                    const id = layouts?.[0]?.id || "AUTO";
+                    setSelection((old) => ({ ...old, [slideId]: id }));
+                  }
+                }}
+                onUpdateSlide={(idx: number, next: Deck["slides"][number]) => updateSlide(idx, () => next)}
+                onOpenMediaLibrarySlot={(slideIdx: number, slotIdx: number) =>
+                  setOpenLibTarget({ slide: slideIdx, slot: slotIdx })
+                }
+                requestId={meta?.requestId ?? null}
+                exportStatus={exportInfo ? "Export ready" : undefined}
+                onBuildEditor={runBuildEditor}
+                selectionComplete={selectionComplete}
+                building={building}
+                buildErr={buildErr}
               />
-              <div className="mt-4 flex items-center gap-3 flex-wrap">
-                <button
-                  onClick={runBuildEditor}
-                  disabled={building || !haveDeck || !selectionComplete}
-                  className={`rounded-xl px-4 py-2 text-white ${
-                    building ? "bg-gray-400 cursor-not-allowed" : "bg-black hover:opacity-90"
-                  }`}
-                >
-                  {building ? "Building…" : "Build Editor Doc"}
-                </button>
-
-                {buildErr && <span className="text-sm text-red-600">{buildErr}</span>}
-
-                {editorResp && (
-                  <span className="text-sm text-gray-700">
-                    Editor slides: <b>{editorResp.editor?.slides?.length ?? 0}</b>
-                    {editorResp.warnings?.length ? (
-                      <span className="ml-2 text-amber-700">Warnings: {editorResp.warnings.length}</span>
-                    ) : null}
-                  </span>
-                )}
-              </div>
-            </>
+            </div>
+          ) : (
+            <div className="rounded-xl border bg-white p-4 text-sm text-gray-600">
+              Generate an outline first to use the workbench.
+            </div>
           )}
         </PhaseContainer>
 
-        {/* Step 5: Finalize & Export */}
+        {/* Step 4: Finalize & Export */}
         <PhaseContainer
           title="Finalize & Export"
           subtitle="Review the built editor doc and export a PPTX."
-          step={5}
+          step={4}
           currentStep={step}
         >
           <FinalizeSection editorResp={editorResp} />
         </PhaseContainer>
       </main>
 
-      {/* Media Library drawer (only opens when we also have an uploadId) */}
+      {/* Media Library drawer (opens when we have an uploadId) */}
       <MediaLibraryDrawer
-        open={openLibForSlide !== null && !!uploadId}
-        onClose={() => setOpenLibForSlide(null)}
+        open={!!openLibTarget && !!uploadId}
+        onClose={() => setOpenLibTarget(null)}
         uploadId={uploadId}
+        slotIndex={openLibTarget?.slot ?? null}
         onSelect={(url) => {
-          if (openLibForSlide !== null) {
-            // APPEND, don't replace
-            addImageToSlide(openLibForSlide, url);
+          if (!openLibTarget) return;
+          const { slide, slot } = openLibTarget;
+          if (slot === null || slot === undefined) {
+            // Append (inline path rarely uses this; kept for parity)
+            updateSlide(slide, (prev) => {
+              const current = Array.isArray(prev.media) ? [...prev.media] : [];
+              if (current.some((m: any) => m?.url === url)) return prev;
+              return { ...prev, media: [...current, { type: "image", url, alt: prev.title }] } as any;
+            });
+          } else {
+            // Place at slot
+            setImageForSlot(slide, slot, url);
           }
-          setOpenLibForSlide(null);
+          setOpenLibTarget(null);
+        }}
+        onSelectAsset={(_, url, slotIndex) => {
+          if (!openLibTarget) return;
+          const { slide } = openLibTarget;
+          if (slotIndex === null || slotIndex === undefined) {
+            updateSlide(slide, (prev) => {
+              const current = Array.isArray(prev.media) ? [...prev.media] : [];
+              if (current.some((m: any) => m?.url === url)) return prev;
+              return { ...prev, media: [...current, { type: "image", url, alt: prev.title }] } as any;
+            });
+          } else {
+            setImageForSlot(slide, slotIndex, url);
+          }
+          setOpenLibTarget(null);
         }}
       />
 

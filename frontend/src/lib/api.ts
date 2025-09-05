@@ -95,6 +95,27 @@ export type EditorBuildResponse = {
   meta?: Record<string, any>;
 };
 
+/* -------------------- NEW: Batch layout recommendations -------------------- */
+export type LayoutRecommendSlideSummary = {
+  slide_id: string;
+  title?: string;
+  bullet_count: number;
+  text_char_count: number;
+  image_count: number;
+};
+
+export type LayoutRecommendation = {
+  slide_id: string;
+  selected_layout?: string | null;
+  top_k?: string[];            // layout IDs, highest score first
+  image_slots_needed?: number; // slots required by selected layout
+  reasons?: string[];          // optional explainers
+};
+
+export type LayoutRecommendBatchResponse = {
+  recommendations: LayoutRecommendation[];
+};
+
 /* -------------------- API client -------------------- */
 export const api = {
   // Health
@@ -124,14 +145,14 @@ export const api = {
     slides?: Deck["slides"];
     editor?: EditorDocOut;
     theme?: string | null;
-    theme_meta?: ThemeMeta; // ← allow tokens even for slides-only export
+    theme_meta?: ThemeMeta; // allow tokens even for slides-only export
   }) =>
     requestWithMeta<ExportResp>("/export", {
       method: "POST",
       body: JSON.stringify(payload),
     }),
 
-  // UPDATED: allow theme_meta
+  // Allow theme_meta
   exportEditor: (payload: {
     editor: EditorDocOut;
     theme?: string | null;
@@ -156,7 +177,14 @@ export const api = {
       body: JSON.stringify(body),
     }),
 
-  // UPDATED: allow theme_meta in builder so doc carries tokens
+  // NEW: batch recommend (Top-K + image slot needs)
+  recommendLayoutsBatch: (payload: { slides: LayoutRecommendSlideSummary[]; top_k?: number }) =>
+    requestWithMeta<LayoutRecommendBatchResponse>("/layouts/recommend", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }),
+
+  // Allow theme_meta in builder so doc carries tokens
   buildEditor: (
     payload: {
       deck: Deck;
@@ -172,7 +200,11 @@ export const api = {
     return requestWithMeta<EditorBuildResponse>("/editor/build", {
       method: "POST",
       headers,
-      body: JSON.stringify({ theme: payload.theme ? payload.theme : "default", policy: payload.policy ? payload.policy : "best_fit", ...payload }),
+      body: JSON.stringify({
+        theme: payload.theme ? payload.theme : "default",
+        policy: payload.policy ? payload.policy : "best_fit",
+        ...payload,
+      }),
     });
   },
 };
