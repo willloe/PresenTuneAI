@@ -1,6 +1,51 @@
 {
   "$defs": {
+    "ListSection": {
+      "properties": {
+        "kind": {
+          "const": "list",
+          "default": "list",
+          "enum": [
+            "list"
+          ],
+          "title": "Kind",
+          "type": "string"
+        },
+        "id": {
+          "description": "Client-generated id (uuid/ulid)",
+          "title": "Id",
+          "type": "string"
+        },
+        "bullets": {
+          "items": {
+            "type": "string"
+          },
+          "maxItems": 24,
+          "title": "Bullets",
+          "type": "array"
+        },
+        "role": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "e.g. 'primary'/'secondary' etc.",
+          "title": "Role"
+        }
+      },
+      "required": [
+        "id"
+      ],
+      "title": "ListSection",
+      "type": "object"
+    },
     "Media": {
+      "description": "Image/media reference. Forward-compatible with asset storage.",
       "properties": {
         "type": {
           "const": "image",
@@ -12,11 +57,19 @@
           "type": "string"
         },
         "url": {
-          "format": "uri",
-          "maxLength": 2083,
-          "minLength": 1,
-          "title": "Url",
-          "type": "string"
+          "anyOf": [
+            {
+              "format": "uri",
+              "maxLength": 2083,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Url"
         },
         "alt": {
           "anyOf": [
@@ -30,12 +83,109 @@
           ],
           "default": null,
           "title": "Alt"
+        },
+        "source": {
+          "anyOf": [
+            {
+              "enum": [
+                "asset",
+                "external"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Source"
+        },
+        "asset_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Asset Id"
+        }
+      },
+      "title": "Media",
+      "type": "object"
+    },
+    "Meta": {
+      "additionalProperties": true,
+      "description": "Extensible slide metadata; sections[] is the canonical text model.",
+      "properties": {
+        "sections": {
+          "anyOf": [
+            {
+              "items": {
+                "anyOf": [
+                  {
+                    "$ref": "#/$defs/ParagraphSection"
+                  },
+                  {
+                    "$ref": "#/$defs/ListSection"
+                  }
+                ]
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Sections"
+        }
+      },
+      "title": "Meta",
+      "type": "object"
+    },
+    "ParagraphSection": {
+      "properties": {
+        "kind": {
+          "const": "paragraph",
+          "default": "paragraph",
+          "enum": [
+            "paragraph"
+          ],
+          "title": "Kind",
+          "type": "string"
+        },
+        "id": {
+          "description": "Client-generated id (uuid/ulid)",
+          "title": "Id",
+          "type": "string"
+        },
+        "text": {
+          "minLength": 1,
+          "title": "Text",
+          "type": "string"
+        },
+        "role": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "e.g. 'primary'/'secondary' etc.",
+          "title": "Role"
         }
       },
       "required": [
-        "url"
+        "id",
+        "text"
       ],
-      "title": "Media",
+      "title": "ParagraphSection",
       "type": "object"
     }
   },
@@ -52,13 +202,20 @@
       "type": "string"
     },
     "bullets": {
-      "description": "Bullet points",
-      "items": {
-        "type": "string"
-      },
-      "maxItems": 12,
-      "title": "Bullets",
-      "type": "array"
+      "anyOf": [
+        {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Legacy bullets; mirrored to/from sections",
+      "title": "Bullets"
     },
     "notes": {
       "anyOf": [
@@ -74,21 +231,41 @@
       "title": "Notes"
     },
     "layout": {
-      "default": "title-bullets",
-      "enum": [
-        "title",
-        "title-bullets",
-        "two-col"
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
       ],
-      "title": "Layout",
-      "type": "string"
+      "default": "title_bullets_left",
+      "title": "Layout"
     },
     "media": {
-      "items": {
-        "$ref": "#/$defs/Media"
-      },
-      "title": "Media",
-      "type": "array"
+      "anyOf": [
+        {
+          "items": {
+            "$ref": "#/$defs/Media"
+          },
+          "type": "array"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "title": "Media"
+    },
+    "meta": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/Meta"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
     }
   },
   "required": [
@@ -99,5 +276,5 @@
   "type": "object",
   "$id": "https://presen-tune-ai.local/schema/slide.schema.json",
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "x-schema-version": "1.0"
+  "x-schema-version": "1.1"
 }

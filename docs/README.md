@@ -247,3 +247,60 @@ GOOGLE_CLIENT_ID=your-oauth-client-id.apps.googleusercontent.com
   ```
 - If a download 404s, use `GET /v1/export/_debug/list` to see where files actually landed.
 
+---
+## Frontend authoring & preview (2025-09)
+
+This project now ships a refreshed **Editor Workbench** that uses the canonical `TextSection` model on the client, reuses our existing layout picker, and renders an accurate “final look” preview using the same layer primitives as export.
+
+### Quick start (dev)
+
+```bash
+# backend running at http://localhost:8000
+cd frontend
+pnpm i
+pnpm dev
+```
+
+Ensure the toast provider is mounted once near the root of the app:
+
+```tsx
+import { ToastProvider } from "@/components/ui/toast";
+
+export default function App() {
+  return (
+    <ToastProvider>
+      <Routes />
+    </ToastProvider>
+  );
+}
+```
+
+### Authoring flow
+
+1. Pick a slide tab.
+2. **Content** tab → edit title and add **Paragraph** / **Bullet list** sections.
+3. Click **Save** (or press **Cmd/Ctrl+S**) to persist. A toast confirms the update.
+4. **Layout** tab → choose a layout or use **Auto‑fit**.
+5. **Media** tab → Replace/Remove/Add images.
+
+The right pane re-builds an `EditorDoc` (debounced) and shows a pixel‑faithful preview using `LayerView`.
+
+### Data model (client)
+
+- `slide.meta.sections`: array of `TextSection` objects.
+- Primary list is mirrored to `slide.bullets` for back‑compat.
+- Title is edited independently and saved with the sections.
+
+### Troubleshooting
+
+- **Nothing shows in preview**: click **Save**; empty sections are ignored. Check DevTools → network for `/build-editor` requests.
+- **422 Unprocessable Entity**: you likely saved an empty paragraph; `sanitizeSections` should trim/drop it. If you are bypassing `ContentPanel`, ensure you sanitize.
+- **Preview positioned wrong**: the preview stage must have `position: relative`; see `ActiveSlideStage`.
+
+### Where to look in the code
+
+- `components/editor/EditorWorkbench.tsx` – slide tabs, debounced preview, right‑pane stage.
+- `components/editor/panels/ContentPanel.tsx` – title + `BlocksEditor` + Save/Cancel; toasts on success/failure.
+- `components/slide/BlocksEditor.tsx` – pure editor for `TextSection[]` with keyboard shortcuts.
+- `components/editor/LayerView.tsx` – renders textbox/image/shape layers; used for preview and aligns with export.
+- `utils/textBridge.ts` – `applySectionsToSlide` helper that bridges `TextSection[]` to the legacy slide fields without touching the backend schema.

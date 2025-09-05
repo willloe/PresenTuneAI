@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import time
 import uuid
-from typing import List, Optional
+from typing import List, Optional, Any, Dict
 
 from fastapi import APIRouter, Header, Depends, HTTPException
 from fastapi.responses import JSONResponse
@@ -25,15 +25,15 @@ THEME_PRESETS = {
     "default": {
         "colors": {
             "surface": "#ffffff",
-            "text": "#111827",      # slate-900-ish
-            "mutedText": "#475569", # slate-600-ish
+            "text": "#111827",
+            "mutedText": "#475569",
         }
     },
     "dark": {
         "colors": {
-            "surface": "#0f172a",   # slate-900/blue-900
-            "text": "#e2e8f0",      # slate-200
-            "mutedText": "#94a3b8", # slate-400
+            "surface": "#0f172a",
+            "text": "#e2e8f0",
+            "mutedText": "#94a3b8",
         }
     },
 }
@@ -45,7 +45,7 @@ _IDEMP_TTL_SEC = 300  # 5 minutes
 
 class Selection(BaseModel):
     slide_id: str
-    layout_id: Optional[str] = None
+    layout_id: Optional[str] = None  # if None or "auto", we will choose best-fit
 
 
 class BuildRequest(BaseModel):
@@ -55,6 +55,114 @@ class BuildRequest(BaseModel):
     page: dict = {"width": 1280, "height": 720, "unit": "px"}
     policy: str = "best_fit"  # or "strict"
     warnings_as_errors: bool = False
+
+
+# ---------------- helpers ----------------
+def _normalize_section_blocks(slide) -> List[str]:
+    """
+    Convert slide.meta.sections (paragraph/list) into renderable text blocks.
+    - paragraph -> text as-is
+    - list -> joined with "- " prefix
+    """
+    meta = getattr(slide, "meta", None)
+    secs = (getattr(meta, "sections", None) or [])
+    blocks: List[str] = []
+    for s in secs:
+        kind = getattr(s, "kind", None) or (isinstance(s, dict) and s.get("kind"))
+        if kind == "paragraph":
+            text = (getattr(s, "text", None) or (isinstance(s, dict) and s.get("text")) or "").strip()
+            if text:
+                blocks.append(text)
+        elif kind == "list":
+            bullets = getattr(s, "bullets", None) or (isinstance(s, dict) and (s.get("bullets") or [])) or []
+            bullets = [str(b).strip() for b in bullets if b and str(b).strip()]
+            if bullets:
+                blocks.append("\n".join(f"- {b}" for b in bullets))
+    return blocks
+
+
+def _penalty(value: int, mn: int | None, mx: int | None) -> float:
+    if mn is not None and value < mn:
+        return float(mn - value) * 2.0
+    if mx is not None and value > mx:
+        return float(value - mx) * 1.5
+    return 0.0
+
+
+def _closeness(value: int, mn: int | None, mx: int | None) -> float:
+    if mn is None or mx is None or mx <= mn:
+        return 0.0
+    center = (mn + mx) / 2.0
+    span = (mx - mn)
+    return abs(value - center) / max(1.0, span)
+
+
+def _frames_get(frames: Any, key: str):
+    if frames is None:
+        return None
+    if isinstance(frames, dict):
+        return frames.get(key)
+    return getattr(frames, key, None)
+
+
+def _frame_plain(f: Any) -> Dict[str, Any] | None:
+    if f is None:
+        return None
+    if isinstance(f, dict):
+        return f
+    if hasattr(f, "model_dump"):
+        try:
+            return f.model_dump()
+        except Exception:
+            pass
+    try:
+        return {"x": int(getattr(f, "x")), "y": int(getattr(f, "y")), "w": int(getattr(f, "w")), "h": int(getattr(f, "h"))}
+    except Exception:
+        return None
+
+
+def _style_get(style: Any, key: str) -> Dict[str, Any] | None:
+    if style is None:
+        return None
+    if isinstance(style, dict):
+        return style.get(key)
+    return getattr(style, key, None)
+
+
+def _section_slots(item: Any) -> int:
+    fr = getattr(item, "frames", None)
+    if fr is None:
+        return 0
+    secs = _frames_get(fr, "sections")
+    if isinstance(secs, list):
+        return len(secs)
+    return 1 if secs else 0
+
+
+def _desired_slots_for(text_count: int) -> int:
+    if text_count <= 2:
+        return 1
+    if text_count <= 6:
+        return 2
+    return 3
+
+
+def _score_layout(item: Any, text_count: int, image_count: int) -> float:
+    """Lower is better; now structure-aware so multi-column wins when you add sections."""
+    sup: Dict[str, Any] = getattr(item, "supports", None) or {}
+    tmin, tmax = sup.get("text_min"), sup.get("text_max")
+    imin, imax = sup.get("images_min"), sup.get("images_max")
+    p = _penalty(text_count, tmin, tmax) + _penalty(image_count, imin, imax)
+    if p == 0.0:
+        p += (_closeness(text_count, tmin, tmax) + _closeness(image_count, imin, imax)) * 0.5
+
+    # NEW: prefer layouts whose frames.sections count matches desired bucket count
+    slots = _section_slots(item)
+    desired = _desired_slots_for(text_count)
+    p += abs(slots - desired) * 0.35
+
+    w = float(getattr(item, "weight", 1.0) or 1.0)
+    return p / max(0.1, w)
 
 
 @router.post("/editor/build")
@@ -68,7 +176,7 @@ async def build_editor_doc(
     if idempotency_key and idempotency_key in _IDEMP_CACHE:
         ts, resp = _IDEMP_CACHE[idempotency_key]
         if now - ts < _IDEMP_TTL_SEC:
-            out = dict(resp)  # shallow copy
+            out = dict(resp)
             out.setdefault("meta", {})["idempotency"] = "HIT"
             return JSONResponse(content=jsonable_encoder(out))
 
@@ -77,7 +185,7 @@ async def build_editor_doc(
 
     async with aspan("editor_build", policy=payload.policy, theme=payload.theme):
         deck = payload.deck
-        layout_by_slide = {sel.slide_id: sel.layout_id for sel in payload.selections}
+        layout_by_slide = {sel.slide_id: (sel.layout_id or None) for sel in payload.selections}
 
         lib = get_layout_library()
 
@@ -89,48 +197,103 @@ async def build_editor_doc(
 
         for s in deck.slides:
             with span("layout_apply_slide", slide_id=s.id):
-                layout_id = layout_by_slide.get(s.id) or "title_bullets_left"
-                layout = next((li for li in lib.items if li.id == layout_id), None)
+                requested_layout_id = layout_by_slide.get(s.id)
+                blocks = _normalize_section_blocks(s)
+                text_count = len(blocks)
+                image_count = len(getattr(s, "media", None) or [])
 
-                if not layout and payload.policy == "best_fit":
-                    layout = max(lib.items, key=lambda li: li.weight)
+                # Choose layout: explicit -> lookup, else best-fit "auto"
+                chosen = None
+                if requested_layout_id and requested_layout_id != "auto":
+                    chosen = next((li for li in lib.items if li.id == requested_layout_id), None)
+                    if not chosen:
+                        if payload.policy == "strict":
+                            raise HTTPException(status_code=400, detail=f"Unknown layout_id {requested_layout_id} for slide {s.id}")
+                        warnings.append({
+                            "slide_id": s.id,
+                            "reason": "unknown_layout_best_fit_substitution",
+                            "requested": requested_layout_id,
+                        })
+
+                if chosen is None:
+                    scored = sorted(lib.items, key=lambda li: _score_layout(li, text_count, image_count))
+                    chosen = scored[0]
                     warnings.append({
                         "slide_id": s.id,
-                        "reason": "unknown_layout_best_fit_substitution",
-                        "layout_id": layout.id,
+                        "reason": "auto_layout_selected",
+                        "layout_id": chosen.id,
+                        "text_count": text_count,
+                        "image_count": image_count,
                     })
-                elif not layout and payload.policy == "strict":
-                    raise HTTPException(status_code=400, detail=f"Unknown layout_id {layout_id} for slide {s.id}")
 
+                layout = chosen
                 layers: List[EditorLayer] = []
 
                 # Title
-                if layout.frames.get("title"):
+                title_fr = _frame_plain(_frames_get(layout.frames, "title"))
+                if title_fr:
                     layers.append(EditorLayer(
                         id=f"ly_{s.id}_title",
                         kind="textbox",
-                        frame=layout.frames["title"],
+                        frame=title_fr,
                         text=s.title,
                         style={"font": "Inter", "size": 36, "weight": 700, "align": "left", "color": text},
                         z=10,
                     ))
 
-                # Bullets
-                if layout.frames.get("bullets") and s.bullets:
-                    bf0 = (layout.frames.get("bullets") or [None])[0]
-                    if bf0:
+                # Sections (canonical)
+                section_frames_raw = _frames_get(layout.frames, "sections") or []
+                section_frames = [fp for fp in (_frame_plain(f) for f in section_frames_raw) if fp]
+                if section_frames:
+                    if text_count == 0:
+                        detail = {
+                            "code": "MISSING_TEXT_SECTIONS",
+                            "message": f"slide {s.id} requires meta.sections for layout '{layout.id}'. Legacy 'bullets' is no longer supported.",
+                        }
+                        if payload.policy == "strict":
+                            raise HTTPException(status_code=422, detail=detail)
+                        warnings.append({"slide_id": s.id, **detail})
+
+                    n_frames = len(section_frames)
+                    if n_frames <= 1:
+                        buckets = ["\n\n".join(blocks)]
+                    else:
+                        buckets = blocks[:n_frames]
+                        if len(buckets) < n_frames:
+                            buckets += [""] * (n_frames - len(buckets))
+                        overflow = blocks[n_frames:]
+                        if overflow:
+                            buckets[-1] = (buckets[-1] + ("\n\n" if buckets[-1] else "")) + "\n\n".join(overflow)
+
+                    sec_style = dict(_style_get(layout.style, "sections") or {})
+                    sec_style.setdefault("font", "Inter")
+                    sec_style.setdefault("size", 20)
+                    sec_style.setdefault("color", muted)
+
+                    for idx, (fr, txt_block) in enumerate(zip(section_frames, buckets)):
+                        if not (txt_block or "").strip():
+                            continue
                         layers.append(EditorLayer(
-                            id=f"ly_{s.id}_bullets",
+                            id=f"ly_{s.id}_sec{idx}",
                             kind="textbox",
-                            frame=bf0,
-                            text="\n".join([f"- {b}" for b in s.bullets]),
-                            style={"font": "Inter", "size": 20, "color": muted},
+                            frame=fr,
+                            text=txt_block,
+                            style=sec_style,
                             z=9,
                         ))
+                elif text_count > 0:
+                    warnings.append({
+                        "slide_id": s.id,
+                        "reason": "text_ignored_by_layout",
+                        "layout_id": layout.id,
+                        "text_count": text_count,
+                    })
 
-                # First image(s)
-                if layout.frames.get("images") and s.media:
-                    frames = list(layout.frames["images"] or [])
+                # Images
+                image_frames_raw = _frames_get(layout.frames, "images") or []
+                image_frames = [fp for fp in (_frame_plain(f) for f in image_frames_raw) if fp]
+
+                if image_frames and s.media:
                     imgs = []
                     for m in (s.media or []):
                         if isinstance(m, dict):
@@ -140,7 +303,7 @@ async def build_editor_doc(
                             u = getattr(m, "url", None)
                             if u: imgs.append({"url": u, "source": getattr(m, "source", None), "asset_id": getattr(m, "asset_id", None)})
 
-                    for j, (m, fr) in enumerate(zip(imgs, frames)):
+                    for j, (m, fr) in enumerate(zip(imgs, image_frames)):
                         layers.append(EditorLayer(
                             id=f"ly_{s.id}_img{j}",
                             kind="image",
@@ -149,8 +312,14 @@ async def build_editor_doc(
                             fit="cover",
                             z=6,
                         ))
+                elif image_count > 0 and not image_frames:
+                    warnings.append({
+                        "slide_id": s.id,
+                        "reason": "images_ignored_by_layout",
+                        "layout_id": layout.id,
+                        "image_count": image_count,
+                    })
 
-                # Compose slide with theme surface background
                 slides_out.append(EditorSlide(
                     id=s.id,
                     name=s.title,
@@ -159,7 +328,6 @@ async def build_editor_doc(
                     meta={"layout_id": layout.id},
                 ))
 
-        # Page + theme meta
         page = {**payload.page, "background": {"fill": surface}}
 
         editor = EditorDoc(
@@ -169,14 +337,12 @@ async def build_editor_doc(
             theme=payload.theme,
             slides=slides_out,
             meta={"created_at": time.strftime("%Y-%m-%dT%H:%M:%SZ")},
-            theme_meta=T,  # optional; your UI can read this
+            theme_meta=T,
         )
 
     resp = {"editor": editor, "warnings": warnings}
 
-    # Cache MISS: remember response for future HIT
     if idempotency_key:
         _IDEMP_CACHE[idempotency_key] = (now, resp)
 
-    # Explicit, safe JSON encoding
     return JSONResponse(content=jsonable_encoder(resp))

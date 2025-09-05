@@ -150,3 +150,73 @@ All functions return `{ data, ok, status }` style objects.
 - **Export yields a `.txt`.** That’s the fallback when python‑pptx is unavailable. Install build deps or use the Dockerfile.
 - **Add from Library replaced my image.** By design in `SlideCard` we **append** from the library; use Replace in the gallery to swap the first image.
 
+---
+## 2025-09 Editor Workbench refresh (frontend only)
+
+This release keeps the backend API unchanged but modernizes the **Editor Workbench** and related preview/authoring flows. The goal was to reuse as many battle‑tested components as possible while tightening the boundaries between **editing**, **layout selection**, and **final preview**.
+
+### What changed
+
+- **Tabbed workbench**: `EditorWorkbench` now surfaces three tabs per slide — **Content**, **Layout**, and **Media** — but delegates the heavy lifting to focused panels/components.
+- **Text authoring uses the canonical TextSection model**:
+  - We reuse the legacy `BlocksEditor` component (paragraphs & bullet lists) but treat it as a *pure* editor that edits an array of `TextSection` objects.
+  - On **Save**, sections are sanitized and bridged onto the slide via `applySectionsToSlide` (adds/updates `slide.meta.sections`, mirrors the primary list into `slide.bullets` for back‑compat, and leaves `title` alone).
+  - Empty paragraphs are dropped and bullet lists are normalized (`normalizeBulletsInput`), avoiding the backend `422` on empty text.
+- **Live “final look” preview**:
+  - The right pane renders *exactly* what the export will contain. We reuse `LayerView` and theme defaults from `themeKeyToMeta` to render `EditorDocOut.slides[n].layers`.
+  - `ActiveSlideStage` scales the slide into the available width and sets `position: relative` so `LayerView`’s absolutely‑positioned children land in the right place.
+  - Layers are sorted by `z` and images are rendered through `SafeImage` (with graceful fallback).
+- **Debounced preview build**:
+  - The workbench maintains a lightweight `previewKey` derived from `theme`, `selection`, and slide text/media.
+  - When it changes, we debounce `api.buildEditor({ deck, selections, theme, theme_meta })` and update the right‑hand preview; a small “preview updating…” hint appears while the call is in flight.
+- **Layout selection**: We reuse `LayoutPicker` and pass `counts` (`text_count`, `image_count`) so the picker can surface the most relevant options. `onAutoFit` is still supported.
+- **Media panel**: Simple *replace/remove/add* actions per slot using `onOpenMediaLibrarySlot`. The next empty slot index is derived from `slide.media.length`.
+- **Save UX**:
+  - `ContentPanel` owns **Save / Cancel**, tracks a `dirty` bit by comparing current local state to `sectionsFromSlide(slide)` and `slide.title`, and disables Save when no changes exist.
+  - On successful save we now raise a toast (see **Toasts** below).
+
+### Toasts
+
+We already ship a small toast system in `ui/toast` (context + viewport). The editor now uses it to acknowledge saves and surface errors.
+
+```tsx
+import { useToast } from "@/components/ui/toast";
+
+const { show } = useToast();
+show({ title: "Saved", description: "Text sections updated.", tone: "success" });
+```
+
+> **Note:** The provider must wrap the app (e.g. in `App.tsx`) so the viewport is mounted once and toasts stack in the bottom‑right corner.
+
+### Component boundaries (contracts)
+
+- `EditorWorkbench`
+  - Props: deck, slides, theme, layouts, `selection`, `onSelectLayout`, `onAutoFit`, `onUpdateSlide`, `onOpenMediaLibrarySlot`, request/export meta.
+  - Responsibilities: slide tabs, wiring, debounced `buildEditor`, right‑pane preview.
+- `ContentPanel`
+  - Props: `slide`, `slideIndex`, `onUpdateSlide`, `requestRebuild`.
+  - Responsibilities: title input, `BlocksEditor`, Save/Cancel; sanitizes sections and calls `applySectionsToSlide` before pushing the update.
+- `BlocksEditor`
+  - Inputs/outputs a `TextSection[]` only; no deck knowledge. Emits **Ctrl/Cmd+S** via `onRequestSave` and **Esc** via `onRequestCancel`.
+- `ActiveSlideStage`
+  - Inputs: `doc: EditorDocOut | null` and `activeIndex`. Renders a single slide using `LayerView` with the theme defaults.
+- `LayerView`
+  - Renders `textbox`, `image`, and simple `shape` layers with scaled frames; expects its parent to be `position: relative`.
+
+### Data model recap (frontend)
+
+```ts
+type TextSection =
+  | { id: string; kind: "paragraph"; text: string; role?: "primary" | "secondary" | null }
+  | { id: string; kind: "list"; bullets: string[]; role?: "primary" | "secondary" | null };
+```
+
+- Stored at `slide.meta.sections`.
+- Primary list (if any) is mirrored into `slide.bullets` for legacy consumers.
+- The backend remains unchanged; the editor sends a standard `Deck` to `buildEditor`.
+
+### Gotchas & tips
+
+- If preview text doesn’t show: ensure **Save** was clicked (or title blurred), and confirm `slide.meta.sections` contains non‑empty sections.
+- Paragraph sections must have at least 1 character after trimming; empty items will be dropped by `sanitizeSections`.
+- The preview container **must** be `position: relative` (handled by `ActiveSlideStage`).

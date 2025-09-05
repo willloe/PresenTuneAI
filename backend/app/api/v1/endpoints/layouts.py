@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from typing import Any
+from typing import Any, Dict, List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from app.core.auth import require_token
@@ -30,7 +30,7 @@ DEFAULT_LIB = LayoutLibrary(
             preview_url="/static/layouts/title_bullets_left.png",
             frames={
                 "title":   Frame(x=80, y=64,  w=1120, h=80).model_dump(),
-                "bullets": [Frame(x=80, y=170, w=720,  h=360).model_dump()],
+                "sections": [Frame(x=80, y=170, w=720,  h=360).model_dump()],
                 "images":  [Frame(x=840, y=200, w=360,  h=240).model_dump()],
             },
             style={"title": {"font": "Inter", "size": 36, "weight": 700}},
@@ -55,7 +55,7 @@ DEFAULT_LIB = LayoutLibrary(
             preview_url="/static/layouts/two_col_text_image.png",
             frames={
                 "title":   Frame(x=80, y=64,  w=1120, h=80).model_dump(),
-                "bullets": [Frame(x=80, y=170, w=540,  h=360).model_dump()],
+                "sections": [Frame(x=80, y=170, w=540,  h=360).model_dump()],
                 "images":  [Frame(x=660, y=170, w=540,  h=360).model_dump()],
             },
             style={"title": {"font": "Inter", "size": 36, "weight": 700}},
@@ -87,7 +87,7 @@ def _normalize_item(d: dict) -> dict:
         sup["images_min"], sup["images_max"] = 0, c
     d["supports"] = sup
 
-    # frames: allow img0/img1… or single bullets dict; convert to canonical
+    # frames: allow img0/img1… or single sections dict; convert to canonical
     frames = dict(d.get("frames") or {})
     if any(k.startswith("img") for k in frames):
         imgs = []
@@ -95,9 +95,24 @@ def _normalize_item(d: dict) -> dict:
             if k.startswith("img"):
                 imgs.append(frames.pop(k))
         frames["images"] = _as_list(frames.get("images")) + imgs
+
+    # Back-compat: if legacy 'bullets' present, map -> 'sections'
+    if "sections" not in frames and "bullets" in frames:
+        bl = frames.get("bullets")
+        frames["sections"] = _as_list(bl)
+        frames.pop("bullets", None)
+
+    # Ensure arrays are arrays
+    s = frames.get("sections")
+    if s and not isinstance(s, list):
+        frames["sections"] = [s]
     b = frames.get("bullets")
     if b and not isinstance(b, list):
         frames["bullets"] = [b]
+    i = frames.get("images")
+    if i and not isinstance(i, list):
+        frames["images"] = [i]
+
     d["frames"] = frames
     return d
 
@@ -165,6 +180,27 @@ def _closeness(value: int, mn: int | None, mx: int | None) -> float:
     return abs(value - center) / max(1.0, span)
 
 
+def _section_slots(item: LayoutItem) -> int:
+    """How many text buckets this layout exposes (via frames.sections)."""
+    fr = getattr(item, "frames", None)
+    if fr is None:
+        return 0
+    # tolerate dict or pydantic model
+    secs = fr.get("sections") if isinstance(fr, dict) else getattr(fr, "sections", None)
+    if isinstance(secs, list):
+        return len(secs)
+    return 1 if secs else 0
+
+
+def _desired_slots_for(text_count: int) -> int:
+    """Heuristic: 1 slot for <=2 blocks, 2 for 3–6, 3 for 7+."""
+    if text_count <= 2:
+        return 1
+    if text_count <= 6:
+        return 2
+    return 3
+
+
 def _score_layout(item: LayoutItem, text_count: int, image_count: int) -> float:
     sup = item.supports or {}
     tmin, tmax = sup.get("text_min"), sup.get("text_max")
@@ -172,6 +208,13 @@ def _score_layout(item: LayoutItem, text_count: int, image_count: int) -> float:
     p = _penalty(text_count, tmin, tmax) + _penalty(image_count, imin, imax)
     if p == 0.0:
         p += (_closeness(text_count, tmin, tmax) + _closeness(image_count, imin, imax)) * 0.5
+
+    # NEW: structure-aware penalty so multi-column layouts win when you add sections
+    slots = _section_slots(item)
+    desired = _desired_slots_for(text_count)
+    # prefer exact match on slots; penalize mismatch softly
+    p += abs(slots - desired) * 0.35
+
     w = float(getattr(item, "weight", 1.0) or 1.0)
     return p / max(0.1, w)
 
