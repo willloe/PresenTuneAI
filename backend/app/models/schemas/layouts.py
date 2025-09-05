@@ -1,6 +1,6 @@
 from __future__ import annotations
 from typing import Dict, List, Optional
-from pydantic import BaseModel
+from pydantic import BaseModel, Field, ConfigDict
 
 
 class Frame(BaseModel):
@@ -10,6 +10,31 @@ class Frame(BaseModel):
     h: int
 
 
+class LayoutFrames(BaseModel):
+    """
+    Canonical frames for a layout.
+    - title: single text frame for slide title
+    - sections: array of text frames (maps to meta.sections[])
+    - images: array of image frames
+    """
+    model_config = ConfigDict(extra="allow")
+
+    title: Optional[Frame] = None
+    sections: Optional[List[Frame]] = None
+    images: Optional[List[Frame]] = None
+
+
+class LayoutStyle(BaseModel):
+    """
+    Optional per-slot style hints read by the editor/exporters.
+    """
+    model_config = ConfigDict(extra="allow")
+
+    title: Optional[Dict[str, object]] = None
+    sections: Optional[Dict[str, object]] = None
+    images: Optional[Dict[str, object]] = None
+
+
 class LayoutItem(BaseModel):
     id: str
     name: str
@@ -17,9 +42,8 @@ class LayoutItem(BaseModel):
     supports: Dict[str, int]
     weight: float
     preview_url: Optional[str] = None
-    # {"title": Frame, "bullets": [Frame], "images": [Frame]}
-    frames: Dict[str, object]
-    style: Dict[str, object] = {}
+    frames: LayoutFrames = Field(default_factory=LayoutFrames)
+    style: LayoutStyle = Field(default_factory=LayoutStyle)
 
 
 class LayoutLibrary(BaseModel):

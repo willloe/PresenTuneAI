@@ -444,3 +444,47 @@ curl -I http://localhost:8000/v1/export/$NAME
 # assets (replace UPID)
 curl -s 'http://localhost:8000/v1/assets?upload_id=UPID' | jq '.count,.items[0].filename'
 ```
+
+---
+
+## Addendum: Text Sections & Editor Build (pre‑migration)
+
+> This addendum documents the client→server contract we implemented for the new
+> **text sections** while the backend still accepts legacy slide fields.
+> It **adds** details and does **not** remove any prior content in this file.
+
+### New canonical text model (client-side)
+
+```ts
+type TextSection =
+  | { id?: string; kind: "paragraph"; text: string; role?: "primary" | "secondary" | null }
+  | { id?: string; kind: "list"; bullets: string[]; role?: "primary" | "secondary" | null };
+```
+
+- A slide carries sections under `slide.meta.sections`.
+- The editor keeps legacy `slide.bullets` mirrored from the **primary** list for back‑compat.
+- Validation on submit: drop empty paragraphs, trim list items, clamp lists to 12 entries.
+
+### Layout mapping (server build semantics)
+
+- Title box uses `slide.title`.
+- Remaining text slots are filled from `meta.sections` in this order:
+  1. First `list` with `role:"primary"` (or the first `list`).
+  2. Remaining `paragraph`/`list` sections in document order.
+- Excess sections are truncated; missing sections produce muted placeholders.
+- Image slots are populated from `slide.media` in order.
+
+### Build endpoint (recap)
+
+`POST /editor/build` accepts a full `Deck`, optional per‑slide `selections` of `layout_id`,
+a `theme`, and optional `theme_meta`. It responds with an **EditorDoc** that the export step
+renders 1:1 (same geometry used by the Workbench preview).
+
+- Provide an `Idempotency-Key` header for safety.
+- The `policy: "best_fit"` parameter chooses a layout when one isn’t selected.
+- Warnings are returned when content doesn’t fit the chosen layout.
+
+### Compatibility
+
+- Legacy flows (`title`, `bullets`, single `media[0]`) remain valid.
+- New sections are **additive**; they become the authoritative source once the full migration lands.

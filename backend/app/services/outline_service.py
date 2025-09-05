@@ -11,7 +11,7 @@ from fastapi import HTTPException
 from app.core.version import SCHEMA_VERSION
 from app.core.telemetry import aspan, span
 from app.models.schemas.outline import OutlineRequest
-from app.models.schemas.slide import Deck, Slide, Media
+from app.models.schemas.slide import Deck, Slide, Media, Meta, ListSection
 from app.services.image_service import build_image_provider
 
 log = logging.getLogger("app")
@@ -66,14 +66,26 @@ class OutlineStrategy:
 
 @dataclass
 class PlaceholderStrategy(OutlineStrategy):
-    async def _title_base(self, i: int, req: OutlineRequest) -> str:
-        seeds = _seed_lines((req.text or "").strip())
+    def _title_base(self, i: int, req: OutlineRequest, seeds: List[str]) -> str:
         from_doc = bool(seeds)
         topic = (req.topic or (seeds[0] if from_doc else "Untitled")).strip()
         if from_doc:
             return _clip(seeds[i % len(seeds)])
         heading = _DEFAULT_HEADINGS[i % len(_DEFAULT_HEADINGS)]
         return f"{_clip(topic)} — {heading}"
+
+    def _default_sections(self, slide_id: str) -> List[ListSection]:
+        """
+        Provide a minimal, valid canonical section block.
+        We prefer a primary list so most layouts render nicely.
+        """
+        return [
+            ListSection(
+                id=f"{slide_id}-l1",
+                bullets=["placeholder bullet"],
+                role="primary",
+            )
+        ]
 
     async def generate_deck(self, req: OutlineRequest) -> Deck:
         if not (req.topic or req.text):
@@ -87,15 +99,16 @@ class PlaceholderStrategy(OutlineStrategy):
         async with aspan("outline_placeholder_generate", slide_count=n, from_doc=from_doc):
             slides: List[Slide] = []
             for i in range(n):
-                base = _clip(seeds[i % len(seeds)]) if from_doc \
-                       else f"{_clip(topic)} — {_DEFAULT_HEADINGS[i % len(_DEFAULT_HEADINGS)]}"
+                s_id = uuid.uuid4().hex
+                base = self._title_base(i, req, seeds)
                 slides.append(
                     Slide(
-                        id=uuid.uuid4().hex,
+                        id=s_id,
                         title=f"Slide {i+1}: {base}",
-                        bullets=["placeholder bullet"],
+                        # canonical text model only
+                        meta=Meta(sections=self._default_sections(s_id)),
                         notes=None,
-                        layout="title-bullets",
+                        layout="title_bullets_left",
                         media=[],
                     )
                 )
@@ -112,14 +125,16 @@ class PlaceholderStrategy(OutlineStrategy):
         n = max(1, min(req.slide_count, 15))
         if index < 0 or index >= n:
             raise HTTPException(400, f"index {index} out of range for slide_count={n}")
+        seeds = _seed_lines((req.text or "").strip())
         async with aspan("outline_placeholder_regenerate", index=index):
-            base = await self._title_base(index, req)
+            s_id = uuid.uuid4().hex
+            base = self._title_base(index, req, seeds)
             return Slide(
-                id=uuid.uuid4().hex,
+                id=s_id,
                 title=f"Slide {index+1}: {base}",
-                bullets=["placeholder bullet"],
+                meta=Meta(sections=self._default_sections(s_id)),
                 notes=None,
-                layout="title-bullets",
+                layout="title_bullets_left",
                 media=[],
             )
 
@@ -236,6 +251,7 @@ class OutlineService:
                     with span("image_enrich_error", idx=index, kw=kw, err=type(e).__name__):
                         ...
         return slide
+
 
 def build_outline_service() -> OutlineService:
     """

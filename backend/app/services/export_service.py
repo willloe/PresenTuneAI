@@ -7,7 +7,7 @@ import re
 import urllib.request
 from urllib.parse import urlparse, parse_qs
 import base64
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, List, Tuple
 
 from app.core.config import settings
 from app.core.telemetry import aspan
@@ -298,6 +298,33 @@ def _add_full_bleed_bg_shape(slide, prs, fill_hex: str):
         pass
 
 
+# ---------- Text helpers (canonical: meta.sections) ----------
+def _section_paragraphs(slide: Slide) -> List[Tuple[str, bool]]:
+    """
+    Build an ordered list of paragraphs from slide.meta.sections.
+    Returns list of (text, is_list_item).
+    """
+    out: List[Tuple[str, bool]] = []
+    meta = getattr(slide, "meta", None)
+    sections = (getattr(meta, "sections", None) or [])
+    for s in sections:
+        kind = getattr(s, "kind", None) or (isinstance(s, dict) and s.get("kind"))
+        if kind == "paragraph":
+            text = (getattr(s, "text", None) or (isinstance(s, dict) and s.get("text")) or "").strip()
+            if text:
+                out.append((text, False))
+        elif kind == "list":
+            bullets = getattr(s, "bullets", None) or (isinstance(s, dict) and (s.get("bullets") or [])) or []
+            for b in bullets:
+                t = (b or "").strip()
+                if t:
+                    out.append((t, True))
+        else:
+            # Unknown kinds ignored
+            continue
+    return out
+
+
 # ---------- SLIDES (old/simple) ----------
 async def _export_slides_to_pptx(
     slides: list[Slide],
@@ -322,8 +349,9 @@ async def _export_slides_to_pptx(
                 for idx, s in enumerate(slides, start=1):
                     title = _strip_slide_prefix(s.title or f"Slide {idx}")
                     f.write(f"{title}\n")
-                    for b in (s.bullets or []):
-                        f.write(f"  - {b}\n")
+                    for text, is_li in _section_paragraphs(s):
+                        prefix = "- " if is_li else ""
+                        f.write(f"  {prefix}{text}\n")
                     if getattr(s, "notes", None):
                         f.write(f"  [notes] {s.notes}\n")
                     for m in (s.media or []):
@@ -363,19 +391,20 @@ async def _export_slides_to_pptx(
             p.font.bold = bool(T["fonts"]["weightHeading"] >= 600)
             p.font.color.rgb = title_color
 
-            # Bullets (not heavily formatted here)
-            if s.bullets:
+            # Body from canonical sections (paragraphs + list items)
+            paragraphs = _section_paragraphs(s)
+            if paragraphs:
                 body_box = sl.shapes.add_textbox(_emu(64), _emu(140), _emu(540), _emu(320))
                 tf2 = body_box.text_frame
                 tf2.clear()
                 first = True
-                for b in s.bullets:
+                for text, is_li in paragraphs:
                     if first:
-                        tf2.text = b
+                        tf2.text = f"- {text}" if is_li else text
                         first = False
                         p2 = tf2.paragraphs[0]
                     else:
-                        p2 = tf2.add_paragraph(); p2.text = b
+                        p2 = tf2.add_paragraph(); p2.text = f"- {text}" if is_li else text
                     p2.level = 0
                     p2.font.size = Pt(18)
                     p2.font.name = T["fonts"]["body"]
@@ -394,7 +423,7 @@ async def _export_slides_to_pptx(
                 from pptx.util import Inches
                 cols, rows = 2, 2
                 pad = Inches(0.25)
-                cell_w = (prs.slide_width - Inches(3.0)) // cols  # leave left area for bullets
+                cell_w = (prs.slide_width - Inches(3.0)) // cols  # leave left area for body text
                 cell_h = Inches(2.2)
                 start_x = Inches(7.6) - pad
                 start_y = Inches(2.0) - pad
@@ -627,7 +656,7 @@ async def export_to_pptx(
 ) -> ExportResponse:
     """
     If `editor` is provided, export exact EditorDoc frames/layers.
-    Otherwise, fall back to the simple 'slides' exporter.
+    Otherwise, fall back to the simple 'slides' exporter which now reads canonical `meta.sections`.
     """
     out_dir = _export_dir()
     base = _stamp_name(theme)

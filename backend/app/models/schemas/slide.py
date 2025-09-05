@@ -61,7 +61,8 @@ class Slide(BaseModel):
     notes: Optional[str] = Field(default=None, max_length=4000)
 
     # Layout is advisory here (actual placement happens in /editor/build)
-    layout: Optional[str] = Field(default="title-bullets")
+    # Use the new id that matches the layouts library.
+    layout: Optional[str] = Field(default="title_bullets_left")
 
     # Zero or more images
     media: Optional[List[Media]] = Field(default_factory=list)
