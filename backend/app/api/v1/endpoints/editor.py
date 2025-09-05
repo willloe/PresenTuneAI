@@ -21,26 +21,45 @@ router = APIRouter(
     dependencies=([Depends(require_token)] if settings.AUTH_ENABLED else []),
 )
 
+# ---------- Theme presets (include fonts so UI/exporters can read weights safely)
 THEME_PRESETS = {
     "default": {
+        "fonts": {
+            "heading": "Inter",
+            "body": "Inter",
+            "weightHeading": 700,
+            "weightBody": 400,
+            "letterSpacing": "0em",
+        },
         "colors": {
             "surface": "#ffffff",
             "text": "#111827",
             "mutedText": "#475569",
-        }
+        },
     },
     "dark": {
+        "fonts": {
+            "heading": "Inter",
+            "body": "Inter",
+            "weightHeading": 700,
+            "weightBody": 400,
+            "letterSpacing": "0em",
+        },
         "colors": {
             "surface": "#0f172a",
             "text": "#e2e8f0",
             "mutedText": "#94a3b8",
-        }
+        },
     },
 }
 
 # Lightweight idempotency cache for dev
 _IDEMP_CACHE: dict[str, tuple[float, dict]] = {}
 _IDEMP_TTL_SEC = 300  # 5 minutes
+
+# Text sizing (points)
+TITLE_PT = 40
+BODY_PT = 22
 
 
 class Selection(BaseModel):
@@ -65,7 +84,7 @@ def _normalize_section_blocks(slide) -> List[str]:
     - list -> joined with "- " prefix
     """
     meta = getattr(slide, "meta", None)
-    secs = (getattr(meta, "sections", None) or [])
+    secs = getattr(meta, "sections", None) or []
     blocks: List[str] = []
     for s in secs:
         kind = getattr(s, "kind", None) or (isinstance(s, dict) and s.get("kind"))
@@ -129,14 +148,28 @@ def _style_get(style: Any, key: str) -> Dict[str, Any] | None:
     return getattr(style, key, None)
 
 
+def _get_section_frames(frames: Any) -> list[Dict[str, Any]]:
+    """
+    Accept modern frames.sections as well as legacy frames.text / frames.bullets.
+    Returns a list of normalized frames dicts.
+    """
+    raw = (
+        _frames_get(frames, "sections")
+        or _frames_get(frames, "text")
+        or _frames_get(frames, "bullets")
+        or []
+    )
+    if not isinstance(raw, list):
+        raw = [raw]
+    out = [fp for fp in (_frame_plain(f) for f in raw) if fp]
+    return out
+
+
 def _section_slots(item: Any) -> int:
     fr = getattr(item, "frames", None)
     if fr is None:
         return 0
-    secs = _frames_get(fr, "sections")
-    if isinstance(secs, list):
-        return len(secs)
-    return 1 if secs else 0
+    return max(0, len(_get_section_frames(fr)))
 
 
 def _desired_slots_for(text_count: int) -> int:
@@ -148,7 +181,7 @@ def _desired_slots_for(text_count: int) -> int:
 
 
 def _score_layout(item: Any, text_count: int, image_count: int) -> float:
-    """Lower is better; now structure-aware so multi-column wins when you add sections."""
+    """Lower is better; prefer multi-column when you have more sections."""
     sup: Dict[str, Any] = getattr(item, "supports", None) or {}
     tmin, tmax = sup.get("text_min"), sup.get("text_max")
     imin, imax = sup.get("images_min"), sup.get("images_max")
@@ -156,7 +189,6 @@ def _score_layout(item: Any, text_count: int, image_count: int) -> float:
     if p == 0.0:
         p += (_closeness(text_count, tmin, tmax) + _closeness(image_count, imin, imax)) * 0.5
 
-    # NEW: prefer layouts whose frames.sections count matches desired bucket count
     slots = _section_slots(item)
     desired = _desired_slots_for(text_count)
     p += abs(slots - desired) * 0.35
@@ -189,7 +221,7 @@ async def build_editor_doc(
 
         lib = get_layout_library()
 
-        # pick theme tokens
+        # theme tokens
         T = THEME_PRESETS.get(payload.theme, THEME_PRESETS["default"])
         surface = T["colors"]["surface"]
         text = T["colors"]["text"]
@@ -229,7 +261,7 @@ async def build_editor_doc(
                 layout = chosen
                 layers: List[EditorLayer] = []
 
-                # Title
+                # Title (emit both size + fontSize for exporter)
                 title_fr = _frame_plain(_frames_get(layout.frames, "title"))
                 if title_fr:
                     layers.append(EditorLayer(
@@ -237,13 +269,20 @@ async def build_editor_doc(
                         kind="textbox",
                         frame=title_fr,
                         text=s.title,
-                        style={"font": "Inter", "size": 36, "weight": 700, "align": "left", "color": text},
+                        style={
+                            "font": T["fonts"]["heading"],
+                            "size": TITLE_PT,
+                            "fontSize": TITLE_PT,   # exporter-friendly
+                            "weight": T["fonts"]["weightHeading"],
+                            "align": "left",
+                            "color": text,
+                            "lineHeight": 1.2,
+                        },
                         z=10,
                     ))
 
-                # Sections (canonical)
-                section_frames_raw = _frames_get(layout.frames, "sections") or []
-                section_frames = [fp for fp in (_frame_plain(f) for f in section_frames_raw) if fp]
+                # Sections (canonical) – accept sections/text/bullets in layout frames
+                section_frames = _get_section_frames(layout.frames)
                 if section_frames:
                     if text_count == 0:
                         detail = {
@@ -266,9 +305,11 @@ async def build_editor_doc(
                             buckets[-1] = (buckets[-1] + ("\n\n" if buckets[-1] else "")) + "\n\n".join(overflow)
 
                     sec_style = dict(_style_get(layout.style, "sections") or {})
-                    sec_style.setdefault("font", "Inter")
-                    sec_style.setdefault("size", 20)
+                    sec_style.setdefault("font", T["fonts"]["body"])
+                    sec_style.setdefault("size", BODY_PT)
+                    sec_style.setdefault("fontSize", sec_style["size"])  # exporter alias
                     sec_style.setdefault("color", muted)
+                    sec_style.setdefault("lineHeight", 1.25)
 
                     for idx, (fr, txt_block) in enumerate(zip(section_frames, buckets)):
                         if not (txt_block or "").strip():
@@ -291,6 +332,8 @@ async def build_editor_doc(
 
                 # Images
                 image_frames_raw = _frames_get(layout.frames, "images") or []
+                if not isinstance(image_frames_raw, list):
+                    image_frames_raw = [image_frames_raw]
                 image_frames = [fp for fp in (_frame_plain(f) for f in image_frames_raw) if fp]
 
                 if image_frames and s.media:
@@ -337,7 +380,7 @@ async def build_editor_doc(
             theme=payload.theme,
             slides=slides_out,
             meta={"created_at": time.strftime("%Y-%m-%dT%H:%M:%SZ")},
-            theme_meta=T,
+            theme_meta=T,  # includes fonts + colors
         )
 
     resp = {"editor": editor, "warnings": warnings}

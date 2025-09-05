@@ -80,34 +80,60 @@ class Slide(BaseModel):
     @model_validator(mode="after")
     def _sync_bullets_and_sections(self) -> "Slide":
         """
-        Keep legacy `bullets[]` and canonical `meta.sections[]` in sync:
-        - If sections has a primary (or first) list, mirror it into bullets.
-        - Else if bullets exist but no list section, create a primary list section.
+        Keep legacy `bullets[]` and canonical `meta.sections[]` in sync.
+
+        Fixes:
+        - Detect dict-shaped list sections (not only ListSection instances).
+        - Only create a list section from legacy bullets when there are *no* sections.
+        - Clear legacy bullets when there is no list section so we don't mirror paragraphs
+          into a phantom list on the server.
         """
         sections = list(self.meta.sections) if (self.meta and self.meta.sections) else []
 
-        # Locate a primary list section (or first list section)
-        list_ix = None
-        for i, sec in enumerate(sections):
+        def _kind(sec) -> str:
+            if isinstance(sec, dict):
+                return str(sec.get("kind", "")).lower()
+            return str(getattr(sec, "kind", "")).lower()
+
+        def _role(sec) -> str:
+            if isinstance(sec, dict):
+                return str(sec.get("role", "")).lower()
+            return str(getattr(sec, "role", "")).lower()
+
+        def _get_bullets(sec) -> list[str]:
+            if isinstance(sec, dict):
+                return list(sec.get("bullets") or [])
             if isinstance(sec, ListSection):
+                return list(sec.bullets or [])
+            return []
+
+        # Find a list section; prefer one marked primary
+        list_ix: Optional[int] = None
+        for i, sec in enumerate(sections):
+            if _kind(sec) == "list":
                 list_ix = i
-                # Prefer the one marked primary
-                if (sec.role or "").lower() == "primary":
-                    list_ix = i
+                if _role(sec) == "primary":
                     break
 
         if list_ix is not None:
-            # Mirror to legacy bullets
-            list_sec: ListSection = sections[list_ix]  # type: ignore[assignment]
-            if list_sec.bullets:
-                object.__setattr__(self, "bullets", list(list_sec.bullets))
+            # Mirror list bullets into legacy bullets; if list is empty but legacy bullets exist, push them back
+            list_sec = sections[list_ix]
+            bullets = [b.strip() for b in _get_bullets(list_sec) if b and str(b).strip()]
+
+            if bullets:
+                object.__setattr__(self, "bullets", list(bullets))
             elif self.bullets:
                 # Sections list is empty but legacy bullets present → use them
-                list_sec.bullets = list(self.bullets)
+                if isinstance(list_sec, ListSection):
+                    list_sec.bullets = list(self.bullets)
+                else:
+                    # dict-shaped section
+                    list_sec["bullets"] = list(self.bullets)
 
         else:
-            # No list section present; if legacy bullets exist, create a primary list section
-            if self.bullets:
+            # No list section present:
+            # Only create a list section from legacy bullets if there are *no sections at all*.
+            if self.bullets and not sections:
                 sections.append(
                     ListSection(
                         id=f"{self.id}-l1",
@@ -115,15 +141,17 @@ class Slide(BaseModel):
                         role="primary",
                     )
                 )
+            else:
+                # We have paragraphs/other sections: clear legacy bullets to avoid phantom list duplication
+                object.__setattr__(self, "bullets", None)
 
-        # Write back sections (if we assembled any)
+        # Write back sections (if any)
         if self.meta is None:
             object.__setattr__(self, "meta", Meta(sections=sections if sections else None))
         else:
             self.meta.sections = sections if sections else None
 
         return self
-
 
 class Deck(BaseModel):
     version: str = SCHEMA_VERSION

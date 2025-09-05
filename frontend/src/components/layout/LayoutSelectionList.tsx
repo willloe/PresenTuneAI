@@ -1,4 +1,4 @@
-import type { Deck } from "../../types/deck";
+import { type Deck, deriveComponentsForFilter } from "../../types/deck";
 import type { LayoutItem } from "../../lib/api";
 import LayoutPicker from "./LayoutPicker";
 
@@ -39,8 +39,9 @@ export default function LayoutSelectionList({
   return (
     <div className="space-y-3">
       {slides.map((s) => {
-        const bullets = Math.max(0, s.bullets?.length || 0);
-        const images = Math.max(0, s.media?.length || 0);
+        const comps = deriveComponentsForFilter(s);
+        const textBlocks = Math.max(0, comps.text_count || 0);
+        const images = Math.max(0, comps.image_count || 0);
 
         const rec = recommendations?.[s.id];
         const selectedFromRec = rec?.selected_layout || null;
@@ -72,7 +73,7 @@ export default function LayoutSelectionList({
             </div>
 
             <div className="text-sm text-gray-600 flex items-center gap-2 flex-wrap">
-              <span>{bullets} bullets • {images} images</span>
+              <span>{textBlocks} sections • {images} images</span>
               {imageSlotsNeeded !== null && (
                 <span className="inline-flex items-center gap-1 text-xs rounded-full bg-gray-100 px-2 py-0.5">
                   <span className="opacity-70">needs</span>
@@ -86,7 +87,7 @@ export default function LayoutSelectionList({
               items={itemsForPicker}
               selectedId={selectedId || ""}
               onSelect={(id) => onSelect(s.id, id)}
-              counts={{ text_count: bullets, image_count: images }}
+              counts={comps}  // ← sections-aware { text_count, image_count }
               page={{ width: 1280, height: 720 }}
               topK={6}
               initialView="selected"

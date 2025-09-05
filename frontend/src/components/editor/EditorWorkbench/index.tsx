@@ -1,5 +1,5 @@
-import { useState } from "react";
-import type { Deck } from "../../../types/deck";
+import { useState, useMemo } from "react";
+import { type Deck, deriveComponentsForFilter } from "../../../types/deck";
 import type { LayoutItem } from "../../../lib/api";
 import SlideTabs from "./SlideTabs";
 import PreviewStage from "./PreviewStage";
@@ -38,7 +38,7 @@ export default function EditorWorkbench({
   onOpenMediaLibrarySlot: (slideIdx: number, slotIdx: number) => void;
   requestId: string | null;
   exportStatus?: string;
-  onBuildEditor: () => Promise<void>;
+  onBuildEditor: () => Promise<void>; // parent advances to Step 4 on success
   selectionComplete: boolean;
   building: boolean;
   buildErr: string | null;
@@ -48,6 +48,19 @@ export default function EditorWorkbench({
   const activeSlide = slides[active];
 
   const { doc, busy: previewBusy, rebuildNow } = useDebouncedEditorDoc({ deck, selection, theme });
+
+  // Recompute layout filter inputs from canonical meta.sections (safe if slide is missing)
+  const counts = useMemo(() => {
+    if (!activeSlide) return { text_count: 0, image_count: 0 };
+    try {
+      return deriveComponentsForFilter(activeSlide);
+    } catch {
+      return {
+        text_count: Math.max(0, activeSlide.bullets?.length ?? 0),
+        image_count: Math.max(0, (activeSlide.media ?? []).length),
+      };
+    }
+  }, [activeSlide?.meta?.sections, activeSlide?.media, activeSlide?.id]);
 
   return (
     <div className="flex flex-col gap-3">
@@ -67,9 +80,10 @@ export default function EditorWorkbench({
           className={`rounded-xl px-3 py-1 text-white ${
             building || !selectionComplete ? "bg-gray-400 cursor-not-allowed" : "bg-black hover:opacity-90"
           }`}
-          title={!selectionComplete ? "Choose a layout for each slide" : "Build Editor Doc"}
+          title={!selectionComplete ? "Choose a layout for each slide" : "Build editor and continue"}
+          type="button"
         >
-          {building ? "Building…" : "Build Editor Doc"}
+          {building ? "Building…" : "Build & Continue"}
         </button>
       </div>
 
@@ -96,7 +110,7 @@ export default function EditorWorkbench({
               />
             )}
 
-            {tab === "layout" && (
+            {tab === "layout" && activeSlide && (
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
                   <div className="text-sm font-medium">Layout</div>
@@ -108,12 +122,7 @@ export default function EditorWorkbench({
                   items={layouts}
                   selectedId={selection[activeSlide.id] || ""}
                   onSelect={(id) => onSelectLayout(activeSlide.id, id)}
-                  counts={{
-                    // counts are computed inside LayoutPicker via props we pass,
-                    // but you can also derive bullets from sections here if needed.
-                    text_count: Math.max(0, activeSlide.bullets?.length ?? 0),
-                    image_count: Math.max(0, (activeSlide.media ?? []).length),
-                  }}
+                  counts={counts}
                   page={{ width: 1280, height: 720 }}
                   topK={6}
                   initialView="selected"
@@ -127,6 +136,7 @@ export default function EditorWorkbench({
                 slide={activeSlide}
                 onOpenSlot={(slot) => onOpenMediaLibrarySlot(active, slot)}
                 onRemoveSlot={(slot) => {
+                  if (!activeSlide) return;
                   onUpdateSlide(active, {
                     ...activeSlide,
                     media: (activeSlide.media || []).filter((_, i) => i !== slot),
@@ -165,6 +175,7 @@ function Tab({
     <button
       className={`text-xs rounded-md px-2 py-1 border ${active ? "bg-black text-white border-black" : "hover:bg-gray-50"}`}
       onClick={() => setTab(id)}
+      type="button"
     >
       {children}
     </button>

@@ -1,3 +1,4 @@
+// App.tsx
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   api,
@@ -112,6 +113,14 @@ export default function App() {
     initialStep: 1,
   });
 
+  // ---- sections-first text block count; fallback to legacy bullets as one block ----
+  const textBlockCount = useCallback((s: Deck["slides"][number]) => {
+    const secs = s.meta?.sections;
+    if (Array.isArray(secs) && secs.length) return secs.length;
+    const legacyBullets = Array.isArray(s.bullets) ? s.bullets.filter(Boolean).length : 0;
+    return legacyBullets > 0 ? 1 : 0;
+  }, []);
+
   /* --------------------------- handlers --------------------------- */
   const onPick = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
     const input = e.currentTarget;
@@ -170,7 +179,7 @@ export default function App() {
     const nextSel: Record<string, string> = {};
     await Promise.all(
       d.slides.map(async (s) => {
-        const text_count = Math.max(0, (s.bullets || []).length);
+        const text_count = textBlockCount(s);
         const image_count = Math.max(0, (s.media || []).length);
         try {
           const { data } = await api.filterLayouts({
@@ -184,7 +193,7 @@ export default function App() {
       })
     );
     setSelection(nextSel);
-  }, [layouts]);
+  }, [layouts, textBlockCount]);
 
   useEffect(() => {
     if (!deck?.slides?.length) return;
@@ -208,7 +217,20 @@ export default function App() {
         { deck, selections, theme, policy: "best_fit", theme_meta: themeMeta },
         { idempotencyKey: idemKeyRef.current }
       );
-      setEditorResp(data);
+
+      const built = { ...data };
+      if (built.editor) {
+        const safeThemeKey =
+          (built.editor.theme as ThemeKey) && (THEMES as any)[built.editor.theme]
+            ? (built.editor.theme as ThemeKey)
+            : "default";
+        const safeThemeMeta =
+          built.editor.theme_meta ?? themeKeyToMeta(safeThemeKey);
+
+        built.editor = { ...built.editor, theme_meta: safeThemeMeta };
+      }
+
+      setEditorResp(built);
       const n = data.editor?.slides?.length ?? 0;
       show({ tone: "success", title: "Editor built", description: `${n} slide(s)` });
       if (data.warnings?.length) {
@@ -222,6 +244,11 @@ export default function App() {
       setBuilding(false);
     }
   }, [deck, selection, theme, show]);
+
+  // Auto-advance to Step 4 when a build succeeds (editorResp appears) while on Step 3
+  useEffect(() => {
+    if (editorResp && step === 3) setStep(4);
+  }, [editorResp, step, setStep]);
 
   const runExport = useCallback(async () => {
     if (!deck) return;
@@ -324,9 +351,7 @@ export default function App() {
           subtitle="Edit text, choose layouts, and manage images in one place. Build when ready."
           step={3}
           currentStep={step}
-          onNext={next}
-          nextLabel={editorResp ? "Proceed to Finalize" : "Build editor to continue"}
-          nextDisabled={!editorResp}
+          hideNext // header button handles build+continue
         >
           {deck && slides.length > 0 ? (
             <div className="rounded-2xl bg-white shadow-sm border p-4">
@@ -342,7 +367,7 @@ export default function App() {
                 onAutoFit={async (slideId: string) => {
                   const s = deck.slides.find((sl) => sl.id === slideId);
                   if (!s) return;
-                  const text_count = Math.max(0, (s.bullets || []).length);
+                  const text_count = textBlockCount(s);
                   const image_count = Math.max(0, (s.media || []).length);
                   try {
                     const { data } = await api.filterLayouts({
@@ -362,7 +387,7 @@ export default function App() {
                 }
                 requestId={meta?.requestId ?? null}
                 exportStatus={exportInfo ? "Export ready" : undefined}
-                onBuildEditor={runBuildEditor}
+                onBuildEditor={runBuildEditor} // Build & Continue (auto-advance via useEffect)
                 selectionComplete={selectionComplete}
                 building={building}
                 buildErr={buildErr}

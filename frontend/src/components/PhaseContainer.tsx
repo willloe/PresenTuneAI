@@ -8,6 +8,7 @@ type Props = {
   onNext?: () => void;
   nextLabel?: string;
   nextDisabled?: boolean;
+  hideNext?: boolean;          // NEW
   children: React.ReactNode;
 };
 
@@ -19,6 +20,7 @@ export default function PhaseContainer({
   onNext,
   nextLabel = "Next",
   nextDisabled,
+  hideNext = false,            // NEW default
   children,
 }: Props) {
   const isActive = step === currentStep;
@@ -47,7 +49,7 @@ export default function PhaseContainer({
 
       <div className={isFuture ? "pointer-events-none select-none" : ""}>{children}</div>
 
-      {isActive && typeof onNext === "function" && (
+      {isActive && !hideNext && typeof onNext === "function" && (
         <div className="mt-4">
           <button
             onClick={onNext}

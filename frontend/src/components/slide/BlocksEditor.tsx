@@ -14,8 +14,8 @@ import { useToast } from "../ui/Toast";
 type Props = {
   sections: TextSection[];
   onChange: (next: TextSection[]) => void;
-  onRequestSave: () => void | Promise<void>;   // can be async or sync
-  onRequestCancel: () => void;                 // sync is fine here
+  onRequestSave: () => void | Promise<void>;
+  onRequestCancel: () => void;
   showActions?: boolean;
 };
 
@@ -24,7 +24,7 @@ export default function BlocksEditor({
   onChange,
   onRequestSave,
   onRequestCancel,
-  showActions = true, 
+  showActions = true,
 }: Props) {
   const { show } = useToast();
   const [saving, setSaving] = useState(false);
@@ -32,20 +32,10 @@ export default function BlocksEditor({
   async function handleSave() {
     try {
       setSaving(true);
-      // support both sync and async handlers from parent
       await Promise.resolve(onRequestSave());
-      show({
-        title: "Saved",
-        description: "Text sections updated.",
-        tone: "success",
-        timeoutMs: 1600,
-      });
+      show({ title: "Saved", description: "Text sections updated.", tone: "success", timeoutMs: 1600 });
     } catch (err: any) {
-      show({
-        title: "Couldn't save",
-        description: err?.message ?? "Please try again.",
-        tone: "danger",
-      });
+      show({ title: "Couldn't save", description: err?.message ?? "Please try again.", tone: "danger" });
     } finally {
       setSaving(false);
     }
@@ -106,8 +96,12 @@ export default function BlocksEditor({
   function updateParagraphText(id: string, text: string) {
     onChange(sections.map((s) => (s.id === id && s.kind === "paragraph" ? { ...s, text } : s)));
   }
+
   function updateListBullets(id: string, bullets: string[]) {
-    onChange(sections.map((s) => (s.id === id && s.kind === "list" ? { ...s, bullets } : s)));
+    // clamp & clean is handled by normalizeBulletsInput before calling this
+    onChange(
+      sections.map((s) => (s.id === id && s.kind === "list" ? { ...s, bullets: bullets.slice(0, BULLETS_MAX) } : s)),
+    );
   }
 
   return (
@@ -115,12 +109,8 @@ export default function BlocksEditor({
       <div className="flex items-center justify-between">
         <label className="text-sm font-medium">Text sections</label>
         <div className="flex gap-2">
-          <Button size="xs" onClick={() => addSection("paragraph")}>
-            + Paragraph
-          </Button>
-          <Button size="xs" onClick={() => addSection("list")}>
-            + Bullet list
-          </Button>
+          <Button size="xs" onClick={() => addSection("paragraph")}>+ Paragraph</Button>
+          <Button size="xs" onClick={() => addSection("list")}>+ Bullet list</Button>
         </div>
       </div>
 
@@ -129,25 +119,15 @@ export default function BlocksEditor({
           <div className="flex items-center justify-between gap-2">
             <div className="flex items-center gap-2 text-xs text-gray-600">
               <span className="inline-flex items-center gap-2">
-                <Select
-                  value={s.kind}
-                  onChange={(e) => changeKind(s.id, e.target.value as TextSection["kind"])}
-                >
+                <Select value={s.kind} onChange={(e) => changeKind(s.id, e.target.value as TextSection["kind"])}>
                   <option value="paragraph">Paragraph</option>
                   <option value="list">Bullet list</option>
                 </Select>
 
                 {s.role === "primary" ? (
-                  <span className="inline-block rounded-full bg-black text-white px-2 py-0.5">
-                    primary
-                  </span>
+                  <span className="inline-block rounded-full bg-black text-white px-2 py-0.5">primary</span>
                 ) : (
-                  <Button
-                    size="xs"
-                    variant="ghost"
-                    onClick={() => setPrimary(s.id)}
-                    title="Mark this section as primary"
-                  >
+                  <Button size="xs" variant="ghost" onClick={() => setPrimary(s.id)} title="Mark primary">
                     make primary
                   </Button>
                 )}
@@ -155,26 +135,9 @@ export default function BlocksEditor({
             </div>
 
             <div className="flex items-center gap-1">
-              <IconButton
-                label="Move section up"
-                onClick={() => moveSection(s.id, -1)}
-                disabled={idx === 0}
-              >
-                ↑
-              </IconButton>
-              <IconButton
-                label="Move section down"
-                onClick={() => moveSection(s.id, +1)}
-                disabled={idx === sections.length - 1}
-              >
-                ↓
-              </IconButton>
-              <IconButton
-                label="Remove section"
-                onClick={() => removeSection(s.id)}
-              >
-                ✕
-              </IconButton>
+              <IconButton label="Move section up" onClick={() => moveSection(s.id, -1)} disabled={idx === 0}>↑</IconButton>
+              <IconButton label="Move section down" onClick={() => moveSection(s.id, +1)} disabled={idx === sections.length - 1}>↓</IconButton>
+              <IconButton label="Remove section" onClick={() => removeSection(s.id)}>✕</IconButton>
             </div>
           </div>
 
@@ -182,14 +145,29 @@ export default function BlocksEditor({
             <>
               <textarea
                 value={s.text ?? ""}
-                onChange={(e) => updateParagraphText(s.id, e.target.value.slice(0, PARA_MAX))}
+                onChange={(e) => {
+                  const value = e.target.value.slice(0, PARA_MAX);
+                  // smart convert to list if the user starts with "- " / "* " / "1. " etc.
+                  if (/^\s*(?:[-*•·]|\d+[.)])\s+/.test(value)) {
+                    const bullets = normalizeBulletsInput(value);
+                    onChange(
+                      sections.map((sec) =>
+                        sec.id === s.id
+                          ? ({ id: s.id, kind: "list", bullets, role: s.role ?? null } as TextSection)
+                          : sec,
+                      ),
+                    );
+                  } else {
+                    updateParagraphText(s.id, value);
+                  }
+                }}
                 onKeyDown={(e) => {
                   if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "s") {
                     e.preventDefault();
-                    handleSave(); // toast-aware save
+                    handleSave();
                   } else if (e.key === "Escape") {
                     e.preventDefault();
-                    handleCancel(); // toast-aware cancel
+                    handleCancel();
                   }
                 }}
                 rows={Math.max(2, Math.min(8, (s.text ?? "").split(/\r?\n/).length))}
@@ -209,24 +187,32 @@ export default function BlocksEditor({
                   if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "s") {
                     e.preventDefault();
                     handleSave();
-                  } else if (e.key === "Escape") {
+                    return;
+                  }
+                  if (e.key === "Escape") {
                     e.preventDefault();
                     handleCancel();
+                    return;
+                  }
+                  // Enter = new bullet, Shift+Enter = newline in current bullet
+                  if (e.key === "Enter" && !e.shiftKey) {
+                    e.preventDefault();
+                    const current = s.kind === "list" ? (s.bullets ?? []) : [];
+                    updateListBullets(s.id, [...current, ""]);
                   }
                 }}
-                rows={Math.max(3, Math.min(10, (s.bullets ?? []).length || 3))}
+                rows={Math.max(3, Math.min(10, (s.kind === "list" ? (s.bullets ?? []).length : 0) || 3))}
                 className="mt-2 w-full rounded-xl border px-3 py-2 outline-none focus:ring bg-white"
-                placeholder={"- First point\n- Second point"}
+                placeholder={"Type and press Enter to add a bullet\n(Shift+Enter for a newline inside a bullet)"}
               />
               <div className="mt-1 text-[11px] text-right text-gray-500">
-                {(s.bullets ?? []).length}/{BULLETS_MAX} bullets
+                {(s.kind === "list" ? (s.bullets ?? []).length : 0)}/{BULLETS_MAX} bullets
               </div>
             </>
           )}
         </div>
       ))}
 
-      {/* Action row */}
       {showActions && (
         <div className="flex items-center gap-2 pt-1">
           <Button variant="solid" onClick={handleSave} disabled={saving}>
