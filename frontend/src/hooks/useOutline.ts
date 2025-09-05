@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { api, type ApiMeta, ApiError } from "../lib/api";
 import type { Deck, Slide } from "../types/deck";
+import { derivePrimaryBullets, sanitizeSections } from "../components/slide/sections";
 
 export type OutlineRequest = {
   topic?: string | null;
@@ -76,13 +77,32 @@ export function useOutline() {
     }
   }
 
-  /** Local-only mutation for inline editing (title/bullets/etc.) */
+  /**
+   * Local-only mutation for inline editing (title/sections/media/etc.)
+   * Ensures that when meta.sections changes we sanitize and mirror the primary list
+   * back to legacy `bullets` for any remaining back-compat consumers.
+   */
   function updateSlide(index: number, updater: (prev: Slide) => Slide) {
     setDeck((prev: Deck | null) => {
       if (!prev) return prev;
       if (index < 0 || index >= prev.slides.length) return prev;
+
+      const current = prev.slides[index];
+      let next = updater(current);
+
+      // If sections exist, sanitize and mirror to legacy bullets
+      const sections = next.meta?.sections ?? null;
+      if (sections) {
+        const clean = sanitizeSections(sections);
+        next = {
+          ...next,
+          meta: { ...(next.meta || {}), sections: clean },
+          bullets: derivePrimaryBullets(clean),
+        };
+      }
+
       const slides = [...prev.slides];
-      slides[index] = updater(slides[index]);
+      slides[index] = next;
       return { ...prev, slides };
     });
   }

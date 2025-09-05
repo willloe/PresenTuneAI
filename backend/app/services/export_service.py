@@ -39,19 +39,19 @@ EMU_PER_INCH = 914_400
 DPI = 96
 EMU_PER_PX = int(EMU_PER_INCH / DPI)  # 9,525
 
+# Font size mapping (browser CSS px → PowerPoint points)
+CSS_PX_TO_PT = 0.75            # 96 px == 72 pt
+EXPORT_FONT_SCALE = 1.15       # gentle bump so PPT matches on-screen preview
 
 def _emu(px: float) -> int:
     return int(round(px * EMU_PER_PX))
 
-
 def _pt_from_px(px: float) -> float:
-    # 1 pt = 1/72 inch; 96 px = 72 pt  =>  px * 0.75
-    return float(px) * 0.75
-
+    # Convert CSS pixels to points and apply a small scaling so PPT text isn't visually smaller
+    return float(px) * CSS_PX_TO_PT * EXPORT_FONT_SCALE
 
 def _strip_slide_prefix(s: str) -> str:
     return _SLIDE_PREFIX.sub("", (s or "").strip())
-
 
 def _export_dir() -> Path:
     # canonical: <project>/backend/data/exports
@@ -59,10 +59,8 @@ def _export_dir() -> Path:
     d.mkdir(parents=True, exist_ok=True)
     return d
 
-
 def _stamp_name(theme: str) -> str:
     return f"deck_{datetime.utcnow().strftime('%Y%m%d_%H%M%S')}_{theme}"
-
 
 # -------------------- BYTES FETCHING (handles internal assets) --------------------
 def _read_bytes(p: Path) -> Optional[bytes]:
@@ -71,11 +69,9 @@ def _read_bytes(p: Path) -> Optional[bytes]:
     except Exception:
         return None
 
-
 def _abs_from_rel(rel_path: str) -> Path:
     p = Path(rel_path)
     return p if p.is_absolute() else (Path.cwd() / p).resolve()
-
 
 def _bytes_from_asset_url(url: str) -> Optional[bytes]:
     """
@@ -111,7 +107,6 @@ def _bytes_from_asset_url(url: str) -> Optional[bytes]:
     except Exception:
         return None
 
-
 def _bytes_from_data_url(url: str) -> Optional[bytes]:
     """
     data:image/png;base64,XXXX
@@ -126,7 +121,6 @@ def _bytes_from_data_url(url: str) -> Optional[bytes]:
     except Exception:
         return None
 
-
 def _bytes_from_file_url(url: str) -> Optional[bytes]:
     try:
         if not url.lower().startswith("file:"):
@@ -135,7 +129,6 @@ def _bytes_from_file_url(url: str) -> Optional[bytes]:
         return _read_bytes(p)
     except Exception:
         return None
-
 
 def _bytes_from_http(url: str) -> Optional[bytes]:
     try:
@@ -150,7 +143,6 @@ def _bytes_from_http(url: str) -> Optional[bytes]:
             return resp.read()
     except Exception:
         return None
-
 
 def _bytes_for_url(url: str) -> Optional[bytes]:
     """
@@ -173,7 +165,6 @@ def _bytes_for_url(url: str) -> Optional[bytes]:
     # 4) http(s):
     return _bytes_from_http(url)
 
-
 def _normalize_to_png(img_bytes: bytes) -> Optional[bytes]:
     """
     Normalize arbitrary image bytes to PNG when Pillow is available.
@@ -192,13 +183,11 @@ def _normalize_to_png(img_bytes: bytes) -> Optional[bytes]:
         # If Pillow missing or decode fails, just return original bytes.
         return img_bytes or None
 
-
 def _fetch_image_png_bytes(url: str) -> Optional[bytes]:
     raw = _bytes_for_url(url)
     if not raw:
         return None
     return _normalize_to_png(raw)
-
 
 # ------------------------- THEME HELPERS -------------------------
 def _to_plain(obj: Any) -> Dict[str, Any]:
@@ -221,7 +210,6 @@ def _to_plain(obj: Any) -> Dict[str, Any]:
         if hasattr(obj, key):
             out[key] = _to_plain(getattr(obj, key))
     return out
-
 
 def _safe_theme_defaults(meta: Optional[Dict[str, Any] | Any]) -> Dict[str, Any]:
     m = _to_dict(meta)
@@ -246,7 +234,6 @@ def _safe_theme_defaults(meta: Optional[Dict[str, Any] | Any]) -> Dict[str, Any]
         },
     }
 
-
 def _rgb_from_hex(hex_or_hash: str):
     from pptx.dml.color import RGBColor
     h = (hex_or_hash or "").lstrip("#")
@@ -262,12 +249,10 @@ def _rgb_from_hex(hex_or_hash: str):
         r, g, b = 17, 17, 17
     return RGBColor(r, g, b)
 
-
 def _frame_get(f: Any, key: str) -> float:
     if isinstance(f, dict):
         return float(f[key])
     return float(getattr(f, key))
-
 
 # ---------- helpers: reliable background ----------
 def _apply_slide_bg_fill(slide, fill_hex: str):
@@ -276,7 +261,6 @@ def _apply_slide_bg_fill(slide, fill_hex: str):
         slide.background.fill.fore_color.rgb = _rgb_from_hex(fill_hex)
     except Exception:
         pass
-
 
 def _add_full_bleed_bg_shape(slide, prs, fill_hex: str):
     try:
@@ -296,7 +280,6 @@ def _add_full_bleed_bg_shape(slide, prs, fill_hex: str):
             pass
     except Exception:
         pass
-
 
 # ---------- Text helpers (canonical: meta.sections) ----------
 def _section_paragraphs(slide: Slide) -> List[Tuple[str, bool]]:
@@ -323,7 +306,6 @@ def _section_paragraphs(slide: Slide) -> List[Tuple[str, bool]]:
             # Unknown kinds ignored
             continue
     return out
-
 
 # ---------- SLIDES (old/simple) ----------
 async def _export_slides_to_pptx(
@@ -441,14 +423,12 @@ async def _export_slides_to_pptx(
 
     return ExportResponse(path=str(out_path), format="pptx", theme=theme, bytes=out_path.stat().st_size)
 
-
 # ---------- EDITOR (framed layers → exact positioning) ----------
 def _find_blank_layout(prs) -> int:
     for i, layout in enumerate(prs.slide_layouts):
         if getattr(layout, "name", "").lower() == "blank":
             return i
     return len(prs.slide_layouts) - 1
-
 
 def _pp_align_from(style_align: str | None):
     try:
@@ -463,7 +443,6 @@ def _pp_align_from(style_align: str | None):
         return PP_ALIGN.LEFT
     except Exception:
         return None
-
 
 def _add_text_layer(slide, ly: EditorLayer, theme_defaults: Dict[str, Any]):
     from pptx.util import Pt
@@ -485,33 +464,41 @@ def _add_text_layer(slide, ly: EditorLayer, theme_defaults: Dict[str, Any]):
     style = (ly.style or {}).copy()
     font_name = style.get("font") or style.get("fontFamily") or theme_defaults["fonts"]["body"]
     weight = int(style.get("weight") or style.get("fontWeight") or theme_defaults["fonts"]["weightBody"])
-    size_px = float(style.get("size") or style.get("fontSize") or 20)
+
+    if "fontSize" in style and style.get("fontSize") is not None:
+        font_pts = float(style.get("fontSize"))
+    else:
+        font_pts = _pt_from_px(float(style.get("size") or 20))
+
     color_hex = (style.get("color") or theme_defaults["colors"]["text"])
     align = _pp_align_from(style.get("align") or style.get("textAlign"))
+    line_height = style.get("lineHeight")  # optional (1.0–3.0 typical)
 
     rgb = _rgb_from_hex(color_hex)
 
     for i, line in enumerate(lines):
-        if i == 0:
-            p = tf.paragraphs[0]
-        else:
-            p = tf.add_paragraph()
+        p = tf.paragraphs[0] if i == 0 else tf.add_paragraph()
         p.text = line
         if align is not None:
             p.alignment = align
+        if isinstance(line_height, (int, float)) and line_height > 0:
+            try:
+                # python-pptx interprets float as "multiple" of single spacing
+                p.line_spacing = float(line_height)
+            except Exception:
+                pass
 
         if p.runs:
             for r in p.runs:
-                r.font.size = Pt(_pt_from_px(size_px))
+                r.font.size = Pt(font_pts)
                 r.font.bold = bool(weight >= 600)
                 r.font.name = font_name
                 r.font.color.rgb = rgb
         else:
-            p.font.size = Pt(_pt_from_px(size_px))
+            p.font.size = Pt(font_pts)
             p.font.bold = bool(weight >= 600)
             p.font.name = font_name
             p.font.color.rgb = rgb
-
 
 def _add_shape_layer(slide, ly: EditorLayer, theme_defaults: Dict[str, Any]):
     try:
@@ -541,7 +528,6 @@ def _add_shape_layer(slide, ly: EditorLayer, theme_defaults: Dict[str, Any]):
         shp.line.width = _emu(stroke_w_px)  # pptx expects EMU
     except Exception:
         pass
-
 
 def _add_image_layer(slide, ly: EditorLayer):
     f = ly.frame
@@ -601,7 +587,6 @@ def _add_image_layer(slide, ly: EditorLayer):
         pic.crop_top = 0.0
         pic.crop_bottom = 0.0
 
-
 async def _export_editor_to_pptx(
     doc: EditorDocIn,
     theme: str,
@@ -646,7 +631,6 @@ async def _export_editor_to_pptx(
 
     return ExportResponse(path=str(out_path), format="pptx", theme=theme, bytes=out_path.stat().st_size)
 
-
 # ---------- Public entry point ----------
 async def export_to_pptx(
     slides: Optional[list[Slide]] = None,
@@ -656,7 +640,7 @@ async def export_to_pptx(
 ) -> ExportResponse:
     """
     If `editor` is provided, export exact EditorDoc frames/layers.
-    Otherwise, fall back to the simple 'slides' exporter which now reads canonical `meta.sections`.
+    Otherwise, fall back to the simple 'slides' exporte=r which now reads canonical `meta.sections`.
     """
     out_dir = _export_dir()
     base = _stamp_name(theme)

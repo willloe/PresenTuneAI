@@ -34,7 +34,9 @@ export default function PreviewStage({ doc, activeIndex }: { doc: EditorDocOut |
             key={ly.id}
             layer={ly as any}
             scale={scale}
-            minFontPx={12}
+            minFontPx={14}        // preferred small-body size
+            floorFontPx={10}      // absolute floor
+            shrinkToFit={true}    // allow shrinking to fit
             showFrameOutline={false}
             showImage={true}
           />

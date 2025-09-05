@@ -64,3 +64,11 @@ export function derivePrimaryBullets(sections: TextSection[]): string[] {
     (sections.find((s) => s.kind === "list") as any);
   return (list?.bullets ?? []).map((b: string) => b.trim()).filter(Boolean).slice(0, BULLETS_MAX);
 }
+
+export function splitBulletsForEdit(input: string): string[] {
+  return (input || "")
+    .split(/\r?\n/)
+    // strip common bullet markers, but DO NOT drop empties
+    .map((s) => s.replace(/^(\d+[.)]\s*|[-*•·]\s*)/, ""))
+    .slice(0, BULLETS_MAX);
+}

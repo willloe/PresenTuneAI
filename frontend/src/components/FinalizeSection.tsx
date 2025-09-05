@@ -7,10 +7,53 @@ import { openInGoogleSlides } from "../integrations/externalEditor";
 import { ensureGoogleDriveToken } from "../integrations/oauth/google";
 import { getConfig } from "../config";
 
+import { themeKeyToMeta, type ThemeMeta } from "../theme/meta";
+import { THEMES, type ThemeKey } from "../theme/themes";
+
 type Props = {
   editorResp: EditorBuildResponse | null;
   onOpenWorkbench?: () => void;
 };
+
+/** Merge + hydrate ThemeMeta without duplicate object keys */
+function ensureThemeMeta(metaIn: any, themeKey: ThemeKey | string): ThemeMeta {
+  const safeKey: ThemeKey = (THEMES as any)[themeKey] ? (themeKey as ThemeKey) : "default";
+  const base = themeKeyToMeta(safeKey);
+
+  const inFonts = (metaIn?.fonts ?? {}) as Partial<ThemeMeta["fonts"]>;
+  const inColors = (metaIn?.colors ?? {}) as Partial<ThemeMeta["colors"]>;
+
+  // Start from base → override with incoming → then ensure sensible fallbacks
+  let fonts: ThemeMeta["fonts"] = {
+    ...(base.fonts || {}),
+    ...(inFonts || {}),
+  } as ThemeMeta["fonts"];
+  fonts.heading ||= "Inter, ui-sans-serif, system-ui";
+  fonts.body ||= "Inter, ui-sans-serif, system-ui";
+  fonts.weightHeading ||= 700;
+  fonts.weightBody ||= 400;
+  if (fonts.letterSpacing === undefined) fonts.letterSpacing = "0em";
+
+  let colors: ThemeMeta["colors"] = {
+    ...(base.colors || {}),
+    ...(inColors || {}),
+  } as ThemeMeta["colors"];
+  colors.appBg ||= "#0f172a";
+  colors.surface ||= "#ffffff";
+  colors.text ||= "#111827";
+  colors.mutedText ||= "#6B7280";
+  colors.border ||= "#E5E7EB";
+  colors.accent ||= "#111827";
+  colors.accentContrast ||= "#ffffff";
+  colors.accentSoft ||= "#F3F4F6";
+
+  return {
+    ...base,
+    ...(metaIn ?? {}),
+    fonts,
+    colors,
+  };
+}
 
 export default function FinalizeSection({ editorResp, onOpenWorkbench }: Props) {
   const { setStep } = usePhases();
@@ -31,12 +74,21 @@ export default function FinalizeSection({ editorResp, onOpenWorkbench }: Props) 
     })();
   }, []);
 
-  const autoExportKey = useMemo(() => {
+  // Normalize editor + hydrate theme_meta with defaults
+  const normalizedEditor = useMemo(() => {
     const ed = editorResp?.editor;
+    if (!ed) return null;
+    const safeKey: ThemeKey = (THEMES as any)[ed.theme] ? (ed.theme as ThemeKey) : "default";
+    const safeMeta = ensureThemeMeta(ed.theme_meta, safeKey);
+    return { ...ed, theme_meta: safeMeta };
+  }, [editorResp?.editor]);
+
+  const autoExportKey = useMemo(() => {
+    const ed = normalizedEditor;
     if (!ed) return null;
     const ids = (ed.slides || []).map((s) => s.id || "").join(",");
     return `${theme}|${(ed.slides || []).length}|${ids}`;
-  }, [editorResp?.editor, theme]);
+  }, [normalizedEditor, theme]);
 
   const autoRanForKey = useRef<string | null>(null);
   useEffect(() => {
@@ -52,14 +104,14 @@ export default function FinalizeSection({ editorResp, onOpenWorkbench }: Props) 
     })();
   }, [ready, exporting, autoExportKey, runExport]);
 
-  const slidesCount = editorResp?.editor?.slides?.length ?? 0;
+  const slidesCount = normalizedEditor?.slides?.length ?? 0;
   const statusLabel = useMemo(
     () => (ready ? `Editor: ✓ built ${slidesCount} slide${slidesCount === 1 ? "" : "s"}` : "Editor: not ready"),
     [ready, slidesCount]
   );
 
-  function rebuildEditor() {
-    setStep?.(4);
+  function openWorkbenchStep() {
+    setStep?.(3);
   }
 
   async function copyUrl(text: string) {
@@ -96,16 +148,17 @@ export default function FinalizeSection({ editorResp, onOpenWorkbench }: Props) 
               <span className="text-gray-400">•</span>
               <button
                 className="text-amber-700 underline underline-offset-2 hover:no-underline"
-                onClick={rebuildEditor}
+                onClick={openWorkbenchStep}
               >
-                {editorResp.warnings.length} warning{editorResp.warnings.length === 1 ? "" : "s"} — Review in Step 4
+                {editorResp.warnings.length} warning{editorResp.warnings.length === 1 ? "" : "s"} — Review in
+                Workbench
               </button>
             </>
           )}
         </div>
 
         <div className="flex items-center gap-2">
-          {editorResp?.editor && (
+          {normalizedEditor && (
             <button
               onClick={onOpenWorkbench}
               className="rounded-xl px-3 py-1 border hover:bg-gray-50"
@@ -120,7 +173,7 @@ export default function FinalizeSection({ editorResp, onOpenWorkbench }: Props) 
             className={`rounded-xl px-4 py-2 text-white ${
               exporting || !ready ? "bg-gray-400 cursor-not-allowed" : "bg-black hover:opacity-90"
             }`}
-            title={!ready ? "Build the editor doc first (Step 4)" : "Export deck"}
+            title={!ready ? "Build the editor doc first" : "Export deck"}
           >
             {exporting ? "Exporting…" : exportInfo ? "Re-export" : "Export"}
           </button>
@@ -137,8 +190,8 @@ export default function FinalizeSection({ editorResp, onOpenWorkbench }: Props) 
             {editorResp.warnings?.length ? (
               <div className="text-amber-700">
                 Warnings: {editorResp.warnings.length} —{" "}
-                <button className="underline underline-offset-2 hover:no-underline" onClick={rebuildEditor}>
-                  Review in Step 4
+                <button className="underline underline-offset-2 hover:no-underline" onClick={openWorkbenchStep}>
+                  Review in Workbench
                 </button>
               </div>
             ) : (
@@ -154,13 +207,13 @@ export default function FinalizeSection({ editorResp, onOpenWorkbench }: Props) 
         )}
       </div>
 
-      {editorResp?.editor && (
+      {normalizedEditor && (
         <div
           className="themed-card p-3 anim-in"
           style={{ fontFamily: "var(--font-body)", letterSpacing: "var(--font-tracking)" }}
         >
           <EditorPreview
-            doc={editorResp.editor}
+            doc={normalizedEditor}
             cols={2}
             minFontPx={12}
             showFrames={false}
@@ -174,8 +227,8 @@ export default function FinalizeSection({ editorResp, onOpenWorkbench }: Props) 
         {exportErr && (
           <>
             <span className="text-sm text-red-600">{exportErr}</span>
-            <button className="text-sm underline underline-offset-2" onClick={rebuildEditor}>
-              Rebuild editor (Step 4)
+            <button className="text-sm underline underline-offset-2" onClick={openWorkbenchStep}>
+              Rebuild in Workbench
             </button>
           </>
         )}
