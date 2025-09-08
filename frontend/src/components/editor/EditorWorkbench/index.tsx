@@ -5,8 +5,10 @@ import SlideTabs from "./SlideTabs";
 import PreviewStage from "./PreviewStage";
 import ContentPanel from "./panels/ContentPanel";
 import MediaPanel from "./panels/MediaPanel";
-import LayoutPicker from "../../layout/LayoutPicker";
 import { useDebouncedEditorDoc } from "../../../hooks/useDebouncedEditorDoc";
+import LayoutPickerModal from "../../layout/LayoutPickerModal";
+import LayoutThumb from "../../layout/LayoutThumb";
+import Button from "../../ui/Button";
 
 type Slide = Deck["slides"][number];
 
@@ -38,18 +40,23 @@ export default function EditorWorkbench({
   onOpenMediaLibrarySlot: (slideIdx: number, slotIdx: number) => void;
   requestId: string | null;
   exportStatus?: string;
-  onBuildEditor: () => Promise<void>; // parent advances to Step 4 on success
+  onBuildEditor: () => Promise<void>;
   selectionComplete: boolean;
   building: boolean;
   buildErr: string | null;
 }) {
   const [active, setActive] = useState(0);
   const [tab, setTab] = useState<"content" | "layout" | "media">("content");
+  const [layoutModalOpen, setLayoutModalOpen] = useState(false);
   const activeSlide = slides[active];
 
-  const { doc, busy: previewBusy, rebuildNow } = useDebouncedEditorDoc({ deck, selection, theme });
+  const { doc, busy: previewBusy, rebuildNow } = useDebouncedEditorDoc({
+    deck,
+    selection,
+    theme,
+  });
 
-  // Recompute layout filter inputs from canonical meta.sections (safe if slide is missing)
+  // Recompute filter inputs from canonical meta.sections (safe if slide missing)
   const counts = useMemo(() => {
     if (!activeSlide) return { text_count: 0, image_count: 0 };
     try {
@@ -61,6 +68,10 @@ export default function EditorWorkbench({
       };
     }
   }, [activeSlide?.meta?.sections, activeSlide?.media, activeSlide?.id]);
+
+  const selectedLayoutId = activeSlide ? (selection[activeSlide.id] || "") : "";
+  const selectedLayout =
+    activeSlide ? layouts.find((l) => l.id === selectedLayoutId) || null : null;
 
   return (
     <div className="flex flex-col gap-3">
@@ -113,21 +124,50 @@ export default function EditorWorkbench({
             {tab === "layout" && activeSlide && (
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
-                  <div className="text-sm font-medium">Layout</div>
-                  <button className="text-xs underline underline-offset-2" onClick={() => onAutoFit(activeSlide.id)}>
-                    Auto-fit
-                  </button>
+                  <div>
+                    <div className="text-sm font-medium">Layout</div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      className="text-xs underline underline-offset-2"
+                      onClick={() => onAutoFit(activeSlide.id)}
+                      type="button"
+                    >
+                      Auto-fit
+                    </button>
+                    <Button size="sm" onClick={() => setLayoutModalOpen(true)}>
+                      Choose…
+                    </Button>
+                  </div>
                 </div>
-                <LayoutPicker
+
+                {/* Modal lives outside of flow */}
+                <LayoutPickerModal
+                  open={layoutModalOpen}
+                  onClose={() => setLayoutModalOpen(false)}
                   items={layouts}
-                  selectedId={selection[activeSlide.id] || ""}
-                  onSelect={(id) => onSelectLayout(activeSlide.id, id)}
+                  selectedId={selectedLayoutId || ""}
                   counts={counts}
-                  page={{ width: 1280, height: 720 }}
-                  topK={6}
-                  initialView="selected"
-                  bringToFrontOnSelect
+                  onSelect={(id) => onSelectLayout(activeSlide.id, id)}
+                  onAutoFit={() => onAutoFit(activeSlide.id)}
                 />
+                <div className="mt-2">
+                  {selectedLayout ? (
+                    <LayoutThumb
+                      layout={selectedLayout}
+                      width={420}
+                      pageW={1280}
+                      pageH={720}
+                      selected
+                      onSelect={() => setLayoutModalOpen(true)}
+                      tabIndex={0}
+                    />
+                  ) : (
+                    <div className="rounded-xl border p-3 text-sm text-gray-600 bg-white">
+                      Using <b>Auto-fit</b>. Click <em>Choose…</em> to pick a specific layout.
+                    </div>
+                  )}
+                </div>
               </div>
             )}
 
@@ -149,7 +189,7 @@ export default function EditorWorkbench({
         </div>
 
         {/* Preview */}
-        <div className="lg:col-span-2 rounded-xl border bg-white p-4">
+        <div className="lg:col-span-2 rounded-xl border bg-white">
           <PreviewStage doc={doc} activeIndex={active} />
         </div>
       </div>

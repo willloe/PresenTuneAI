@@ -61,10 +61,12 @@ export default function LayerView({
         ? st.borderRadius * scale
         : undefined;
 
+    // Reset when inputs change
     useLayoutEffect(() => {
       setFittedPx(preferredPx);
     }, [preferredPx, layer.text, f.w, f.h, scale]);
 
+    // Shrink-to-fit (binary search)
     useLayoutEffect(() => {
       if (!shrinkToFit || !textRef.current) return;
       const el = textRef.current;
@@ -82,7 +84,8 @@ export default function LayerView({
         const mid = Math.floor((lo + hi) / 2);
         apply(mid);
         if (fits()) {
-          best = mid; lo = mid + 1;
+          best = mid;
+          lo = mid + 1;
         } else {
           hi = mid - 1;
         }
@@ -101,6 +104,8 @@ export default function LayerView({
       whiteSpace: "pre-wrap",
       textAlign: align,
       wordBreak: "break-word",
+      overflowWrap: "anywhere",
+      hyphens: "auto",
       background: bgFill,
       border:
         st.stroke || st.border

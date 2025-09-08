@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect, useRef } from "react";
 
 type Props = {
   title: string;
@@ -8,7 +8,15 @@ type Props = {
   onNext?: () => void;
   nextLabel?: string;
   nextDisabled?: boolean;
-  hideNext?: boolean;          // NEW
+  hideNext?: boolean;
+
+  /** Auto-scroll this section into view when it becomes active (default: true) */
+  autoScroll?: boolean;
+  /** Where to place the section in the viewport when scrolling (default: 'start') */
+  scrollBlock?: "start" | "center" | "end";
+  /** Optional pixel offset to compensate for sticky headers (default: 0) */
+  scrollOffset?: number;
+
   children: React.ReactNode;
 };
 
@@ -20,14 +28,43 @@ export default function PhaseContainer({
   onNext,
   nextLabel = "Next",
   nextDisabled,
-  hideNext = false,            // NEW default
+  hideNext = false,
+  autoScroll = true,
+  scrollBlock = "start",
+  scrollOffset = 0,
   children,
 }: Props) {
   const isActive = step === currentStep;
   const isFuture = step > currentStep;
 
+  // Scroll into view when this phase becomes active
+  const rootRef = useRef<HTMLElement | null>(null);
+  useEffect(() => {
+    if (!autoScroll || !isActive || !rootRef.current) return;
+
+    // Let layout settle before scrolling
+    requestAnimationFrame(() => {
+      rootRef.current!.scrollIntoView({
+        behavior: "smooth",
+        block: scrollBlock,
+        inline: "nearest",
+      });
+      if (scrollOffset) {
+        // Adjust for sticky header etc.
+        setTimeout(() => {
+          try {
+            window.scrollBy({ top: -scrollOffset, behavior: "smooth" });
+          } catch {
+            window.scrollTo(0, Math.max(0, window.scrollY - scrollOffset));
+          }
+        }, 180);
+      }
+    });
+  }, [autoScroll, isActive, scrollBlock, scrollOffset]);
+
   return (
     <section
+      ref={rootRef}
       className={`rounded-2xl bg-white shadow-sm p-6 mb-6 relative ${isFuture ? "opacity-50" : ""}`}
       aria-disabled={isFuture}
       aria-labelledby={`phase-title-${step}`}
