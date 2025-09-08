@@ -86,6 +86,7 @@ export default function App() {
 
   // Derived
   const slides: Deck["slides"] = deck?.slides ?? [];
+  const currentSlide = openLibTarget ? slides[openLibTarget.slide] : null; // ← used by the drawer
 
   // Toasts
   const { show } = useToast();
@@ -317,7 +318,6 @@ export default function App() {
           currentStep={step}
           onNext={next}
           nextLabel="Continue to Outline"
-          // Example: if you have a sticky header ~64px high
           scrollBlock="start"
         >
           <UploadSection uploadErr={uploadErr} uploadMeta={uploadMeta} onPick={onPick} />
@@ -432,6 +432,9 @@ export default function App() {
         onClose={() => setOpenLibTarget(null)}
         uploadId={uploadId}
         slotIndex={openLibTarget?.slot ?? null}
+        enableAI = {true}
+        slideTitle={currentSlide?.title}
+        slotCount={Math.max(0, currentSlide?.media?.length ?? 0)}
         onSelect={(url) => {
           if (!openLibTarget) return;
           const { slide, slot } = openLibTarget;

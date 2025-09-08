@@ -1,10 +1,12 @@
 from __future__ import annotations
 
 import json
+import os
+import logging
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, Query
 from app.core.auth import require_token
 from app.core.config import settings
 from app.models.schemas.layouts import (
@@ -13,6 +15,8 @@ from app.models.schemas.layouts import (
     LayoutFilterRequest,
     Frame,
 )
+
+log = logging.getLogger("layouts")
 
 router = APIRouter(
     tags=["layouts"],
@@ -65,9 +69,25 @@ DEFAULT_LIB = LayoutLibrary(
 )
 
 # ---------- Load from JSON and normalize ----------
-LAYOUTS_JSON = Path("app/static/layouts/layouts.json").resolve()
-_LIB: LayoutLibrary = DEFAULT_LIB  # in-memory cache
-_LAYOUTS_MTIME: float | None = None  # for auto-reload
+def _candidate_paths() -> list[Path]:
+    env = os.getenv("LAYOUTS_JSON")
+    return [
+        Path(env).resolve() if env else None,
+        Path("app/static/layouts/layouts.json").resolve(),
+        Path("app/static/layouts.json").resolve(),
+        Path("app/static/layouts/library.json").resolve(),
+        Path("data/layouts.json").resolve(),
+    ]
+
+def _pick_path() -> Path | None:
+    for p in _candidate_paths():
+        if p and p.exists():
+            return p
+    return None
+
+LAYOUTS_JSON: Path | None = _pick_path()
+_LIB: LayoutLibrary = DEFAULT_LIB
+_LAYOUTS_MTIME: float | None = None
 
 
 def _as_list(v: Any) -> list[Any]:
@@ -87,7 +107,7 @@ def _normalize_item(d: dict) -> dict:
         sup["images_min"], sup["images_max"] = 0, c
     d["supports"] = sup
 
-    # frames: allow img0/img1… or single sections dict; convert to canonical
+    # frames: allow img0/img1… or legacy bullets -> sections
     frames = dict(d.get("frames") or {})
     if any(k.startswith("img") for k in frames):
         imgs = []
@@ -96,44 +116,44 @@ def _normalize_item(d: dict) -> dict:
                 imgs.append(frames.pop(k))
         frames["images"] = _as_list(frames.get("images")) + imgs
 
-    # Back-compat: if legacy 'bullets' present, map -> 'sections'
     if "sections" not in frames and "bullets" in frames:
-        bl = frames.get("bullets")
-        frames["sections"] = _as_list(bl)
-        frames.pop("bullets", None)
+        frames["sections"] = _as_list(frames.pop("bullets"))
 
-    # Ensure arrays are arrays
-    s = frames.get("sections")
-    if s and not isinstance(s, list):
-        frames["sections"] = [s]
-    b = frames.get("bullets")
-    if b and not isinstance(b, list):
-        frames["bullets"] = [b]
-    i = frames.get("images")
-    if i and not isinstance(i, list):
-        frames["images"] = [i]
+    for k in ("sections", "bullets", "images"):
+        v = frames.get(k)
+        if v and not isinstance(v, list):
+            frames[k] = [v]
 
     d["frames"] = frames
     return d
 
 
 def _load_from_json() -> tuple[LayoutLibrary, float | None]:
-    if not LAYOUTS_JSON.exists():
+    global LAYOUTS_JSON
+    path = LAYOUTS_JSON or _pick_path()
+    if not path:
+        log.warning("layouts_json_missing; using DEFAULT_LIB")
         return DEFAULT_LIB, None
     try:
-        raw = json.loads(LAYOUTS_JSON.read_text(encoding="utf-8"))
-        items = [_normalize_item(dict(x)) for x in (raw.get("items") or [])]
+        raw_text = path.read_text(encoding="utf-8")
+        raw = json.loads(raw_text)
+
+        # support either {"items":[...]} or a raw array [...]
+        items_raw = raw.get("items") if isinstance(raw, dict) else raw
+        items = [_normalize_item(dict(x)) for x in (items_raw or [])]
+
         lib = LayoutLibrary(
             items=[LayoutItem(**it) for it in items],
-            page=int(raw.get("page") or 1),
-            page_size=int(raw.get("page_size") or max(1, len(items))),
-            total=int(raw.get("total") or len(items)),
+            page=int(raw.get("page") or 1) if isinstance(raw, dict) else 1,
+            page_size=int(raw.get("page_size") or max(1, len(items))) if isinstance(raw, dict) else max(1, len(items)),
+            total=int(raw.get("total") or len(items)) if isinstance(raw, dict) else len(items),
         )
-        mtime = LAYOUTS_JSON.stat().st_mtime
+        mtime = path.stat().st_mtime
+        LAYOUTS_JSON = path
+        log.info("layouts_loaded path=%s total=%s", str(path), lib.total)
         return lib, mtime
     except Exception as e:
-        import logging
-        logging.getLogger("uvicorn.error").warning(f"layouts.json load failed: {e}")
+        log.warning("layouts_load_failed path=%s err=%s; using DEFAULT_LIB", str(path), type(e).__name__)
         return DEFAULT_LIB, None
 
 
@@ -141,7 +161,6 @@ def _load_from_json() -> tuple[LayoutLibrary, float | None]:
 _LIB, _LAYOUTS_MTIME = _load_from_json()
 
 
-# -------- Option B: getter the editor can import --------
 def get_layout_library(reload: bool = False) -> LayoutLibrary:
     """
     Return the current in-memory layout library.
@@ -153,11 +172,11 @@ def get_layout_library(reload: bool = False) -> LayoutLibrary:
         _LIB, _LAYOUTS_MTIME = _load_from_json()
         return _LIB
 
-    # Auto-reload on file change (dev convenience)
     try:
-        mtime = LAYOUTS_JSON.stat().st_mtime
+        mtime = LAYOUTS_JSON.stat().st_mtime if LAYOUTS_JSON and LAYOUTS_JSON.exists() else None
     except FileNotFoundError:
         mtime = None
+
     if mtime != _LAYOUTS_MTIME:
         _LIB, _LAYOUTS_MTIME = _load_from_json()
     return _LIB
@@ -185,7 +204,6 @@ def _section_slots(item: LayoutItem) -> int:
     fr = getattr(item, "frames", None)
     if fr is None:
         return 0
-    # tolerate dict or pydantic model
     secs = fr.get("sections") if isinstance(fr, dict) else getattr(fr, "sections", None)
     if isinstance(secs, list):
         return len(secs)
@@ -209,10 +227,8 @@ def _score_layout(item: LayoutItem, text_count: int, image_count: int) -> float:
     if p == 0.0:
         p += (_closeness(text_count, tmin, tmax) + _closeness(image_count, imin, imax)) * 0.5
 
-    # NEW: structure-aware penalty so multi-column layouts win when you add sections
     slots = _section_slots(item)
     desired = _desired_slots_for(text_count)
-    # prefer exact match on slots; penalize mismatch softly
     p += abs(slots - desired) * 0.35
 
     w = float(getattr(item, "weight", 1.0) or 1.0)

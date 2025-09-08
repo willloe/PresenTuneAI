@@ -3,7 +3,6 @@ import { request, requestWithMeta } from "./http";
 export type { HttpMeta as ApiMeta } from "./http";
 export { ApiError } from "./errors";
 
-// NEW: serializable theme tokens shape
 import type { ThemeMeta } from "../theme/meta";
 
 /** Narrow Slide type from Deck for convenience */
@@ -21,6 +20,17 @@ export function exportDownloadUrl(serverPath: string) {
   const base = String(API_BASE).replace(/\/$/, "");
   return `${base}/export/${encodeURIComponent(name)}`;
 }
+
+/* -------------------- small util -------------------- */
+const qs = (params?: Record<string, any>) => {
+  if (!params) return "";
+  const sp = new URLSearchParams();
+  for (const [k, v] of Object.entries(params)) {
+    if (v !== undefined && v !== null && v !== "") sp.append(k, String(v));
+  }
+  const s = sp.toString();
+  return s ? `?${s}` : "";
+};
 
 /* -------------------- Health -------------------- */
 export type HealthResp = { status: string; schema_version?: string; time?: string };
@@ -116,7 +126,29 @@ export type LayoutRecommendBatchResponse = {
   recommendations: LayoutRecommendation[];
 };
 
+/* -------------------- NEW: Images -------------------- */
+export type ImageAsset = { url: string };
+
+export type ImageGenRequest = {
+  prompt: string;
+  n?: number;
+  size?: "1024x1024" | "1024x768" | "768x1024" | "512x512";
+  style?: string;
+  reference_image?: string | null;
+  mask?: string | null;
+};
+
+export type ImageGenResponse = {
+  assets: ImageAsset[];
+  provider?: string | null;  // "pexels" | "openai" | "stub"
+  model?: string | null;     // e.g. "gpt-image-1"
+  used_query?: string | null;
+};
+
 /* -------------------- API client -------------------- */
+
+export type LayoutsQuery = { page?: number; page_size?: number };
+
 export const api = {
   // Health
   health: () => request<HealthResp>("/health"),
@@ -170,7 +202,8 @@ export const api = {
   },
 
   // Layouts + editor build
-  layouts: () => requestWithMeta<LayoutLibrary>("/layouts", { method: "GET" }),
+  layouts: (params?: LayoutsQuery) =>
+    requestWithMeta<LayoutLibrary>(`/layouts${qs(params)}`, { method: "GET" }),
   filterLayouts: (body: LayoutFilterRequest) =>
     requestWithMeta<{ candidates: string[] }>("/layouts/filter", {
       method: "POST",
@@ -207,4 +240,16 @@ export const api = {
       }),
     });
   },
+
+  // Images
+  generateImages: (payload: ImageGenRequest, opts?: { idempotencyKey?: string }) => {
+    const headers: HeadersInit = {};
+    if (opts?.idempotencyKey) (headers as any)["Idempotency-Key"] = opts.idempotencyKey;
+    return requestWithMeta<ImageGenResponse>("/images/generate", {
+      method: "POST",
+      headers,
+      body: JSON.stringify(payload),
+    });
+  },
+  imageProvider: () => requestWithMeta<{ provider: string; model?: string }>("/images/provider"),
 };

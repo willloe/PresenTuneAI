@@ -11,3 +11,5 @@ Pillow>=10
 pymupdf
 pdfplumber
 python-docx
+openai>=1.30.0
+httpx>=0.25
