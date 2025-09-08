@@ -1,6 +1,5 @@
-# app/services/outline_service.py
 from __future__ import annotations
-import os, uuid, logging, re
+import uuid, logging, re
 from dataclasses import dataclass
 from typing import List
 from datetime import datetime
@@ -10,9 +9,10 @@ from fastapi import HTTPException
 
 from app.core.version import SCHEMA_VERSION
 from app.core.telemetry import aspan, span
+from app.core.config import settings
 from app.models.schemas.outline import OutlineRequest
 from app.models.schemas.slide import Deck, Slide, Media, Meta, ListSection
-from app.services.image_service import build_image_provider
+from app.services.image_service import build_image_provider  # back-compat alias
 
 log = logging.getLogger("app")
 
@@ -55,9 +55,6 @@ _DEFAULT_HEADINGS = [
     "Overview", "Goals", "Key Points", "Approach", "Timeline",
     "Milestones", "Risks & Mitigations", "Resources", "Metrics", "Next Steps",
 ]
-
-def _enabled(name: str, default: bool) -> bool:
-    return os.getenv(name, "true" if default else "false").lower() == "true"
 
 # ---------- strategies ----------
 class OutlineStrategy:
@@ -105,7 +102,6 @@ class PlaceholderStrategy(OutlineStrategy):
                     Slide(
                         id=s_id,
                         title=f"Slide {i+1}: {base}",
-                        # canonical text model only
                         meta=Meta(sections=self._default_sections(s_id)),
                         notes=None,
                         layout="title_bullets_left",
@@ -141,7 +137,7 @@ class PlaceholderStrategy(OutlineStrategy):
 @dataclass
 class AgentStrategy(OutlineStrategy):
     url: str
-    timeout_ms: int = 10000
+    timeout_ms: int = settings.AGENT_TIMEOUT_MS
 
     async def generate_deck(self, req: OutlineRequest) -> Deck:
         payload = req.model_dump()
@@ -157,8 +153,10 @@ class AgentStrategy(OutlineStrategy):
     async def regenerate_slide(self, index: int, req: OutlineRequest) -> Slide:
         payload = req.model_dump()
         async with httpx.AsyncClient(timeout=self.timeout_ms / 1000) as client:
-            async with aspan("agent_regen_request", url=self.url, path=f"/outline/{index}/regenerate",
-                             index=index, timeout_ms=self.timeout_ms):
+            async with aspan(
+                "agent_regen_request", url=self.url, path=f"/outline/{index}/regenerate",
+                index=index, timeout_ms=self.timeout_ms
+            ):
                 r = await client.post(self.url.rstrip("/") + f"/outline/{index}/regenerate", json=payload)
             with span("agent_regen_response", status=r.status_code, bytes=len(r.content), index=index):
                 ...
@@ -174,15 +172,15 @@ class OutlineService:
 
     def _provider(self):
         if self._img_provider is None:
-            self._img_provider = build_image_provider()
+            self._img_provider = build_image_provider()  # uses our back-compat shim
         return self._img_provider
 
     async def _enrich_images(self, deck: Deck) -> Deck:
         """
         Attach a deterministic image to each slide that lacks media.
-        Controlled by FEATURE_IMAGE_API=true|false (default true).
+        Controlled by settings.FEATURE_IMAGE_API.
         """
-        if not _enabled("FEATURE_IMAGE_API", True):
+        if not settings.FEATURE_IMAGE_API:
             return deck
 
         provider = self._provider()
@@ -207,10 +205,7 @@ class OutlineService:
         return deck
 
     async def generate_deck(self, req: OutlineRequest) -> Deck:
-        """
-        Orchestrates: primary strategy -> fallback on error -> image enrichment.
-        Emits a top-level span for observability around the chosen strategy.
-        """
+        """Primary strategy → fallback on error → optional image enrichment."""
         try:
             async with aspan("outline_generate", strategy=self.primary.__class__.__name__):
                 deck = await self.primary.generate_deck(req)
@@ -223,10 +218,7 @@ class OutlineService:
         return deck
 
     async def regenerate_slide(self, index: int, req: OutlineRequest) -> Slide:
-        """
-        Regenerates a single slide via primary strategy with fallback,
-        then enriches that slide with an image (feature-flagged).
-        """
+        """Regenerate one slide with fallback + optional image enrichment."""
         try:
             async with aspan("outline_regenerate", strategy=self.primary.__class__.__name__, index=index):
                 slide = await self.primary.regenerate_slide(index, req)
@@ -235,7 +227,7 @@ class OutlineService:
             async with aspan("outline_regenerate_fallback", strategy=self.fallback.__class__.__name__, index=index):
                 slide = await self.fallback.regenerate_slide(index, req)
 
-        if _enabled("FEATURE_IMAGE_API", True):
+        if settings.FEATURE_IMAGE_API:
             provider = self._provider()
             kw = _kw_from_title(slide.title, req.topic)
             async with aspan("image_enrich_slide", idx=index, kw=kw):
@@ -255,15 +247,12 @@ class OutlineService:
 
 def build_outline_service() -> OutlineService:
     """
-    Toggle agent/placeholder via env:
-      FEATURE_USE_MODEL=true  (your existing flag)
+    Toggle agent/placeholder via settings:
+      settings.FEATURE_USE_MODEL (bool) and settings.AGENT_URL (str)
     """
-    use_agent = (
-        os.getenv("FEATURE_USE_MODEL", "false").lower() == "true"
-    )
-    if use_agent:
-        url = os.getenv("AGENT_URL", "").strip()
-        if url:
-            return OutlineService(primary=AgentStrategy(url=url), fallback=PlaceholderStrategy())
-        log.error("FEATURE_USE_MODEL=true but AGENT_URL empty; defaulting to placeholder")
+    if settings.FEATURE_USE_MODEL and settings.AGENT_URL:
+        return OutlineService(
+            primary=AgentStrategy(url=settings.AGENT_URL, timeout_ms=settings.AGENT_TIMEOUT_MS),
+            fallback=PlaceholderStrategy(),
+        )
     return OutlineService(primary=PlaceholderStrategy(), fallback=PlaceholderStrategy())

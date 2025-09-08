@@ -56,7 +56,6 @@ export default function EditorWorkbench({
     theme,
   });
 
-  // Recompute filter inputs from canonical meta.sections (safe if slide missing)
   const counts = useMemo(() => {
     if (!activeSlide) return { text_count: 0, image_count: 0 };
     try {
@@ -124,9 +123,7 @@ export default function EditorWorkbench({
             {tab === "layout" && activeSlide && (
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
-                  <div>
-                    <div className="text-sm font-medium">Layout</div>
-                  </div>
+                  <div className="text-sm font-medium">Layout</div>
                   <div className="flex items-center gap-2">
                     <button
                       className="text-xs underline underline-offset-2"
@@ -141,7 +138,6 @@ export default function EditorWorkbench({
                   </div>
                 </div>
 
-                {/* Modal lives outside of flow */}
                 <LayoutPickerModal
                   open={layoutModalOpen}
                   onClose={() => setLayoutModalOpen(false)}
