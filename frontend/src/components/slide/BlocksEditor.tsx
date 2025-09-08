@@ -49,8 +49,8 @@ export default function BlocksEditor({
   function addSection(kind: TextSection["kind"]) {
     const base: TextSection =
       kind === "paragraph"
-        ? { id: cryptoRandomId(), kind, text: "", role: "secondary" }
-        : { id: cryptoRandomId(), kind, bullets: [], role: "secondary" };
+        ? { id: cryptoRandomId(), kind, text: "" }
+        : { id: cryptoRandomId(), kind, bullets: [] };
     onChange([...sections, base]);
   }
 
@@ -69,25 +69,16 @@ export default function BlocksEditor({
     onChange(next);
   }
 
-  function setPrimary(id: string) {
-    onChange(
-      sections.map((s) =>
-        s.id === id ? { ...s, role: "primary" } : { ...s, role: s.role === "primary" ? "secondary" : s.role ?? null },
-      ),
-    );
-  }
-
   function changeKind(id: string, target: TextSection["kind"]) {
     onChange(
       sections.map((s) => {
-        if (s.id !== id) return s;
-        if (target === s.kind) return s;
+        if (s.id !== id || target === s.kind) return s;
         if (target === "paragraph") {
           const text = s.kind === "paragraph" ? (s.text ?? "") : (s.bullets ?? []).join("\n");
-          return { id: s.id, kind: "paragraph", text, role: s.role ?? null };
+          return { id: s.id, kind: "paragraph", text };
         } else {
           const bullets = s.kind === "list" ? (s.bullets ?? []) : normalizeBulletsInput(s.text ?? "");
-          return { id: s.id, kind: "list", bullets, role: s.role ?? null };
+          return { id: s.id, kind: "list", bullets };
         }
       }),
     );
@@ -98,10 +89,7 @@ export default function BlocksEditor({
   }
 
   function updateListBullets(id: string, bullets: string[]) {
-    // clamp & clean is handled by normalizeBulletsInput before calling this
-    onChange(
-      sections.map((s) => (s.id === id && s.kind === "list" ? { ...s, bullets: bullets.slice(0, BULLETS_MAX) } : s)),
-    );
+    onChange(sections.map((s) => (s.id === id && s.kind === "list" ? { ...s, bullets: bullets.slice(0, BULLETS_MAX) } : s)));
   }
 
   return (
@@ -118,20 +106,10 @@ export default function BlocksEditor({
         <div key={s.id} className="rounded-xl border p-3 bg-gray-50/50">
           <div className="flex items-center justify-between gap-2">
             <div className="flex items-center gap-2 text-xs text-gray-600">
-              <span className="inline-flex items-center gap-2">
-                <Select value={s.kind} onChange={(e) => changeKind(s.id, e.target.value as TextSection["kind"])}>
-                  <option value="paragraph">Paragraph</option>
-                  <option value="list">Bullet list</option>
-                </Select>
-
-                {s.role === "primary" ? (
-                  <span className="inline-block rounded-full bg-black text-white px-2 py-0.5">primary</span>
-                ) : (
-                  <Button size="xs" variant="ghost" onClick={() => setPrimary(s.id)} title="Mark primary">
-                    make primary
-                  </Button>
-                )}
-              </span>
+              <Select value={s.kind} onChange={(e) => changeKind(s.id, e.target.value as TextSection["kind"])}>
+                <option value="paragraph">Paragraph</option>
+                <option value="list">Bullet list</option>
+              </Select>
             </div>
 
             <div className="flex items-center gap-1">
@@ -147,27 +125,19 @@ export default function BlocksEditor({
                 value={s.text ?? ""}
                 onChange={(e) => {
                   const value = e.target.value.slice(0, PARA_MAX);
-                  // smart convert to list if the user starts with "- " / "* " / "1. " etc.
+                  // Smart convert: if it looks like bullets, turn into a list
                   if (/^\s*(?:[-*•·]|\d+[.)])\s+/.test(value)) {
                     const bullets = normalizeBulletsInput(value);
-                    onChange(
-                      sections.map((sec) =>
-                        sec.id === s.id
-                          ? ({ id: s.id, kind: "list", bullets, role: s.role ?? null } as TextSection)
-                          : sec,
-                      ),
-                    );
+                    onChange(sections.map((sec) => (sec.id === s.id ? ({ id: s.id, kind: "list", bullets } as TextSection) : sec)));
                   } else {
                     updateParagraphText(s.id, value);
                   }
                 }}
                 onKeyDown={(e) => {
                   if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "s") {
-                    e.preventDefault();
-                    handleSave();
+                    e.preventDefault(); handleSave();
                   } else if (e.key === "Escape") {
-                    e.preventDefault();
-                    handleCancel();
+                    e.preventDefault(); handleCancel();
                   }
                 }}
                 rows={Math.max(2, Math.min(8, (s.text ?? "").split(/\r?\n/).length))}
@@ -185,16 +155,12 @@ export default function BlocksEditor({
                 onChange={(e) => updateListBullets(s.id, normalizeBulletsInput(e.target.value))}
                 onKeyDown={(e) => {
                   if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "s") {
-                    e.preventDefault();
-                    handleSave();
-                    return;
+                    e.preventDefault(); handleSave(); return;
                   }
                   if (e.key === "Escape") {
-                    e.preventDefault();
-                    handleCancel();
-                    return;
+                    e.preventDefault(); handleCancel(); return;
                   }
-                  // Enter = new bullet, Shift+Enter = newline in current bullet
+                  // Enter = new bullet, Shift+Enter = newline within current bullet
                   if (e.key === "Enter" && !e.shiftKey) {
                     e.preventDefault();
                     const current = s.kind === "list" ? (s.bullets ?? []) : [];

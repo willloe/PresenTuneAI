@@ -44,6 +44,15 @@ export default function App() {
   // Health + schema
   const { health, schemaVersion } = useHealth();
 
+  // Teleport to top on first load
+  useEffect(() => {
+    try {
+      window.scrollTo({ top: 0, behavior: "auto" });
+    } catch {
+      window.scrollTo(0, 0);
+    }
+  }, []);
+
   // App settings
   const [topic, setTopic] = useState("AI Hackathon");
   const [count, setCount] = useLocalStorage<number>("slideCount", 5);
@@ -308,6 +317,8 @@ export default function App() {
           currentStep={step}
           onNext={next}
           nextLabel="Continue to Outline"
+          // Example: if you have a sticky header ~64px high
+          scrollBlock="start"
         >
           <UploadSection uploadErr={uploadErr} uploadMeta={uploadMeta} onPick={onPick} />
         </PhaseContainer>
@@ -321,6 +332,7 @@ export default function App() {
           onNext={() => setStep(3)}
           nextLabel="Proceed to Workbench"
           nextDisabled={!canNext}
+          scrollBlock="end"
         >
           <OutlineControls
             topic={topic}
@@ -334,6 +346,7 @@ export default function App() {
             setTheme={setTheme}
             count={count}
             setCount={(n: number) => setCount(clamp(n, 1, 15))}
+            showExport={false}
             showImages={showImages}
             setShowImages={setShowImages}
             exporting={exporting}
@@ -351,7 +364,8 @@ export default function App() {
           subtitle="Edit text, choose layouts, and manage images in one place. Build when ready."
           step={3}
           currentStep={step}
-          hideNext // header button handles build+continue
+          hideNext
+          scrollBlock="end"
         >
           {deck && slides.length > 0 ? (
             <div className="rounded-2xl bg-white shadow-sm border p-4">
@@ -406,6 +420,7 @@ export default function App() {
           subtitle="Review the built editor doc and export a PPTX."
           step={4}
           currentStep={step}
+          scrollBlock="end"
         >
           <FinalizeSection editorResp={editorResp} />
         </PhaseContainer>
@@ -421,7 +436,7 @@ export default function App() {
           if (!openLibTarget) return;
           const { slide, slot } = openLibTarget;
           if (slot === null || slot === undefined) {
-            // Append (inline path rarely uses this; kept for parity)
+            // Append
             updateSlide(slide, (prev) => {
               const current = Array.isArray(prev.media) ? [...prev.media] : [];
               if (current.some((m: any) => m?.url === url)) return prev;
