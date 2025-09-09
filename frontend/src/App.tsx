@@ -39,6 +39,65 @@ import EditorWorkbench from "./components/editor/EditorWorkbench";
 // Slot-aware plan
 import { useMediaPlan } from "./hooks/useMediaPlan";
 
+type AnySection = any;
+
+function normalizeSectionKind(sec: AnySection): string {
+  return String(sec?.kind ?? sec?.type ?? "").toLowerCase();
+}
+
+function isNonEmptySection(sec: AnySection): boolean {
+  const kind = normalizeSectionKind(sec);
+  if (kind === "paragraph") {
+    return Boolean(String(sec?.text ?? "").trim());
+  }
+  if (kind === "list" || Array.isArray(sec?.bullets)) {
+    const bullets = (sec?.bullets ?? []).map((b: any) => String(b ?? "").trim());
+    return bullets.filter(Boolean).length > 0;
+  }
+  // Unknown kinds: treat as non-empty if there is any payload besides meta keys
+  if (typeof sec === "object" && sec) {
+    const keys = Object.keys(sec).filter((k) => !["kind", "type", "role", "id"].includes(k));
+    return keys.length > 0;
+  }
+  return false;
+}
+
+function cleanSections(sections?: AnySection[] | null): AnySection[] {
+  if (!Array.isArray(sections)) return [];
+  const out = sections
+    .map((sec) => {
+      if (!sec) return null;
+      const kind = normalizeSectionKind(sec);
+      if (kind === "paragraph") {
+        const text = String(sec.text ?? "").trim();
+        if (!text) return null;
+        return { ...sec, kind: "paragraph", text };
+      }
+      if (kind === "list" || Array.isArray(sec.bullets)) {
+        const bullets = (sec.bullets ?? [])
+          .map((b: any) => String(b ?? "").trim())
+          .filter(Boolean);
+        if (bullets.length === 0) return null;
+        return { ...sec, kind: "list", bullets };
+      }
+      // passthrough unknown non-empty kinds
+      return isNonEmptySection(sec) ? sec : null;
+    })
+    .filter(Boolean) as AnySection[];
+  return out;
+}
+
+function sanitizeDeckForBuild(deck: Deck): Deck {
+  return {
+    ...deck,
+    slides: deck.slides.map((s) => {
+      const sections = cleanSections((s as any).meta?.sections);
+      const meta = { ...(s as any).meta, sections };
+      return { ...s, meta } as any;
+    }),
+  };
+}
+
 export default function App() {
   // Health + schema
   const { health, schemaVersion } = useHealth();
@@ -124,9 +183,11 @@ export default function App() {
 
   // ---- sections-first text block count; fallback to legacy bullets as one block ----
   const textBlockCount = useCallback((s: Deck["slides"][number]) => {
-    const secs = s.meta?.sections;
-    if (Array.isArray(secs) && secs.length) return secs.length;
-    const legacyBullets = Array.isArray(s.bullets) ? s.bullets.filter(Boolean).length : 0;
+    const secs = (s as any).meta?.sections;
+    if (Array.isArray(secs)) return secs.filter(isNonEmptySection).length;
+    const legacyBullets = Array.isArray((s as any).bullets)
+      ? (s as any).bullets.map((b: any) => String(b ?? "").trim()).filter(Boolean).length
+      : 0;
     return legacyBullets > 0 ? 1 : 0;
   }, []);
 
@@ -216,14 +277,15 @@ export default function App() {
     setBuildErr(null);
     setEditorResp(null);
     try {
-      const selections = deck.slides.map((s) => {
+      const deckForBuild = sanitizeDeckForBuild(deck); // ← sanitize sections
+      const selections = deckForBuild.slides.map((s) => {
         const chosen = selection[s.id];
         return { slide_id: s.id, layout_id: chosen && chosen !== "AUTO" ? chosen : undefined };
-      });
+        });
       const themeMeta = themeKeyToMeta((THEMES as any)[theme] ? (theme as ThemeKey) : "default");
 
       const { data } = await api.buildEditor(
-        { deck, selections, theme, policy: "best_fit", theme_meta: themeMeta },
+        { deck: deckForBuild, selections, theme, policy: "best_fit", theme_meta: themeMeta },
         { idempotencyKey: idemKeyRef.current }
       );
 
@@ -266,9 +328,10 @@ export default function App() {
     setExportErr(null);
     try {
       const themeMeta = themeKeyToMeta((THEMES as any)[theme] ? (theme as ThemeKey) : "default");
+      const cleanDeck = sanitizeDeckForBuild(deck); // ← sanitize sections
       const body = editorResp?.editor
         ? { editor: { ...editorResp.editor, theme_meta: editorResp.editor.theme_meta ?? themeMeta }, theme }
-        : { slides: deck.slides, theme, theme_meta: themeMeta };
+        : { slides: cleanDeck.slides, theme, theme_meta: themeMeta };
       const { data } = await api.exportDeck(body);
       setExportInfo(data);
       const kb = Math.max(1, Math.round(data.bytes / 1024));
@@ -408,6 +471,16 @@ export default function App() {
                   if (!s) return;
                   const text_count = textBlockCount(s);
                   const image_count = Math.max(0, (s.media || []).length);
+
+                  if (text_count === 0 && image_count === 0) {
+                    const fallback =
+                      layouts?.find(l => l.id === "title_only")?.id ||
+                      layouts?.[0]?.id ||
+                      "AUTO";
+                    setSelection((old) => ({ ...old, [slideId]: fallback }));
+                    return;
+                  }
+
                   try {
                     const { data } = await api.filterLayouts({
                       components: { text_count, image_count },
