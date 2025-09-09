@@ -134,6 +134,10 @@ export default function App() {
   const [buildErr, setBuildErr] = useState<string | null>(null);
   const idemKeyRef = useRef<string>(safeUUID());
 
+  // Abort controllers for per-slide layout queries + debounce timer for batch suggest
+  const layoutReqCtrls = useRef<Record<string, AbortController>>({});
+  const layoutSuggestTimerRef = useRef<number | null>(null);
+
   // Export
   const [exportInfo, setExportInfo] = useState<ExportResp | null>(null);
   const [exporting, setExporting] = useState(false);
@@ -191,6 +195,18 @@ export default function App() {
     return legacyBullets > 0 ? 1 : 0;
   }, []);
 
+  // Cleanup: abort any in-flight per-slide layout requests and pending debounce on unmount
+  useEffect(() => {
+    return () => {
+      Object.values(layoutReqCtrls.current).forEach((c) => c.abort());
+      layoutReqCtrls.current = {};
+      if (layoutSuggestTimerRef.current) {
+        clearTimeout(layoutSuggestTimerRef.current);
+        layoutSuggestTimerRef.current = null;
+      }
+    };
+  }, []);
+
   /* --------------------------- handlers --------------------------- */
   const onPick = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
     const input = e.currentTarget;
@@ -244,31 +260,60 @@ export default function App() {
     }
   }, [topic, count, uploadMeta?.parsed?.text, generate, clearError, show, setStep]);
 
-  // Suggest a best layout per slide (fallback to local filter) — auto-runs when deck arrives
+  // Suggest a best layout per slide (fallback to local filter) — abortable + debounced
   const suggestLayoutsFromDeck = useCallback(async (d: Deck) => {
     const nextSel: Record<string, string> = {};
+
     await Promise.all(
       d.slides.map(async (s) => {
+        const slideId = s.id;
         const text_count = textBlockCount(s);
         const image_count = Math.max(0, (s.media || []).length);
+
+        // Abort any existing per-slide request
+        try { layoutReqCtrls.current[slideId]?.abort(); } catch {}
+
+        const ctrl = new AbortController();
+        layoutReqCtrls.current[slideId] = ctrl;
+
         try {
-          const { data } = await api.filterLayouts({
-            components: { text_count, image_count },
-            top_k: 1,
-          });
-          nextSel[s.id] = data.candidates?.[0] || layouts?.[0]?.id || "AUTO";
+          const { data } = await api.filterLayouts(
+            { components: { text_count, image_count }, top_k: 1 },
+            { signal: ctrl.signal, timeoutMs: 5000, retries: 1 }
+          );
+
+          // Ignore if superseded
+          if (layoutReqCtrls.current[slideId] !== ctrl) return;
+          nextSel[slideId] = data.candidates?.[0] || layouts?.[0]?.id || "AUTO";
         } catch {
-          nextSel[s.id] = layouts?.[0]?.id || "AUTO";
+          if (layoutReqCtrls.current[slideId] !== ctrl) return;
+          nextSel[slideId] = layouts?.[0]?.id || "AUTO";
+        } finally {
+          if (layoutReqCtrls.current[slideId] === ctrl) delete layoutReqCtrls.current[slideId];
         }
       })
     );
+
     setSelection(nextSel);
   }, [layouts, textBlockCount]);
 
+  // Debounce the initial suggestions when a new deck arrives
   useEffect(() => {
     if (!deck?.slides?.length) return;
+
     const haveAny = deck.slides.some((s) => !!selection[s.id]);
-    if (!haveAny) void suggestLayoutsFromDeck(deck);
+    if (haveAny) return;
+
+    // clear prior timer if any
+    if (layoutSuggestTimerRef.current) {
+      clearTimeout(layoutSuggestTimerRef.current);
+      layoutSuggestTimerRef.current = null;
+    }
+
+    layoutSuggestTimerRef.current = window.setTimeout(() => {
+      void suggestLayoutsFromDeck(deck);
+      layoutSuggestTimerRef.current = null;
+    }, 150); // short debounce to batch state bursts
   }, [deck, selection, suggestLayoutsFromDeck]);
 
   const runBuildEditor = useCallback(async () => {
@@ -281,12 +326,12 @@ export default function App() {
       const selections = deckForBuild.slides.map((s) => {
         const chosen = selection[s.id];
         return { slide_id: s.id, layout_id: chosen && chosen !== "AUTO" ? chosen : undefined };
-        });
+      });
       const themeMeta = themeKeyToMeta((THEMES as any)[theme] ? (theme as ThemeKey) : "default");
 
       const { data } = await api.buildEditor(
         { deck: deckForBuild, selections, theme, policy: "best_fit", theme_meta: themeMeta },
-        { idempotencyKey: idemKeyRef.current }
+        { idempotencyKey: idemKeyRef.current, timeoutMs: 25000, retries: 1 }
       );
 
       const built = { ...data };
@@ -332,7 +377,7 @@ export default function App() {
       const body = editorResp?.editor
         ? { editor: { ...editorResp.editor, theme_meta: editorResp.editor.theme_meta ?? themeMeta }, theme }
         : { slides: cleanDeck.slides, theme, theme_meta: themeMeta };
-      const { data } = await api.exportDeck(body);
+      const { data } = await api.exportDeck(body, { timeoutMs: 30000, retries: 1 });
       setExportInfo(data);
       const kb = Math.max(1, Math.round(data.bytes / 1024));
       show({ tone: "success", title: "Exported", description: `.${data.format} — ${kb} KB` });
@@ -364,7 +409,7 @@ export default function App() {
       updateSlide(slideIdx, (prev) => {
         const current = Array.isArray(prev.media) ? [...prev.media] : [];
         const img: any = { type: "image", url, alt: alt ?? prev.title };
-        if (backendSource) img.source = backendSource; // ✅ backend literal
+        if (backendSource) img.source = backendSource;
         if (slotIdx < current.length) current[slotIdx] = img;
         else current.push(img);
         return { ...prev, media: current } as any;
@@ -406,7 +451,6 @@ export default function App() {
           currentStep={step}
           onNext={next}
           nextLabel="Continue to Outline"
-          scrollBlock="start"
         >
           <UploadSection uploadErr={uploadErr} uploadMeta={uploadMeta} onPick={onPick} />
         </PhaseContainer>
@@ -420,6 +464,7 @@ export default function App() {
           onNext={() => setStep(3)}
           nextLabel="Proceed to Workbench"
           nextDisabled={!canNext}
+          hideNext
           scrollBlock="end"
         >
           <OutlineControls
@@ -469,28 +514,39 @@ export default function App() {
                 onAutoFit={async (slideId: string) => {
                   const s = deck.slides.find((sl) => sl.id === slideId);
                   if (!s) return;
+
                   const text_count = textBlockCount(s);
                   const image_count = Math.max(0, (s.media || []).length);
 
+                  // If slide empty: local fallback, no network
                   if (text_count === 0 && image_count === 0) {
                     const fallback =
-                      layouts?.find(l => l.id === "title_only")?.id ||
+                      layouts?.find((l) => l.id === "title_only")?.id ||
                       layouts?.[0]?.id ||
                       "AUTO";
                     setSelection((old) => ({ ...old, [slideId]: fallback }));
                     return;
                   }
 
+                  // Abort any in-flight request for this slide
+                  try { layoutReqCtrls.current[slideId]?.abort(); } catch {}
+                  const ctrl = new AbortController();
+                  layoutReqCtrls.current[slideId] = ctrl;
+
                   try {
-                    const { data } = await api.filterLayouts({
-                      components: { text_count, image_count },
-                      top_k: 1,
-                    });
+                    const { data } = await api.filterLayouts(
+                      { components: { text_count, image_count }, top_k: 1 },
+                      { signal: ctrl.signal, timeoutMs: 5000, retries: 1 }
+                    );
+                    if (layoutReqCtrls.current[slideId] !== ctrl) return; // superseded
                     const id = data.candidates?.[0] || layouts?.[0]?.id || "AUTO";
                     setSelection((old) => ({ ...old, [slideId]: id }));
-                  } catch {
+                  } catch (err: any) {
+                    if (err?.name === "AbortError") return; // expected
                     const id = layouts?.[0]?.id || "AUTO";
                     setSelection((old) => ({ ...old, [slideId]: id }));
+                  } finally {
+                    if (layoutReqCtrls.current[slideId] === ctrl) delete layoutReqCtrls.current[slideId];
                   }
                 }}
                 onUpdateSlide={(idx: number, next: Deck["slides"][number]) => updateSlide(idx, () => next)}

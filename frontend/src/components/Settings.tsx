@@ -191,6 +191,7 @@ export default function Settings({
           <code
             className="block truncate rounded-lg bg-gray-50 px-2 py-1 text-sm border"
             aria-describedby={apiBaseHelpId}
+            aria-live="polite"
           >
             {apiBase}
           </code>

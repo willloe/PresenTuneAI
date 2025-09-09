@@ -65,7 +65,7 @@ export default function PhaseContainer({
   return (
     <section
       ref={rootRef}
-      className={`rounded-2xl bg-white shadow-sm p-6 mb-6 relative ${isFuture ? "opacity-50" : ""}`}
+      className={`rounded-2xl bg-white shadow-sm p-6 mb-6 scroll-mt-48 relative ${isFuture ? "opacity-50" : ""}`}
       aria-disabled={isFuture}
       aria-labelledby={`phase-title-${step}`}
     >
