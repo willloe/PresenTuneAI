@@ -48,6 +48,51 @@ class Meta(BaseModel):
 
     sections: Optional[List[TextSection]] = None
 
+    @field_validator("sections", mode="before")
+    @classmethod
+    def _drop_empty_and_normalize_sections(cls, v):
+        """
+        Allow slides with zero text by removing empty sections before schema validation.
+        - paragraph: drop if text is empty/whitespace
+        - list: drop if bullets has no non-empty items
+        Also tolerate {"type": "..."} instead of {"kind": "..."}.
+        """
+        if not isinstance(v, list):
+            return []
+        cleaned: list[dict] = []
+        for raw in v:
+            if not isinstance(raw, dict):
+                continue
+            kind = (raw.get("kind") or raw.get("type") or "").strip().lower()
+
+            if kind == "paragraph":
+                text = (raw.get("text") or "").strip()
+                if text:
+                    out = dict(raw)
+                    out["kind"] = "paragraph"
+                    out["text"] = text
+                    cleaned.append(out)
+                # else drop
+
+            elif kind == "list":
+                bullets = [
+                    (str(b) if b is not None else "").strip()
+                    for b in (raw.get("bullets") or [])
+                ]
+                bullets = [b for b in bullets if b]
+                if bullets:
+                    out = dict(raw)
+                    out["kind"] = "list"
+                    out["bullets"] = bullets
+                    cleaned.append(out)
+                # else drop
+
+            else:
+                # Unknown kinds: drop to avoid union mis-match errors
+                continue
+
+        return cleaned
+
 
 # ---- Slide / Deck -------------------------------------------------------------
 
@@ -152,6 +197,7 @@ class Slide(BaseModel):
             self.meta.sections = sections if sections else None
 
         return self
+
 
 class Deck(BaseModel):
     version: str = SCHEMA_VERSION
