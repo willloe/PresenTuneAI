@@ -3,8 +3,13 @@
     {
       "id": "blank",
       "name": "Blank",
-      "supports": { "text_min": 0, "text_max": 0, "images_min": 0, "images_max": 0 },
-      "weight": 0.50,
+      "supports": {
+        "text_min": 0,
+        "text_max": 0,
+        "images_min": 0,
+        "images_max": 0
+      },
+      "weight": 0.5,
       "preview_url": "/static/layouts/blank.png",
       "frames": {},
       "style": {}
@@ -12,362 +17,8731 @@
     {
       "id": "title_slide",
       "name": "Title Slide",
-      "supports": { "text_min": 1, "text_max": 2, "images_min": 0, "images_max": 0 },
+      "supports": {
+        "text_min": 1,
+        "text_max": 2,
+        "images_min": 0,
+        "images_max": 0
+      },
       "weight": 0.95,
       "preview_url": "/static/layouts/title_slide.png",
       "frames": {
-        "title":   { "x": 200, "y": 220, "w": 880, "h": 120 },
-        "sections": [ { "x": 200, "y": 360, "w": 880, "h": 80 } ]
+        "title": {
+          "x": 200,
+          "y": 220,
+          "w": 880,
+          "h": 120
+        },
+        "sections": [
+          {
+            "x": 200,
+            "y": 360,
+            "w": 880,
+            "h": 80
+          }
+        ]
       },
-      "style": { "title": { "font": "Inter", "size": 44, "weight": 800 }, "sections": { "size": 24, "align": "center" } }
+      "style": {
+        "title": {
+          "font": "Inter",
+          "size": 44,
+          "weight": 800
+        },
+        "sections": {
+          "size": 24,
+          "align": "center"
+        }
+      }
     },
     {
       "id": "title_and_content",
       "name": "Title and Content",
-      "supports": { "text_min": 1, "text_max": 12, "images_min": 0, "images_max": 1 },
-      "weight": 1.00,
+      "supports": {
+        "text_min": 1,
+        "text_max": 12,
+        "images_min": 0,
+        "images_max": 1
+      },
+      "weight": 1.0,
       "preview_url": "/static/layouts/title_and_content.png",
       "frames": {
-        "title":   { "x": 80, "y": 64,  "w": 1120, "h": 80 },
-        "sections": [ { "x": 80, "y": 170, "w": 1120, "h": 420 } ],
-        "images":  [ { "x": 900, "y": 260, "w": 300, "h": 240 } ]
+        "title": {
+          "x": 80,
+          "y": 64,
+          "w": 1120,
+          "h": 80
+        },
+        "sections": [
+          {
+            "x": 80,
+            "y": 170,
+            "w": 1120,
+            "h": 420
+          }
+        ],
+        "images": [
+          {
+            "x": 900,
+            "y": 260,
+            "w": 300,
+            "h": 240
+          }
+        ]
       },
-      "style": { "title": { "font": "Inter", "size": 36, "weight": 700 }, "sections": { "size": 20 } }
+      "style": {
+        "title": {
+          "font": "Inter",
+          "size": 36,
+          "weight": 700
+        },
+        "sections": {
+          "size": 20
+        }
+      }
     },
     {
       "id": "section_header",
       "name": "Section Header",
-      "supports": { "text_min": 1, "text_max": 2, "images_min": 0, "images_max": 0 },
+      "supports": {
+        "text_min": 1,
+        "text_max": 2,
+        "images_min": 0,
+        "images_max": 0
+      },
       "weight": 0.9,
       "preview_url": "/static/layouts/section_header.png",
       "frames": {
-        "title":   { "x": 80, "y": 240, "w": 1120, "h": 160 },
-        "sections": [ { "x": 80, "y": 420, "w": 1120, "h": 80 } ]
+        "title": {
+          "x": 80,
+          "y": 240,
+          "w": 1120,
+          "h": 160
+        },
+        "sections": [
+          {
+            "x": 80,
+            "y": 420,
+            "w": 1120,
+            "h": 80
+          }
+        ]
       },
-      "style": { "title": { "font": "Inter", "size": 52, "weight": 800, "align": "center" }, "sections": { "size": 22, "align": "center" } }
+      "style": {
+        "title": {
+          "font": "Inter",
+          "size": 52,
+          "weight": 800,
+          "align": "center"
+        },
+        "sections": {
+          "size": 22,
+          "align": "center"
+        }
+      }
     },
     {
       "id": "two_content",
       "name": "Two Content (Text | Text)",
-      "supports": { "text_min": 2, "text_max": 16, "images_min": 0, "images_max": 0 },
+      "supports": {
+        "text_min": 2,
+        "text_max": 16,
+        "images_min": 0,
+        "images_max": 0
+      },
       "weight": 0.9,
       "preview_url": "/static/layouts/two_content.png",
       "frames": {
-        "title":   { "x": 80, "y": 64, "w": 1120, "h": 80 },
+        "title": {
+          "x": 80,
+          "y": 64,
+          "w": 1120,
+          "h": 80
+        },
         "sections": [
-          { "x": 80,  "y": 170, "w": 540, "h": 420 },
-          { "x": 660, "y": 170, "w": 540, "h": 420 }
+          {
+            "x": 80,
+            "y": 170,
+            "w": 540,
+            "h": 420
+          },
+          {
+            "x": 660,
+            "y": 170,
+            "w": 540,
+            "h": 420
+          }
         ]
       },
-      "style": { "title": { "font": "Inter", "size": 36, "weight": 700 }, "sections": { "size": 20 } }
+      "style": {
+        "title": {
+          "font": "Inter",
+          "size": 36,
+          "weight": 700
+        },
+        "sections": {
+          "size": 20
+        }
+      }
     },
     {
       "id": "comparison",
-      "name": "Comparison (Header+Text) ×2",
-      "supports": { "text_min": 2, "text_max": 18, "images_min": 0, "images_max": 2 },
+      "name": "Comparison (Header+Text) \u00d72",
+      "supports": {
+        "text_min": 2,
+        "text_max": 18,
+        "images_min": 0,
+        "images_max": 2
+      },
       "weight": 0.88,
       "preview_url": "/static/layouts/comparison.png",
       "frames": {
-        "title":   { "x": 80, "y": 64, "w": 1120, "h": 64 },
+        "title": {
+          "x": 80,
+          "y": 64,
+          "w": 1120,
+          "h": 64
+        },
         "sections": [
-          { "x": 80,  "y": 140, "w": 540, "h": 64 },
-          { "x": 80,  "y": 210, "w": 540, "h": 360 },
-          { "x": 660, "y": 140, "w": 540, "h": 64 },
-          { "x": 660, "y": 210, "w": 540, "h": 360 }
+          {
+            "x": 80,
+            "y": 140,
+            "w": 540,
+            "h": 64
+          },
+          {
+            "x": 80,
+            "y": 210,
+            "w": 540,
+            "h": 360
+          },
+          {
+            "x": 660,
+            "y": 140,
+            "w": 540,
+            "h": 64
+          },
+          {
+            "x": 660,
+            "y": 210,
+            "w": 540,
+            "h": 360
+          }
         ],
         "images": [
-          { "x": 490, "y": 210, "w": 130, "h": 100 },
-          { "x": 1070, "y": 210, "w": 130, "h": 100 }
+          {
+            "x": 490,
+            "y": 210,
+            "w": 130,
+            "h": 100
+          },
+          {
+            "x": 1070,
+            "y": 210,
+            "w": 130,
+            "h": 100
+          }
         ]
       },
-      "style": { "title": { "font": "Inter", "size": 30, "weight": 700 }, "sections": { "size": 18 } }
+      "style": {
+        "title": {
+          "font": "Inter",
+          "size": 30,
+          "weight": 700
+        },
+        "sections": {
+          "size": 18
+        }
+      }
     },
     {
       "id": "title_only",
       "name": "Title Only",
-      "supports": { "text_min": 1, "text_max": 1, "images_min": 0, "images_max": 0 },
+      "supports": {
+        "text_min": 1,
+        "text_max": 1,
+        "images_min": 0,
+        "images_max": 0
+      },
       "weight": 0.7,
       "preview_url": "/static/layouts/title_only.png",
       "frames": {
-        "title": { "x": 80, "y": 280, "w": 1120, "h": 120 }
+        "title": {
+          "x": 80,
+          "y": 280,
+          "w": 1120,
+          "h": 120
+        }
       },
-      "style": { "title": { "font": "Inter", "size": 56, "weight": 800, "align": "center" } }
+      "style": {
+        "title": {
+          "font": "Inter",
+          "size": 56,
+          "weight": 800,
+          "align": "center"
+        }
+      }
     },
     {
       "id": "content_with_caption",
       "name": "Content with Caption",
-      "supports": { "text_min": 1, "text_max": 10, "images_min": 1, "images_max": 1 },
+      "supports": {
+        "text_min": 1,
+        "text_max": 10,
+        "images_min": 1,
+        "images_max": 1
+      },
       "weight": 0.86,
       "preview_url": "/static/layouts/content_with_caption.png",
       "frames": {
-        "title":   { "x": 80, "y": 64, "w": 1120, "h": 64 },
-        "images":  [ { "x": 80, "y": 140, "w": 960, "h": 360 } ],
-        "sections": [ { "x": 80, "y": 510, "w": 960, "h": 120 } ]
+        "title": {
+          "x": 80,
+          "y": 64,
+          "w": 1120,
+          "h": 64
+        },
+        "images": [
+          {
+            "x": 80,
+            "y": 140,
+            "w": 960,
+            "h": 360
+          }
+        ],
+        "sections": [
+          {
+            "x": 80,
+            "y": 510,
+            "w": 960,
+            "h": 120
+          }
+        ]
       },
-      "style": { "title": { "font": "Inter", "size": 30, "weight": 700 }, "sections": { "size": 18, "align": "center" } }
+      "style": {
+        "title": {
+          "font": "Inter",
+          "size": 30,
+          "weight": 700
+        },
+        "sections": {
+          "size": 18,
+          "align": "center"
+        }
+      }
     },
     {
       "id": "picture_with_caption",
       "name": "Picture with Caption",
-      "supports": { "text_min": 1, "text_max": 4, "images_min": 1, "images_max": 1 },
+      "supports": {
+        "text_min": 1,
+        "text_max": 4,
+        "images_min": 1,
+        "images_max": 1
+      },
       "weight": 0.84,
       "preview_url": "/static/layouts/picture_with_caption.png",
       "frames": {
-        "title":   { "x": 80, "y": 64, "w": 1120, "h": 64 },
-        "images":  [ { "x": 160, "y": 160, "w": 960, "h": 420 } ],
-        "sections": [ { "x": 160, "y": 590, "w": 960, "h": 80 } ]
+        "title": {
+          "x": 80,
+          "y": 64,
+          "w": 1120,
+          "h": 64
+        },
+        "images": [
+          {
+            "x": 160,
+            "y": 160,
+            "w": 960,
+            "h": 420
+          }
+        ],
+        "sections": [
+          {
+            "x": 160,
+            "y": 590,
+            "w": 960,
+            "h": 80
+          }
+        ]
       },
-      "style": { "title": { "font": "Inter", "size": 30, "weight": 700 }, "sections": { "size": 18, "align": "center" } }
+      "style": {
+        "title": {
+          "font": "Inter",
+          "size": 30,
+          "weight": 700
+        },
+        "sections": {
+          "size": 18,
+          "align": "center"
+        }
+      }
     },
     {
       "id": "title_vertical_text",
       "name": "Title and Vertical Text (simulated)",
-      "supports": { "text_min": 1, "text_max": 10, "images_min": 0, "images_max": 0 },
+      "supports": {
+        "text_min": 1,
+        "text_max": 10,
+        "images_min": 0,
+        "images_max": 0
+      },
       "weight": 0.6,
       "preview_url": "/static/layouts/title_vertical_text.png",
       "frames": {
-        "title":   { "x": 80, "y": 64, "w": 1000, "h": 80 },
-        "sections": [ { "x": 1040, "y": 160, "w": 160, "h": 480 } ]
+        "title": {
+          "x": 80,
+          "y": 64,
+          "w": 1000,
+          "h": 80
+        },
+        "sections": [
+          {
+            "x": 1040,
+            "y": 160,
+            "w": 160,
+            "h": 480
+          }
+        ]
       },
-      "style": { "title": { "font": "Inter", "size": 36, "weight": 700 }, "sections": { "size": 18 } }
+      "style": {
+        "title": {
+          "font": "Inter",
+          "size": 36,
+          "weight": 700
+        },
+        "sections": {
+          "size": 18
+        }
+      }
     },
     {
       "id": "vertical_title_and_text",
       "name": "Vertical Title and Text (simulated)",
-      "supports": { "text_min": 1, "text_max": 12, "images_min": 0, "images_max": 0 },
+      "supports": {
+        "text_min": 1,
+        "text_max": 12,
+        "images_min": 0,
+        "images_max": 0
+      },
       "weight": 0.6,
       "preview_url": "/static/layouts/vertical_title_and_text.png",
       "frames": {
-        "title":   { "x": 40, "y": 64, "w": 160, "h": 560 },
-        "sections": [ { "x": 220, "y": 160, "w": 980, "h": 440 } ]
+        "title": {
+          "x": 40,
+          "y": 64,
+          "w": 160,
+          "h": 560
+        },
+        "sections": [
+          {
+            "x": 220,
+            "y": 160,
+            "w": 980,
+            "h": 440
+          }
+        ]
       },
-      "style": { "title": { "font": "Inter", "size": 24, "weight": 700, "align": "center" }, "sections": { "size": 20 } }
+      "style": {
+        "title": {
+          "font": "Inter",
+          "size": 24,
+          "weight": 700,
+          "align": "center"
+        },
+        "sections": {
+          "size": 20
+        }
+      }
     },
     {
       "id": "title_bullets_left",
       "name": "Title + Bullets (Left)",
-      "supports": { "text_min": 1, "text_max": 12, "images_min": 0, "images_max": 1 },
+      "supports": {
+        "text_min": 1,
+        "text_max": 12,
+        "images_min": 0,
+        "images_max": 1
+      },
       "weight": 0.95,
       "preview_url": "/static/layouts/title_bullets_left.png",
       "frames": {
-        "title":   { "x": 80, "y": 64,  "w": 1120, "h": 80 },
-        "sections": [ { "x": 80, "y": 170, "w": 720,  "h": 360 } ],
-        "images":  [ { "x": 840, "y": 200, "w": 360,  "h": 240 } ]
+        "title": {
+          "x": 80,
+          "y": 64,
+          "w": 1120,
+          "h": 80
+        },
+        "sections": [
+          {
+            "x": 80,
+            "y": 170,
+            "w": 720,
+            "h": 360
+          }
+        ],
+        "images": [
+          {
+            "x": 840,
+            "y": 200,
+            "w": 360,
+            "h": 240
+          }
+        ]
       },
-      "style": { "title": { "font": "Inter", "size": 36, "weight": 700 }, "sections": { "size": 20 } }
+      "style": {
+        "title": {
+          "font": "Inter",
+          "size": 36,
+          "weight": 700
+        },
+        "sections": {
+          "size": 20
+        }
+      }
     },
     {
       "id": "title_image_right",
       "name": "Title + Image (Right)",
-      "supports": { "text_min": 0, "text_max": 6, "images_min": 1, "images_max": 1 },
+      "supports": {
+        "text_min": 0,
+        "text_max": 6,
+        "images_min": 1,
+        "images_max": 1
+      },
       "weight": 0.9,
       "preview_url": "/static/layouts/title_image_right.png",
       "frames": {
-        "title":  { "x": 80, "y": 64,  "w": 720,  "h": 80 },
-        "images": [ { "x": 840, "y": 140, "w": 360,  "h": 360 } ]
+        "title": {
+          "x": 80,
+          "y": 64,
+          "w": 720,
+          "h": 80
+        },
+        "images": [
+          {
+            "x": 840,
+            "y": 140,
+            "w": 360,
+            "h": 360
+          }
+        ]
       },
-      "style": { "title": { "font": "Inter", "size": 36, "weight": 700 } }
+      "style": {
+        "title": {
+          "font": "Inter",
+          "size": 36,
+          "weight": 700
+        }
+      }
     },
     {
       "id": "title_image_left",
       "name": "Title + Image (Left)",
-      "supports": { "text_min": 0, "text_max": 6, "images_min": 1, "images_max": 1 },
+      "supports": {
+        "text_min": 0,
+        "text_max": 6,
+        "images_min": 1,
+        "images_max": 1
+      },
       "weight": 0.9,
       "preview_url": "/static/layouts/title_image_left.png",
       "frames": {
-        "title":  { "x": 480, "y": 64, "w": 720, "h": 80 },
-        "images": [ { "x": 80, "y": 140, "w": 360, "h": 360 } ]
+        "title": {
+          "x": 480,
+          "y": 64,
+          "w": 720,
+          "h": 80
+        },
+        "images": [
+          {
+            "x": 80,
+            "y": 140,
+            "w": 360,
+            "h": 360
+          }
+        ]
       },
-      "style": { "title": { "font": "Inter", "size": 36, "weight": 700 } }
+      "style": {
+        "title": {
+          "font": "Inter",
+          "size": 36,
+          "weight": 700
+        }
+      }
     },
     {
       "id": "two_col_text_image",
       "name": "Two Columns (Text + Image)",
-      "supports": { "text_min": 1, "text_max": 10, "images_min": 1, "images_max": 2 },
+      "supports": {
+        "text_min": 1,
+        "text_max": 10,
+        "images_min": 1,
+        "images_max": 2
+      },
       "weight": 0.85,
       "preview_url": "/static/layouts/two_col_text_image.png",
       "frames": {
-        "title":   { "x": 80, "y": 64,  "w": 1120, "h": 80 },
-        "sections": [ { "x": 80, "y": 170, "w": 540,  "h": 360 } ],
-        "images":  [ { "x": 660, "y": 170, "w": 540,  "h": 360 } ]
+        "title": {
+          "x": 80,
+          "y": 64,
+          "w": 1120,
+          "h": 80
+        },
+        "sections": [
+          {
+            "x": 80,
+            "y": 170,
+            "w": 540,
+            "h": 360
+          }
+        ],
+        "images": [
+          {
+            "x": 660,
+            "y": 170,
+            "w": 540,
+            "h": 360
+          }
+        ]
       },
-      "style": { "title": { "font": "Inter", "size": 36, "weight": 700 }, "sections": { "size": 20 } }
+      "style": {
+        "title": {
+          "font": "Inter",
+          "size": 36,
+          "weight": 700
+        },
+        "sections": {
+          "size": 20
+        }
+      }
     },
     {
       "id": "two_col_image_text",
       "name": "Two Columns (Image + Text)",
-      "supports": { "text_min": 1, "text_max": 10, "images_min": 1, "images_max": 2 },
+      "supports": {
+        "text_min": 1,
+        "text_max": 10,
+        "images_min": 1,
+        "images_max": 2
+      },
       "weight": 0.85,
       "preview_url": "/static/layouts/two_col_image_text.png",
       "frames": {
-        "title":   { "x": 80, "y": 64,  "w": 1120, "h": 80 },
-        "images":  [ { "x": 80, "y": 170, "w": 540,  "h": 360 } ],
-        "sections": [ { "x": 660, "y": 170, "w": 540,  "h": 360 } ]
+        "title": {
+          "x": 80,
+          "y": 64,
+          "w": 1120,
+          "h": 80
+        },
+        "images": [
+          {
+            "x": 80,
+            "y": 170,
+            "w": 540,
+            "h": 360
+          }
+        ],
+        "sections": [
+          {
+            "x": 660,
+            "y": 170,
+            "w": 540,
+            "h": 360
+          }
+        ]
       },
-      "style": { "title": { "font": "Inter", "size": 36, "weight": 700 }, "sections": { "size": 20 } }
+      "style": {
+        "title": {
+          "font": "Inter",
+          "size": 36,
+          "weight": 700
+        },
+        "sections": {
+          "size": 20
+        }
+      }
     },
     {
       "id": "three_col_text",
-      "name": "Three Columns (Text ×3)",
-      "supports": { "text_min": 3, "text_max": 24, "images_min": 0, "images_max": 0 },
+      "name": "Three Columns (Text \u00d73)",
+      "supports": {
+        "text_min": 3,
+        "text_max": 24,
+        "images_min": 0,
+        "images_max": 0
+      },
       "weight": 0.8,
       "preview_url": "/static/layouts/three_col_text.png",
       "frames": {
-        "title":   { "x": 80, "y": 64, "w": 1120, "h": 64 },
+        "title": {
+          "x": 80,
+          "y": 64,
+          "w": 1120,
+          "h": 64
+        },
         "sections": [
-          { "x": 80,  "y": 150, "w": 360, "h": 440 },
-          { "x": 460, "y": 150, "w": 360, "h": 440 },
-          { "x": 840, "y": 150, "w": 360, "h": 440 }
+          {
+            "x": 80,
+            "y": 150,
+            "w": 360,
+            "h": 440
+          },
+          {
+            "x": 460,
+            "y": 150,
+            "w": 360,
+            "h": 440
+          },
+          {
+            "x": 840,
+            "y": 150,
+            "w": 360,
+            "h": 440
+          }
         ]
       },
-      "style": { "title": { "font": "Inter", "size": 30, "weight": 700 }, "sections": { "size": 18 } }
+      "style": {
+        "title": {
+          "font": "Inter",
+          "size": 30,
+          "weight": 700
+        },
+        "sections": {
+          "size": 18
+        }
+      }
     },
     {
       "id": "full_bleed_image",
       "name": "Full-Bleed Image + Title Overlay",
-      "supports": { "text_min": 0, "text_max": 2, "images_min": 1, "images_max": 1 },
+      "supports": {
+        "text_min": 0,
+        "text_max": 2,
+        "images_min": 1,
+        "images_max": 1
+      },
       "weight": 0.9,
       "preview_url": "/static/layouts/full_bleed_image.png",
       "frames": {
-        "images": [ { "x": 0, "y": 0, "w": 1280, "h": 720 } ],
-        "title":  { "x": 80, "y": 40, "w": 800, "h": 96 }
+        "images": [
+          {
+            "x": 0,
+            "y": 0,
+            "w": 1280,
+            "h": 720
+          }
+        ],
+        "title": {
+          "x": 80,
+          "y": 40,
+          "w": 800,
+          "h": 96
+        }
       },
-      "style": { "title": { "font": "Inter", "size": 40, "weight": 800, "color": "#ffffff" } }
+      "style": {
+        "title": {
+          "font": "Inter",
+          "size": 40,
+          "weight": 800,
+          "color": "#ffffff"
+        }
+      }
     },
     {
       "id": "grid_2x2_images",
-      "name": "Grid 2×2 Images",
-      "supports": { "text_min": 0, "text_max": 2, "images_min": 4, "images_max": 4 },
+      "name": "Grid 2\u00d72 Images",
+      "supports": {
+        "text_min": 0,
+        "text_max": 2,
+        "images_min": 4,
+        "images_max": 4
+      },
       "weight": 0.82,
       "preview_url": "/static/layouts/grid_2x2_images.png",
       "frames": {
-        "title":  { "x": 80, "y": 64, "w": 1120, "h": 64 },
+        "title": {
+          "x": 80,
+          "y": 64,
+          "w": 1120,
+          "h": 64
+        },
         "images": [
-          { "x": 120, "y": 150, "w": 500, "h": 250 },
-          { "x": 660, "y": 150, "w": 500, "h": 250 },
-          { "x": 120, "y": 430, "w": 500, "h": 250 },
-          { "x": 660, "y": 430, "w": 500, "h": 250 }
+          {
+            "x": 120,
+            "y": 150,
+            "w": 500,
+            "h": 250
+          },
+          {
+            "x": 660,
+            "y": 150,
+            "w": 500,
+            "h": 250
+          },
+          {
+            "x": 120,
+            "y": 430,
+            "w": 500,
+            "h": 250
+          },
+          {
+            "x": 660,
+            "y": 430,
+            "w": 500,
+            "h": 250
+          }
         ]
       },
-      "style": { "title": { "font": "Inter", "size": 30, "weight": 700 } }
+      "style": {
+        "title": {
+          "font": "Inter",
+          "size": 30,
+          "weight": 700
+        }
+      }
     },
     {
       "id": "two_images_top_bottom",
       "name": "Two Images (Top/Bottom)",
-      "supports": { "text_min": 0, "text_max": 2, "images_min": 2, "images_max": 2 },
+      "supports": {
+        "text_min": 0,
+        "text_max": 2,
+        "images_min": 2,
+        "images_max": 2
+      },
       "weight": 0.75,
       "preview_url": "/static/layouts/two_images_top_bottom.png",
       "frames": {
-        "title":  { "x": 80, "y": 64, "w": 1120, "h": 64 },
+        "title": {
+          "x": 80,
+          "y": 64,
+          "w": 1120,
+          "h": 64
+        },
         "images": [
-          { "x": 120, "y": 150, "w": 1040, "h": 220 },
-          { "x": 120, "y": 410, "w": 1040, "h": 220 }
+          {
+            "x": 120,
+            "y": 150,
+            "w": 1040,
+            "h": 220
+          },
+          {
+            "x": 120,
+            "y": 410,
+            "w": 1040,
+            "h": 220
+          }
         ]
       },
-      "style": { "title": { "font": "Inter", "size": 30, "weight": 700 } }
+      "style": {
+        "title": {
+          "font": "Inter",
+          "size": 30,
+          "weight": 700
+        }
+      }
     },
     {
       "id": "split_60_40_text_image",
       "name": "Split 60/40 (Text | Image)",
-      "supports": { "text_min": 1, "text_max": 12, "images_min": 1, "images_max": 1 },
+      "supports": {
+        "text_min": 1,
+        "text_max": 12,
+        "images_min": 1,
+        "images_max": 1
+      },
       "weight": 0.86,
       "preview_url": "/static/layouts/split_60_40_text_image.png",
       "frames": {
-        "title":   { "x": 80, "y": 64, "w": 1120, "h": 64 },
-        "sections": [ { "x": 80, "y": 150, "w": 680, "h": 460 } ],
-        "images":  [ { "x": 780, "y": 150, "w": 420, "h": 460 } ]
+        "title": {
+          "x": 80,
+          "y": 64,
+          "w": 1120,
+          "h": 64
+        },
+        "sections": [
+          {
+            "x": 80,
+            "y": 150,
+            "w": 680,
+            "h": 460
+          }
+        ],
+        "images": [
+          {
+            "x": 780,
+            "y": 150,
+            "w": 420,
+            "h": 460
+          }
+        ]
       },
-      "style": { "title": { "font": "Inter", "size": 30, "weight": 700 }, "sections": { "size": 20 } }
+      "style": {
+        "title": {
+          "font": "Inter",
+          "size": 30,
+          "weight": 700
+        },
+        "sections": {
+          "size": 20
+        }
+      }
     },
     {
       "id": "split_40_60_text_image",
       "name": "Split 40/60 (Text | Image)",
-      "supports": { "text_min": 1, "text_max": 10, "images_min": 1, "images_max": 1 },
+      "supports": {
+        "text_min": 1,
+        "text_max": 10,
+        "images_min": 1,
+        "images_max": 1
+      },
       "weight": 0.86,
       "preview_url": "/static/layouts/split_40_60_text_image.png",
       "frames": {
-        "title":   { "x": 80, "y": 64, "w": 1120, "h": 64 },
-        "sections": [ { "x": 80, "y": 150, "w": 460, "h": 460 } ],
-        "images":  [ { "x": 560, "y": 150, "w": 640, "h": 460 } ]
+        "title": {
+          "x": 80,
+          "y": 64,
+          "w": 1120,
+          "h": 64
+        },
+        "sections": [
+          {
+            "x": 80,
+            "y": 150,
+            "w": 460,
+            "h": 460
+          }
+        ],
+        "images": [
+          {
+            "x": 560,
+            "y": 150,
+            "w": 640,
+            "h": 460
+          }
+        ]
       },
-      "style": { "title": { "font": "Inter", "size": 30, "weight": 700 }, "sections": { "size": 20 } }
+      "style": {
+        "title": {
+          "font": "Inter",
+          "size": 30,
+          "weight": 700
+        },
+        "sections": {
+          "size": 20
+        }
+      }
     },
     {
       "id": "timeline_horizontal",
       "name": "Timeline (Horizontal)",
-      "supports": { "text_min": 3, "text_max": 15, "images_min": 0, "images_max": 0 },
+      "supports": {
+        "text_min": 3,
+        "text_max": 15,
+        "images_min": 0,
+        "images_max": 0
+      },
       "weight": 0.72,
       "preview_url": "/static/layouts/timeline_horizontal.png",
       "frames": {
-        "title":   { "x": 80, "y": 64, "w": 1120, "h": 64 },
+        "title": {
+          "x": 80,
+          "y": 64,
+          "w": 1120,
+          "h": 64
+        },
         "sections": [
-          { "x": 120, "y": 220, "w": 300, "h": 160 },
-          { "x": 490, "y": 220, "w": 300, "h": 160 },
-          { "x": 860, "y": 220, "w": 300, "h": 160 }
+          {
+            "x": 120,
+            "y": 220,
+            "w": 300,
+            "h": 160
+          },
+          {
+            "x": 490,
+            "y": 220,
+            "w": 300,
+            "h": 160
+          },
+          {
+            "x": 860,
+            "y": 220,
+            "w": 300,
+            "h": 160
+          }
         ]
       },
-      "style": { "title": { "font": "Inter", "size": 30, "weight": 700 }, "sections": { "size": 18, "align": "center" } }
+      "style": {
+        "title": {
+          "font": "Inter",
+          "size": 30,
+          "weight": 700
+        },
+        "sections": {
+          "size": 18,
+          "align": "center"
+        }
+      }
     },
     {
       "id": "big_quote",
       "name": "Big Quote",
-      "supports": { "text_min": 1, "text_max": 3, "images_min": 0, "images_max": 0 },
+      "supports": {
+        "text_min": 1,
+        "text_max": 3,
+        "images_min": 0,
+        "images_max": 0
+      },
       "weight": 0.78,
       "preview_url": "/static/layouts/big_quote.png",
       "frames": {
-        "title":   { "x": 80, "y": 64, "w": 1120, "h": 64 },
-        "sections": [ { "x": 140, "y": 200, "w": 1000, "h": 360 } ]
+        "title": {
+          "x": 80,
+          "y": 64,
+          "w": 1120,
+          "h": 64
+        },
+        "sections": [
+          {
+            "x": 140,
+            "y": 200,
+            "w": 1000,
+            "h": 360
+          }
+        ]
       },
-      "style": { "title": { "font": "Inter", "size": 28, "weight": 700 }, "sections": { "size": 32 } }
+      "style": {
+        "title": {
+          "font": "Inter",
+          "size": 28,
+          "weight": 700
+        },
+        "sections": {
+          "size": 32
+        }
+      }
     },
     {
       "id": "stats_three_numbers",
       "name": "Stats: Three Numbers",
-      "supports": { "text_min": 3, "text_max": 9, "images_min": 0, "images_max": 0 },
+      "supports": {
+        "text_min": 3,
+        "text_max": 9,
+        "images_min": 0,
+        "images_max": 0
+      },
       "weight": 0.76,
       "preview_url": "/static/layouts/stats_three_numbers.png",
       "frames": {
-        "title":   { "x": 80, "y": 64, "w": 1120, "h": 64 },
+        "title": {
+          "x": 80,
+          "y": 64,
+          "w": 1120,
+          "h": 64
+        },
         "sections": [
-          { "x": 120, "y": 220, "w": 320, "h": 220 },
-          { "x": 480, "y": 220, "w": 320, "h": 220 },
-          { "x": 840, "y": 220, "w": 320, "h": 220 }
+          {
+            "x": 120,
+            "y": 220,
+            "w": 320,
+            "h": 220
+          },
+          {
+            "x": 480,
+            "y": 220,
+            "w": 320,
+            "h": 220
+          },
+          {
+            "x": 840,
+            "y": 220,
+            "w": 320,
+            "h": 220
+          }
         ]
       },
-      "style": { "title": { "font": "Inter", "size": 30, "weight": 700 }, "sections": { "size": 28, "align": "center" } }
+      "style": {
+        "title": {
+          "font": "Inter",
+          "size": 30,
+          "weight": 700
+        },
+        "sections": {
+          "size": 28,
+          "align": "center"
+        }
+      }
     },
     {
       "id": "agenda_list",
       "name": "Agenda List",
-      "supports": { "text_min": 3, "text_max": 12, "images_min": 0, "images_max": 0 },
+      "supports": {
+        "text_min": 3,
+        "text_max": 12,
+        "images_min": 0,
+        "images_max": 0
+      },
       "weight": 0.8,
       "preview_url": "/static/layouts/agenda_list.png",
       "frames": {
-        "title":   { "x": 80, "y": 64, "w": 1120, "h": 64 },
-        "sections": [ { "x": 120, "y": 160, "w": 1040, "h": 480 } ]
+        "title": {
+          "x": 80,
+          "y": 64,
+          "w": 1120,
+          "h": 64
+        },
+        "sections": [
+          {
+            "x": 120,
+            "y": 160,
+            "w": 1040,
+            "h": 480
+          }
+        ]
       },
-      "style": { "title": { "font": "Inter", "size": 30, "weight": 700 }, "sections": { "size": 22 } }
+      "style": {
+        "title": {
+          "font": "Inter",
+          "size": 30,
+          "weight": 700
+        },
+        "sections": {
+          "size": 22
+        }
+      }
     },
     {
       "id": "list_with_icons",
       "name": "List with Icons",
-      "supports": { "text_min": 3, "text_max": 10, "images_min": 3, "images_max": 6 },
+      "supports": {
+        "text_min": 3,
+        "text_max": 10,
+        "images_min": 3,
+        "images_max": 6
+      },
       "weight": 0.74,
       "preview_url": "/static/layouts/list_with_icons.png",
       "frames": {
-        "title":   { "x": 80, "y": 64, "w": 1120, "h": 64 },
+        "title": {
+          "x": 80,
+          "y": 64,
+          "w": 1120,
+          "h": 64
+        },
         "images": [
-          { "x": 120, "y": 200, "w": 60, "h": 60 },
-          { "x": 120, "y": 300, "w": 60, "h": 60 },
-          { "x": 120, "y": 400, "w": 60, "h": 60 },
-          { "x": 120, "y": 500, "w": 60, "h": 60 }
+          {
+            "x": 120,
+            "y": 200,
+            "w": 60,
+            "h": 60
+          },
+          {
+            "x": 120,
+            "y": 300,
+            "w": 60,
+            "h": 60
+          },
+          {
+            "x": 120,
+            "y": 400,
+            "w": 60,
+            "h": 60
+          },
+          {
+            "x": 120,
+            "y": 500,
+            "w": 60,
+            "h": 60
+          }
         ],
-        "sections": [ { "x": 200, "y": 180, "w": 960, "h": 420 } ]
+        "sections": [
+          {
+            "x": 200,
+            "y": 180,
+            "w": 960,
+            "h": 420
+          }
+        ]
       },
-      "style": { "title": { "font": "Inter", "size": 30, "weight": 700 }, "sections": { "size": 20 } }
+      "style": {
+        "title": {
+          "font": "Inter",
+          "size": 30,
+          "weight": 700
+        },
+        "sections": {
+          "size": 20
+        }
+      }
+    },
+    {
+      "id": "title_bullets_right",
+      "name": "Title + Bullets (Right)",
+      "supports": {
+        "text_min": 1,
+        "text_max": 12,
+        "images_min": 0,
+        "images_max": 1
+      },
+      "weight": 0.95,
+      "preview_url": "/static/layouts/title_bullets_right.png",
+      "frames": {
+        "title": {
+          "x": 80,
+          "y": 64,
+          "w": 1120,
+          "h": 80
+        },
+        "sections": [
+          {
+            "x": 480,
+            "y": 170,
+            "w": 720,
+            "h": 360
+          }
+        ],
+        "images": [
+          {
+            "x": 80,
+            "y": 200,
+            "w": 360,
+            "h": 240
+          }
+        ]
+      },
+      "style": {}
+    },
+    {
+      "id": "title_two_images",
+      "name": "Title + Two Images",
+      "supports": {
+        "text_min": 0,
+        "text_max": 4,
+        "images_min": 2,
+        "images_max": 2
+      },
+      "weight": 0.86,
+      "preview_url": "/static/layouts/title_two_images.png",
+      "frames": {
+        "title": {
+          "x": 80,
+          "y": 64,
+          "w": 1120,
+          "h": 64
+        },
+        "images": [
+          {
+            "x": 80,
+            "y": 160,
+            "w": 560,
+            "h": 360
+          },
+          {
+            "x": 640,
+            "y": 160,
+            "w": 560,
+            "h": 360
+          }
+        ],
+        "sections": [
+          {
+            "x": 80,
+            "y": 540,
+            "w": 1120,
+            "h": 120
+          }
+        ]
+      },
+      "style": {}
+    },
+    {
+      "id": "images_row_3",
+      "name": "Three Images (Row)",
+      "supports": {
+        "text_min": 0,
+        "text_max": 2,
+        "images_min": 3,
+        "images_max": 3
+      },
+      "weight": 0.8,
+      "preview_url": "/static/layouts/images_row_3.png",
+      "frames": {
+        "title": {
+          "x": 80,
+          "y": 60,
+          "w": 1120,
+          "h": 60
+        },
+        "images": [
+          {
+            "x": 80,
+            "y": 160,
+            "w": 360,
+            "h": 360
+          },
+          {
+            "x": 460,
+            "y": 160,
+            "w": 360,
+            "h": 360
+          },
+          {
+            "x": 840,
+            "y": 160,
+            "w": 360,
+            "h": 360
+          }
+        ]
+      },
+      "style": {}
+    },
+    {
+      "id": "images_col_3",
+      "name": "Three Images (Column)",
+      "supports": {
+        "text_min": 0,
+        "text_max": 2,
+        "images_min": 3,
+        "images_max": 3
+      },
+      "weight": 0.7,
+      "preview_url": "/static/layouts/images_col_3.png",
+      "frames": {
+        "title": {
+          "x": 80,
+          "y": 60,
+          "w": 1120,
+          "h": 60
+        },
+        "images": [
+          {
+            "x": 360,
+            "y": 140,
+            "w": 560,
+            "h": 160
+          },
+          {
+            "x": 360,
+            "y": 320,
+            "w": 560,
+            "h": 160
+          },
+          {
+            "x": 360,
+            "y": 500,
+            "w": 560,
+            "h": 160
+          }
+        ]
+      },
+      "style": {}
+    },
+    {
+      "id": "image_big_left_two_right",
+      "name": "Image Big (Left) + Two (Right)",
+      "supports": {
+        "text_min": 0,
+        "text_max": 2,
+        "images_min": 3,
+        "images_max": 3
+      },
+      "weight": 0.84,
+      "preview_url": "/static/layouts/image_big_left_two_right.png",
+      "frames": {
+        "title": {
+          "x": 80,
+          "y": 64,
+          "w": 1120,
+          "h": 64
+        },
+        "images": [
+          {
+            "x": 80,
+            "y": 150,
+            "w": 720,
+            "h": 460
+          },
+          {
+            "x": 840,
+            "y": 150,
+            "w": 360,
+            "h": 220
+          },
+          {
+            "x": 840,
+            "y": 390,
+            "w": 360,
+            "h": 220
+          }
+        ]
+      },
+      "style": {}
+    },
+    {
+      "id": "quote_with_portrait",
+      "name": "Quote with Portrait (Right)",
+      "supports": {
+        "text_min": 1,
+        "text_max": 3,
+        "images_min": 1,
+        "images_max": 1
+      },
+      "weight": 0.8,
+      "preview_url": "/static/layouts/quote_with_portrait.png",
+      "frames": {
+        "title": {
+          "x": 80,
+          "y": 64,
+          "w": 960,
+          "h": 60
+        },
+        "sections": [
+          {
+            "x": 80,
+            "y": 180,
+            "w": 840,
+            "h": 360
+          }
+        ],
+        "images": [
+          {
+            "x": 960,
+            "y": 210,
+            "w": 240,
+            "h": 300
+          }
+        ]
+      },
+      "style": {
+        "sections": {
+          "size": 28
+        }
+      }
+    },
+    {
+      "id": "agenda_two_col",
+      "name": "Agenda (Two Columns)",
+      "supports": {
+        "text_min": 4,
+        "text_max": 16,
+        "images_min": 0,
+        "images_max": 0
+      },
+      "weight": 0.82,
+      "preview_url": "/static/layouts/agenda_two_col.png",
+      "frames": {
+        "title": {
+          "x": 80,
+          "y": 64,
+          "w": 1120,
+          "h": 64
+        },
+        "sections": [
+          {
+            "x": 80,
+            "y": 160,
+            "w": 540,
+            "h": 480
+          },
+          {
+            "x": 660,
+            "y": 160,
+            "w": 540,
+            "h": 480
+          }
+        ]
+      },
+      "style": {}
+    },
+    {
+      "id": "timeline_vertical",
+      "name": "Timeline (Vertical)",
+      "supports": {
+        "text_min": 3,
+        "text_max": 10,
+        "images_min": 0,
+        "images_max": 0
+      },
+      "weight": 0.72,
+      "preview_url": "/static/layouts/timeline_vertical.png",
+      "frames": {
+        "title": {
+          "x": 80,
+          "y": 64,
+          "w": 1120,
+          "h": 64
+        },
+        "sections": [
+          {
+            "x": 440,
+            "y": 160,
+            "w": 400,
+            "h": 120
+          },
+          {
+            "x": 440,
+            "y": 300,
+            "w": 400,
+            "h": 120
+          },
+          {
+            "x": 440,
+            "y": 440,
+            "w": 400,
+            "h": 120
+          }
+        ]
+      },
+      "style": {
+        "sections": {
+          "align": "center"
+        }
+      }
+    },
+    {
+      "id": "pros_cons",
+      "name": "Pros vs Cons",
+      "supports": {
+        "text_min": 2,
+        "text_max": 14,
+        "images_min": 0,
+        "images_max": 0
+      },
+      "weight": 0.83,
+      "preview_url": "/static/layouts/pros_cons.png",
+      "frames": {
+        "title": {
+          "x": 80,
+          "y": 64,
+          "w": 1120,
+          "h": 64
+        },
+        "sections": [
+          {
+            "x": 80,
+            "y": 150,
+            "w": 540,
+            "h": 80
+          },
+          {
+            "x": 80,
+            "y": 240,
+            "w": 540,
+            "h": 380
+          },
+          {
+            "x": 660,
+            "y": 150,
+            "w": 540,
+            "h": 80
+          },
+          {
+            "x": 660,
+            "y": 240,
+            "w": 540,
+            "h": 380
+          }
+        ]
+      },
+      "style": {}
+    },
+    {
+      "id": "title_content_footer",
+      "name": "Title \u2022 Content \u2022 Footer",
+      "supports": {
+        "text_min": 2,
+        "text_max": 14,
+        "images_min": 0,
+        "images_max": 1
+      },
+      "weight": 0.82,
+      "preview_url": "/static/layouts/title_content_footer.png",
+      "frames": {
+        "title": {
+          "x": 80,
+          "y": 64,
+          "w": 1120,
+          "h": 64
+        },
+        "sections": [
+          {
+            "x": 80,
+            "y": 150,
+            "w": 1120,
+            "h": 380
+          },
+          {
+            "x": 80,
+            "y": 550,
+            "w": 1120,
+            "h": 80
+          }
+        ],
+        "images": [
+          {
+            "x": 1010,
+            "y": 160,
+            "w": 190,
+            "h": 140
+          }
+        ]
+      },
+      "style": {}
+    },
+    {
+      "id": "content_side_caption_right",
+      "name": "Content with Side Caption (Right)",
+      "supports": {
+        "text_min": 1,
+        "text_max": 8,
+        "images_min": 1,
+        "images_max": 1
+      },
+      "weight": 0.8,
+      "preview_url": "/static/layouts/content_side_caption_right.png",
+      "frames": {
+        "title": {
+          "x": 80,
+          "y": 64,
+          "w": 1120,
+          "h": 64
+        },
+        "images": [
+          {
+            "x": 80,
+            "y": 150,
+            "w": 920,
+            "h": 400
+          }
+        ],
+        "sections": [
+          {
+            "x": 1020,
+            "y": 150,
+            "w": 180,
+            "h": 400
+          }
+        ]
+      },
+      "style": {}
+    },
+    {
+      "id": "content_side_caption_left",
+      "name": "Content with Side Caption (Left)",
+      "supports": {
+        "text_min": 1,
+        "text_max": 8,
+        "images_min": 1,
+        "images_max": 1
+      },
+      "weight": 0.8,
+      "preview_url": "/static/layouts/content_side_caption_left.png",
+      "frames": {
+        "title": {
+          "x": 80,
+          "y": 64,
+          "w": 1120,
+          "h": 64
+        },
+        "images": [
+          {
+            "x": 280,
+            "y": 150,
+            "w": 920,
+            "h": 400
+          }
+        ],
+        "sections": [
+          {
+            "x": 80,
+            "y": 150,
+            "w": 180,
+            "h": 400
+          }
+        ]
+      },
+      "style": {}
+    },
+    {
+      "id": "full_bleed_with_strip_caption",
+      "name": "Full-Bleed Image + Bottom Strip Caption",
+      "supports": {
+        "text_min": 0,
+        "text_max": 2,
+        "images_min": 1,
+        "images_max": 1
+      },
+      "weight": 0.9,
+      "preview_url": "/static/layouts/full_bleed_with_strip_caption.png",
+      "frames": {
+        "images": [
+          {
+            "x": 0,
+            "y": 0,
+            "w": 1280,
+            "h": 720
+          }
+        ],
+        "sections": [
+          {
+            "x": 0,
+            "y": 580,
+            "w": 1280,
+            "h": 120
+          }
+        ]
+      },
+      "style": {
+        "sections": {
+          "align": "center"
+        }
+      }
+    },
+    {
+      "id": "title_three_stats_wide",
+      "name": "Title + Three Stats (Wide)",
+      "supports": {
+        "text_min": 3,
+        "text_max": 9,
+        "images_min": 0,
+        "images_max": 0
+      },
+      "weight": 0.78,
+      "preview_url": "/static/layouts/title_three_stats_wide.png",
+      "frames": {
+        "title": {
+          "x": 80,
+          "y": 64,
+          "w": 1120,
+          "h": 64
+        },
+        "sections": [
+          {
+            "x": 120,
+            "y": 220,
+            "w": 320,
+            "h": 220
+          },
+          {
+            "x": 480,
+            "y": 220,
+            "w": 320,
+            "h": 220
+          },
+          {
+            "x": 840,
+            "y": 220,
+            "w": 320,
+            "h": 220
+          }
+        ]
+      },
+      "style": {
+        "sections": {
+          "align": "center"
+        }
+      }
+    },
+    {
+      "id": "two_stats",
+      "name": "Two Big Numbers",
+      "supports": {
+        "text_min": 2,
+        "text_max": 6,
+        "images_min": 0,
+        "images_max": 0
+      },
+      "weight": 0.78,
+      "preview_url": "/static/layouts/two_stats.png",
+      "frames": {
+        "title": {
+          "x": 80,
+          "y": 64,
+          "w": 1120,
+          "h": 64
+        },
+        "sections": [
+          {
+            "x": 120,
+            "y": 240,
+            "w": 500,
+            "h": 260
+          },
+          {
+            "x": 660,
+            "y": 240,
+            "w": 500,
+            "h": 260
+          }
+        ]
+      },
+      "style": {
+        "sections": {
+          "align": "center"
+        }
+      }
+    },
+    {
+      "id": "four_stats_grid",
+      "name": "Stats: Four Numbers",
+      "supports": {
+        "text_min": 4,
+        "text_max": 8,
+        "images_min": 0,
+        "images_max": 0
+      },
+      "weight": 0.76,
+      "preview_url": "/static/layouts/four_stats_grid.png",
+      "frames": {
+        "title": {
+          "x": 80,
+          "y": 64,
+          "w": 1120,
+          "h": 64
+        },
+        "sections": [
+          {
+            "x": 120,
+            "y": 200,
+            "w": 500,
+            "h": 160
+          },
+          {
+            "x": 660,
+            "y": 200,
+            "w": 500,
+            "h": 160
+          },
+          {
+            "x": 120,
+            "y": 390,
+            "w": 500,
+            "h": 160
+          },
+          {
+            "x": 660,
+            "y": 390,
+            "w": 500,
+            "h": 160
+          }
+        ]
+      },
+      "style": {
+        "sections": {
+          "align": "center"
+        }
+      }
+    },
+    {
+      "id": "text_image_text_3col",
+      "name": "3-Column (Text | Image | Text)",
+      "supports": {
+        "text_min": 2,
+        "text_max": 16,
+        "images_min": 1,
+        "images_max": 1
+      },
+      "weight": 0.82,
+      "preview_url": "/static/layouts/text_image_text_3col.png",
+      "frames": {
+        "title": {
+          "x": 80,
+          "y": 64,
+          "w": 1120,
+          "h": 64
+        },
+        "sections": [
+          {
+            "x": 80,
+            "y": 160,
+            "w": 360,
+            "h": 420
+          },
+          {
+            "x": 840,
+            "y": 160,
+            "w": 360,
+            "h": 420
+          }
+        ],
+        "images": [
+          {
+            "x": 460,
+            "y": 160,
+            "w": 360,
+            "h": 420
+          }
+        ]
+      },
+      "style": {}
+    },
+    {
+      "id": "two_images_with_captions",
+      "name": "Two Images with Captions",
+      "supports": {
+        "text_min": 2,
+        "text_max": 6,
+        "images_min": 2,
+        "images_max": 2
+      },
+      "weight": 0.8,
+      "preview_url": "/static/layouts/two_images_with_captions.png",
+      "frames": {
+        "title": {
+          "x": 80,
+          "y": 64,
+          "w": 1120,
+          "h": 64
+        },
+        "images": [
+          {
+            "x": 120,
+            "y": 150,
+            "w": 500,
+            "h": 280
+          },
+          {
+            "x": 660,
+            "y": 150,
+            "w": 500,
+            "h": 280
+          }
+        ],
+        "sections": [
+          {
+            "x": 120,
+            "y": 450,
+            "w": 500,
+            "h": 120
+          },
+          {
+            "x": 660,
+            "y": 450,
+            "w": 500,
+            "h": 120
+          }
+        ]
+      },
+      "style": {}
+    },
+    {
+      "id": "three_cols_image_caption",
+      "name": "Three Columns (Image + Caption)",
+      "supports": {
+        "text_min": 3,
+        "text_max": 9,
+        "images_min": 3,
+        "images_max": 3
+      },
+      "weight": 0.8,
+      "preview_url": "/static/layouts/three_cols_image_caption.png",
+      "frames": {
+        "title": {
+          "x": 80,
+          "y": 64,
+          "w": 1120,
+          "h": 64
+        },
+        "images": [
+          {
+            "x": 80,
+            "y": 160,
+            "w": 360,
+            "h": 240
+          },
+          {
+            "x": 460,
+            "y": 160,
+            "w": 360,
+            "h": 240
+          },
+          {
+            "x": 840,
+            "y": 160,
+            "w": 360,
+            "h": 240
+          }
+        ],
+        "sections": [
+          {
+            "x": 80,
+            "y": 420,
+            "w": 360,
+            "h": 160
+          },
+          {
+            "x": 460,
+            "y": 420,
+            "w": 360,
+            "h": 160
+          },
+          {
+            "x": 840,
+            "y": 420,
+            "w": 360,
+            "h": 160
+          }
+        ]
+      },
+      "style": {}
+    },
+    {
+      "id": "four_col_text",
+      "name": "Four Columns (Text \u00d74)",
+      "supports": {
+        "text_min": 4,
+        "text_max": 28,
+        "images_min": 0,
+        "images_max": 0
+      },
+      "weight": 0.75,
+      "preview_url": "/static/layouts/four_col_text.png",
+      "frames": {
+        "title": {
+          "x": 80,
+          "y": 64,
+          "w": 1120,
+          "h": 64
+        },
+        "sections": [
+          {
+            "x": 60,
+            "y": 150,
+            "w": 280,
+            "h": 460
+          },
+          {
+            "x": 360,
+            "y": 150,
+            "w": 280,
+            "h": 460
+          },
+          {
+            "x": 660,
+            "y": 150,
+            "w": 280,
+            "h": 460
+          },
+          {
+            "x": 960,
+            "y": 150,
+            "w": 280,
+            "h": 460
+          }
+        ]
+      },
+      "style": {
+        "sections": {
+          "size": 18
+        }
+      }
+    },
+    {
+      "id": "center_title_large_image",
+      "name": "Center Title + Large Image",
+      "supports": {
+        "text_min": 1,
+        "text_max": 4,
+        "images_min": 1,
+        "images_max": 1
+      },
+      "weight": 0.7,
+      "preview_url": "/static/layouts/center_title_large_image.png",
+      "frames": {
+        "title": {
+          "x": 240,
+          "y": 100,
+          "w": 800,
+          "h": 100
+        },
+        "images": [
+          {
+            "x": 440,
+            "y": 240,
+            "w": 400,
+            "h": 300
+          }
+        ],
+        "sections": [
+          {
+            "x": 240,
+            "y": 560,
+            "w": 800,
+            "h": 100
+          }
+        ]
+      },
+      "style": {}
+    },
+    {
+      "id": "image_with_sidebar",
+      "name": "Image with Sidebar Text",
+      "supports": {
+        "text_min": 1,
+        "text_max": 6,
+        "images_min": 1,
+        "images_max": 1
+      },
+      "weight": 0.82,
+      "preview_url": "/static/layouts/image_with_sidebar.png",
+      "frames": {
+        "title": {
+          "x": 80,
+          "y": 60,
+          "w": 1120,
+          "h": 60
+        },
+        "sections": [
+          {
+            "x": 80,
+            "y": 150,
+            "w": 260,
+            "h": 430
+          }
+        ],
+        "images": [
+          {
+            "x": 360,
+            "y": 150,
+            "w": 840,
+            "h": 430
+          }
+        ]
+      },
+      "style": {}
+    },
+    {
+      "id": "title_and_code",
+      "name": "Title + Code Block",
+      "supports": {
+        "text_min": 1,
+        "text_max": 8,
+        "images_min": 0,
+        "images_max": 0
+      },
+      "weight": 0.7,
+      "preview_url": "/static/layouts/title_and_code.png",
+      "frames": {
+        "title": {
+          "x": 80,
+          "y": 64,
+          "w": 1120,
+          "h": 64
+        },
+        "sections": [
+          {
+            "x": 80,
+            "y": 160,
+            "w": 1120,
+            "h": 440
+          }
+        ]
+      },
+      "style": {
+        "sections": {
+          "font": "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace",
+          "size": 18
+        }
+      }
+    },
+    {
+      "id": "grid_2x3_sections",
+      "name": "2\u00d73 Grid (Text Cells)",
+      "supports": {
+        "text_min": 6,
+        "text_max": 18,
+        "images_min": 0,
+        "images_max": 0
+      },
+      "weight": 0.72,
+      "preview_url": "/static/layouts/grid_2x3_sections.png",
+      "frames": {
+        "title": {
+          "x": 80,
+          "y": 64,
+          "w": 1120,
+          "h": 64
+        },
+        "sections": [
+          {
+            "x": 80,
+            "y": 160,
+            "w": 360,
+            "h": 150
+          },
+          {
+            "x": 460,
+            "y": 160,
+            "w": 360,
+            "h": 150
+          },
+          {
+            "x": 840,
+            "y": 160,
+            "w": 360,
+            "h": 150
+          },
+          {
+            "x": 80,
+            "y": 330,
+            "w": 360,
+            "h": 150
+          },
+          {
+            "x": 460,
+            "y": 330,
+            "w": 360,
+            "h": 150
+          },
+          {
+            "x": 840,
+            "y": 330,
+            "w": 360,
+            "h": 150
+          }
+        ]
+      },
+      "style": {}
+    },
+    {
+      "id": "checklist",
+      "name": "Checklist (Icons + Items)",
+      "supports": {
+        "text_min": 3,
+        "text_max": 12,
+        "images_min": 3,
+        "images_max": 6
+      },
+      "weight": 0.74,
+      "preview_url": "/static/layouts/checklist.png",
+      "frames": {
+        "title": {
+          "x": 80,
+          "y": 64,
+          "w": 1120,
+          "h": 64
+        },
+        "images": [
+          {
+            "x": 120,
+            "y": 200,
+            "w": 60,
+            "h": 60
+          },
+          {
+            "x": 120,
+            "y": 300,
+            "w": 60,
+            "h": 60
+          },
+          {
+            "x": 120,
+            "y": 400,
+            "w": 60,
+            "h": 60
+          },
+          {
+            "x": 120,
+            "y": 500,
+            "w": 60,
+            "h": 60
+          }
+        ],
+        "sections": [
+          {
+            "x": 200,
+            "y": 180,
+            "w": 960,
+            "h": 420
+          }
+        ]
+      },
+      "style": {}
+    },
+    {
+      "id": "hero_image_with_text",
+      "name": "Hero Image + Text",
+      "supports": {
+        "text_min": 1,
+        "text_max": 10,
+        "images_min": 1,
+        "images_max": 1
+      },
+      "weight": 0.84,
+      "preview_url": "/static/layouts/hero_image_with_text.png",
+      "frames": {
+        "title": {
+          "x": 80,
+          "y": 40,
+          "w": 800,
+          "h": 80
+        },
+        "images": [
+          {
+            "x": 80,
+            "y": 120,
+            "w": 1120,
+            "h": 280
+          }
+        ],
+        "sections": [
+          {
+            "x": 80,
+            "y": 420,
+            "w": 1120,
+            "h": 220
+          }
+        ]
+      },
+      "style": {}
+    },
+    {
+      "id": "image_left_two_text",
+      "name": "Image (Left) + Two Text Blocks",
+      "supports": {
+        "text_min": 2,
+        "text_max": 12,
+        "images_min": 1,
+        "images_max": 1
+      },
+      "weight": 0.82,
+      "preview_url": "/static/layouts/image_left_two_text.png",
+      "frames": {
+        "title": {
+          "x": 80,
+          "y": 64,
+          "w": 1120,
+          "h": 64
+        },
+        "images": [
+          {
+            "x": 80,
+            "y": 160,
+            "w": 460,
+            "h": 420
+          }
+        ],
+        "sections": [
+          {
+            "x": 560,
+            "y": 160,
+            "w": 640,
+            "h": 200
+          },
+          {
+            "x": 560,
+            "y": 380,
+            "w": 640,
+            "h": 200
+          }
+        ]
+      },
+      "style": {}
+    },
+    {
+      "id": "image_right_two_text",
+      "name": "Image (Right) + Two Text Blocks",
+      "supports": {
+        "text_min": 2,
+        "text_max": 12,
+        "images_min": 1,
+        "images_max": 1
+      },
+      "weight": 0.82,
+      "preview_url": "/static/layouts/image_right_two_text.png",
+      "frames": {
+        "title": {
+          "x": 80,
+          "y": 64,
+          "w": 1120,
+          "h": 64
+        },
+        "images": [
+          {
+            "x": 740,
+            "y": 160,
+            "w": 460,
+            "h": 420
+          }
+        ],
+        "sections": [
+          {
+            "x": 80,
+            "y": 160,
+            "w": 640,
+            "h": 200
+          },
+          {
+            "x": 80,
+            "y": 380,
+            "w": 640,
+            "h": 200
+          }
+        ]
+      },
+      "style": {}
+    },
+    {
+      "id": "carousel_3",
+      "name": "Carousel (3 images + captions)",
+      "supports": {
+        "text_min": 3,
+        "text_max": 9,
+        "images_min": 3,
+        "images_max": 3
+      },
+      "weight": 0.8,
+      "preview_url": "/static/layouts/carousel_3.png",
+      "frames": {
+        "title": {
+          "x": 80,
+          "y": 64,
+          "w": 1120,
+          "h": 64
+        },
+        "images": [
+          {
+            "x": 120,
+            "y": 170,
+            "w": 320,
+            "h": 260
+          },
+          {
+            "x": 480,
+            "y": 170,
+            "w": 320,
+            "h": 260
+          },
+          {
+            "x": 840,
+            "y": 170,
+            "w": 320,
+            "h": 260
+          }
+        ],
+        "sections": [
+          {
+            "x": 120,
+            "y": 450,
+            "w": 320,
+            "h": 120
+          },
+          {
+            "x": 480,
+            "y": 450,
+            "w": 320,
+            "h": 120
+          },
+          {
+            "x": 840,
+            "y": 450,
+            "w": 320,
+            "h": 120
+          }
+        ]
+      },
+      "style": {}
+    },
+    {
+      "id": "grid_3x2_images",
+      "name": "Grid 3\u00d72 Images",
+      "supports": {
+        "text_min": 0,
+        "text_max": 2,
+        "images_min": 6,
+        "images_max": 6
+      },
+      "weight": 0.78,
+      "preview_url": "/static/layouts/grid_3x2_images.png",
+      "frames": {
+        "title": {
+          "x": 80,
+          "y": 60,
+          "w": 1120,
+          "h": 60
+        },
+        "images": [
+          {
+            "x": 80,
+            "y": 150,
+            "w": 360,
+            "h": 200
+          },
+          {
+            "x": 460,
+            "y": 150,
+            "w": 360,
+            "h": 200
+          },
+          {
+            "x": 840,
+            "y": 150,
+            "w": 360,
+            "h": 200
+          },
+          {
+            "x": 80,
+            "y": 370,
+            "w": 360,
+            "h": 200
+          },
+          {
+            "x": 460,
+            "y": 370,
+            "w": 360,
+            "h": 200
+          },
+          {
+            "x": 840,
+            "y": 370,
+            "w": 360,
+            "h": 200
+          }
+        ]
+      },
+      "style": {}
+    },
+    {
+      "id": "image_big_top_two_bottom",
+      "name": "Image Big (Top) + Two (Bottom)",
+      "supports": {
+        "text_min": 0,
+        "text_max": 2,
+        "images_min": 3,
+        "images_max": 3
+      },
+      "weight": 0.84,
+      "preview_url": "/static/layouts/image_big_top_two_bottom.png",
+      "frames": {
+        "title": {
+          "x": 80,
+          "y": 64,
+          "w": 1120,
+          "h": 64
+        },
+        "images": [
+          {
+            "x": 80,
+            "y": 150,
+            "w": 1120,
+            "h": 340
+          },
+          {
+            "x": 80,
+            "y": 510,
+            "w": 540,
+            "h": 190
+          },
+          {
+            "x": 660,
+            "y": 510,
+            "w": 540,
+            "h": 190
+          }
+        ]
+      },
+      "style": {}
+    },
+    {
+      "id": "image_big_bottom_two_top",
+      "name": "Image Big (Bottom) + Two (Top)",
+      "supports": {
+        "text_min": 0,
+        "text_max": 2,
+        "images_min": 3,
+        "images_max": 3
+      },
+      "weight": 0.84,
+      "preview_url": "/static/layouts/image_big_bottom_two_top.png",
+      "frames": {
+        "title": {
+          "x": 80,
+          "y": 64,
+          "w": 1120,
+          "h": 64
+        },
+        "images": [
+          {
+            "x": 80,
+            "y": 150,
+            "w": 540,
+            "h": 190
+          },
+          {
+            "x": 660,
+            "y": 150,
+            "w": 540,
+            "h": 190
+          },
+          {
+            "x": 80,
+            "y": 360,
+            "w": 1120,
+            "h": 340
+          }
+        ]
+      },
+      "style": {}
+    },
+    {
+      "id": "image_big_right_two_left",
+      "name": "Image Big (Right) + Two (Left)",
+      "supports": {
+        "text_min": 0,
+        "text_max": 2,
+        "images_min": 3,
+        "images_max": 3
+      },
+      "weight": 0.84,
+      "preview_url": "/static/layouts/image_big_right_two_left.png",
+      "frames": {
+        "title": {
+          "x": 80,
+          "y": 64,
+          "w": 1120,
+          "h": 64
+        },
+        "images": [
+          {
+            "x": 80,
+            "y": 150,
+            "w": 360,
+            "h": 220
+          },
+          {
+            "x": 80,
+            "y": 390,
+            "w": 360,
+            "h": 220
+          },
+          {
+            "x": 480,
+            "y": 150,
+            "w": 720,
+            "h": 460
+          }
+        ]
+      },
+      "style": {}
+    },
+    {
+      "id": "quote_with_portrait_left",
+      "name": "Quote with Portrait (Left)",
+      "supports": {
+        "text_min": 1,
+        "text_max": 3,
+        "images_min": 1,
+        "images_max": 1
+      },
+      "weight": 0.8,
+      "preview_url": "/static/layouts/quote_with_portrait_left.png",
+      "frames": {
+        "title": {
+          "x": 320,
+          "y": 64,
+          "w": 720,
+          "h": 60
+        },
+        "sections": [
+          {
+            "x": 360,
+            "y": 180,
+            "w": 840,
+            "h": 360
+          }
+        ],
+        "images": [
+          {
+            "x": 80,
+            "y": 210,
+            "w": 240,
+            "h": 300
+          }
+        ]
+      },
+      "style": {
+        "sections": {
+          "size": 28
+        }
+      }
+    },
+    {
+      "id": "images_row_4",
+      "name": "Four Images (Row)",
+      "supports": {
+        "text_min": 0,
+        "text_max": 2,
+        "images_min": 4,
+        "images_max": 4
+      },
+      "weight": 0.8,
+      "preview_url": "/static/layouts/images_row_4.png",
+      "frames": {
+        "title": {
+          "x": 80,
+          "y": 60,
+          "w": 1120,
+          "h": 60
+        },
+        "images": [
+          {
+            "x": 80,
+            "y": 150,
+            "w": 250,
+            "h": 300
+          },
+          {
+            "x": 370,
+            "y": 150,
+            "w": 250,
+            "h": 300
+          },
+          {
+            "x": 660,
+            "y": 150,
+            "w": 250,
+            "h": 300
+          },
+          {
+            "x": 950,
+            "y": 150,
+            "w": 250,
+            "h": 300
+          }
+        ]
+      },
+      "style": {}
+    },
+    {
+      "id": "images_row_5",
+      "name": "Five Images (Row)",
+      "supports": {
+        "text_min": 0,
+        "text_max": 2,
+        "images_min": 5,
+        "images_max": 5
+      },
+      "weight": 0.75,
+      "preview_url": "/static/layouts/images_row_5.png",
+      "frames": {
+        "title": {
+          "x": 80,
+          "y": 60,
+          "w": 1120,
+          "h": 60
+        },
+        "images": [
+          {
+            "x": 100,
+            "y": 150,
+            "w": 200,
+            "h": 200
+          },
+          {
+            "x": 320,
+            "y": 150,
+            "w": 200,
+            "h": 200
+          },
+          {
+            "x": 540,
+            "y": 150,
+            "w": 200,
+            "h": 200
+          },
+          {
+            "x": 760,
+            "y": 150,
+            "w": 200,
+            "h": 200
+          },
+          {
+            "x": 980,
+            "y": 150,
+            "w": 200,
+            "h": 200
+          }
+        ]
+      },
+      "style": {}
+    },
+    {
+      "id": "grid_2x2_images_with_captions",
+      "name": "Grid 2\u00d72 Images with Captions",
+      "supports": {
+        "text_min": 4,
+        "text_max": 12,
+        "images_min": 4,
+        "images_max": 4
+      },
+      "weight": 0.8,
+      "preview_url": "/static/layouts/grid_2x2_images_with_captions.png",
+      "frames": {
+        "title": {
+          "x": 80,
+          "y": 60,
+          "w": 1120,
+          "h": 60
+        },
+        "images": [
+          {
+            "x": 120,
+            "y": 150,
+            "w": 500,
+            "h": 200
+          },
+          {
+            "x": 660,
+            "y": 150,
+            "w": 500,
+            "h": 200
+          },
+          {
+            "x": 120,
+            "y": 440,
+            "w": 500,
+            "h": 200
+          },
+          {
+            "x": 660,
+            "y": 440,
+            "w": 500,
+            "h": 200
+          }
+        ],
+        "sections": [
+          {
+            "x": 120,
+            "y": 360,
+            "w": 500,
+            "h": 60
+          },
+          {
+            "x": 660,
+            "y": 360,
+            "w": 500,
+            "h": 60
+          },
+          {
+            "x": 120,
+            "y": 650,
+            "w": 500,
+            "h": 60
+          },
+          {
+            "x": 660,
+            "y": 650,
+            "w": 500,
+            "h": 60
+          }
+        ]
+      },
+      "style": {
+        "sections": {
+          "align": "center"
+        }
+      }
+    },
+    {
+      "id": "image_text_image_3col",
+      "name": "3-Column (Image | Text | Image)",
+      "supports": {
+        "text_min": 1,
+        "text_max": 2,
+        "images_min": 2,
+        "images_max": 2
+      },
+      "weight": 0.82,
+      "preview_url": "/static/layouts/image_text_image_3col.png",
+      "frames": {
+        "title": {
+          "x": 80,
+          "y": 64,
+          "w": 1120,
+          "h": 64
+        },
+        "sections": [
+          {
+            "x": 460,
+            "y": 160,
+            "w": 360,
+            "h": 420
+          }
+        ],
+        "images": [
+          {
+            "x": 80,
+            "y": 160,
+            "w": 360,
+            "h": 420
+          },
+          {
+            "x": 840,
+            "y": 160,
+            "w": 360,
+            "h": 420
+          }
+        ]
+      },
+      "style": {}
+    },
+    {
+      "id": "five_col_text",
+      "name": "Five Columns (Text \u00d75)",
+      "supports": {
+        "text_min": 5,
+        "text_max": 30,
+        "images_min": 0,
+        "images_max": 0
+      },
+      "weight": 0.7,
+      "preview_url": "/static/layouts/five_col_text.png",
+      "frames": {
+        "title": {
+          "x": 80,
+          "y": 64,
+          "w": 1120,
+          "h": 64
+        },
+        "sections": [
+          {
+            "x": 100,
+            "y": 150,
+            "w": 200,
+            "h": 460
+          },
+          {
+            "x": 320,
+            "y": 150,
+            "w": 200,
+            "h": 460
+          },
+          {
+            "x": 540,
+            "y": 150,
+            "w": 200,
+            "h": 460
+          },
+          {
+            "x": 760,
+            "y": 150,
+            "w": 200,
+            "h": 460
+          },
+          {
+            "x": 980,
+            "y": 150,
+            "w": 200,
+            "h": 460
+          }
+        ]
+      },
+      "style": {
+        "sections": {
+          "size": 18
+        }
+      }
+    },
+    {
+      "id": "six_col_text",
+      "name": "Six Columns (Text \u00d76)",
+      "supports": {
+        "text_min": 6,
+        "text_max": 36,
+        "images_min": 0,
+        "images_max": 0
+      },
+      "weight": 0.65,
+      "preview_url": "/static/layouts/six_col_text.png",
+      "frames": {
+        "title": {
+          "x": 80,
+          "y": 64,
+          "w": 1120,
+          "h": 64
+        },
+        "sections": [
+          {
+            "x": 80,
+            "y": 150,
+            "w": 170,
+            "h": 440
+          },
+          {
+            "x": 270,
+            "y": 150,
+            "w": 170,
+            "h": 440
+          },
+          {
+            "x": 460,
+            "y": 150,
+            "w": 170,
+            "h": 440
+          },
+          {
+            "x": 650,
+            "y": 150,
+            "w": 170,
+            "h": 440
+          },
+          {
+            "x": 840,
+            "y": 150,
+            "w": 170,
+            "h": 440
+          },
+          {
+            "x": 1030,
+            "y": 150,
+            "w": 170,
+            "h": 440
+          }
+        ]
+      },
+      "style": {
+        "sections": {
+          "size": 18
+        }
+      }
+    },
+    {
+      "id": "grid_3x3_sections",
+      "name": "Grid 3\u00d73 Text Cells",
+      "supports": {
+        "text_min": 9,
+        "text_max": 24,
+        "images_min": 0,
+        "images_max": 0
+      },
+      "weight": 0.72,
+      "preview_url": "/static/layouts/grid_3x3_sections.png",
+      "frames": {
+        "title": {
+          "x": 80,
+          "y": 64,
+          "w": 1120,
+          "h": 64
+        },
+        "sections": [
+          {
+            "x": 40,
+            "y": 150,
+            "w": 285,
+            "h": 170
+          },
+          {
+            "x": 345,
+            "y": 150,
+            "w": 285,
+            "h": 170
+          },
+          {
+            "x": 650,
+            "y": 150,
+            "w": 285,
+            "h": 170
+          },
+          {
+            "x": 955,
+            "y": 150,
+            "w": 285,
+            "h": 170
+          },
+          {
+            "x": 40,
+            "y": 340,
+            "w": 285,
+            "h": 170
+          },
+          {
+            "x": 345,
+            "y": 340,
+            "w": 285,
+            "h": 170
+          },
+          {
+            "x": 650,
+            "y": 340,
+            "w": 285,
+            "h": 170
+          },
+          {
+            "x": 955,
+            "y": 340,
+            "w": 285,
+            "h": 170
+          },
+          {
+            "x": 40,
+            "y": 530,
+            "w": 285,
+            "h": 170
+          },
+          {
+            "x": 345,
+            "y": 530,
+            "w": 285,
+            "h": 170
+          },
+          {
+            "x": 650,
+            "y": 530,
+            "w": 285,
+            "h": 170
+          },
+          {
+            "x": 955,
+            "y": 530,
+            "w": 285,
+            "h": 170
+          }
+        ]
+      },
+      "style": {}
+    },
+    {
+      "id": "grid_2x4_sections",
+      "name": "2\u00d74 Grid (Text Cells)",
+      "supports": {
+        "text_min": 8,
+        "text_max": 16,
+        "images_min": 0,
+        "images_max": 0
+      },
+      "weight": 0.72,
+      "preview_url": "/static/layouts/grid_2x4_sections.png",
+      "frames": {
+        "title": {
+          "x": 80,
+          "y": 64,
+          "w": 1120,
+          "h": 64
+        },
+        "sections": [
+          {
+            "x": 80,
+            "y": 150,
+            "w": 265,
+            "h": 260
+          },
+          {
+            "x": 365,
+            "y": 150,
+            "w": 265,
+            "h": 260
+          },
+          {
+            "x": 650,
+            "y": 150,
+            "w": 265,
+            "h": 260
+          },
+          {
+            "x": 935,
+            "y": 150,
+            "w": 265,
+            "h": 260
+          },
+          {
+            "x": 80,
+            "y": 430,
+            "w": 265,
+            "h": 260
+          },
+          {
+            "x": 365,
+            "y": 430,
+            "w": 265,
+            "h": 260
+          },
+          {
+            "x": 650,
+            "y": 430,
+            "w": 265,
+            "h": 260
+          },
+          {
+            "x": 935,
+            "y": 430,
+            "w": 265,
+            "h": 260
+          }
+        ]
+      },
+      "style": {}
+    },
+    {
+      "id": "grid_4x2_sections",
+      "name": "4\u00d72 Grid (Text Cells)",
+      "supports": {
+        "text_min": 8,
+        "text_max": 16,
+        "images_min": 0,
+        "images_max": 0
+      },
+      "weight": 0.72,
+      "preview_url": "/static/layouts/grid_4x2_sections.png",
+      "frames": {
+        "title": {
+          "x": 80,
+          "y": 64,
+          "w": 1120,
+          "h": 64
+        },
+        "sections": [
+          {
+            "x": 80,
+            "y": 150,
+            "w": 540,
+            "h": 120
+          },
+          {
+            "x": 660,
+            "y": 150,
+            "w": 540,
+            "h": 120
+          },
+          {
+            "x": 80,
+            "y": 290,
+            "w": 540,
+            "h": 120
+          },
+          {
+            "x": 660,
+            "y": 290,
+            "w": 540,
+            "h": 120
+          },
+          {
+            "x": 80,
+            "y": 430,
+            "w": 540,
+            "h": 120
+          },
+          {
+            "x": 660,
+            "y": 430,
+            "w": 540,
+            "h": 120
+          },
+          {
+            "x": 80,
+            "y": 570,
+            "w": 540,
+            "h": 120
+          },
+          {
+            "x": 660,
+            "y": 570,
+            "w": 540,
+            "h": 120
+          }
+        ]
+      },
+      "style": {}
+    },
+    {
+      "id": "timeline_horizontal_4",
+      "name": "Timeline (Horizontal 4-point)",
+      "supports": {
+        "text_min": 4,
+        "text_max": 16,
+        "images_min": 0,
+        "images_max": 0
+      },
+      "weight": 0.72,
+      "preview_url": "/static/layouts/timeline_horizontal_4.png",
+      "frames": {
+        "title": {
+          "x": 80,
+          "y": 64,
+          "w": 1120,
+          "h": 64
+        },
+        "sections": [
+          {
+            "x": 80,
+            "y": 220,
+            "w": 220,
+            "h": 160
+          },
+          {
+            "x": 380,
+            "y": 220,
+            "w": 220,
+            "h": 160
+          },
+          {
+            "x": 680,
+            "y": 220,
+            "w": 220,
+            "h": 160
+          },
+          {
+            "x": 980,
+            "y": 220,
+            "w": 220,
+            "h": 160
+          }
+        ]
+      },
+      "style": {
+        "sections": {
+          "align": "center"
+        },
+        "title": {
+          "font": "Inter",
+          "size": 30,
+          "weight": 700
+        }
+      }
+    },
+    {
+      "id": "timeline_vertical_4",
+      "name": "Timeline (Vertical 4-point)",
+      "supports": {
+        "text_min": 4,
+        "text_max": 14,
+        "images_min": 0,
+        "images_max": 0
+      },
+      "weight": 0.72,
+      "preview_url": "/static/layouts/timeline_vertical_4.png",
+      "frames": {
+        "title": {
+          "x": 80,
+          "y": 64,
+          "w": 1120,
+          "h": 64
+        },
+        "sections": [
+          {
+            "x": 440,
+            "y": 160,
+            "w": 400,
+            "h": 120
+          },
+          {
+            "x": 440,
+            "y": 300,
+            "w": 400,
+            "h": 120
+          },
+          {
+            "x": 440,
+            "y": 440,
+            "w": 400,
+            "h": 120
+          },
+          {
+            "x": 440,
+            "y": 580,
+            "w": 400,
+            "h": 120
+          }
+        ]
+      },
+      "style": {
+        "sections": {
+          "align": "center"
+        }
+      }
+    },
+    {
+      "id": "stats_five_numbers",
+      "name": "Stats: Five Numbers",
+      "supports": {
+        "text_min": 5,
+        "text_max": 15,
+        "images_min": 0,
+        "images_max": 0
+      },
+      "weight": 0.76,
+      "preview_url": "/static/layouts/stats_five_numbers.png",
+      "frames": {
+        "title": {
+          "x": 80,
+          "y": 64,
+          "w": 1120,
+          "h": 64
+        },
+        "sections": [
+          {
+            "x": 100,
+            "y": 240,
+            "w": 200,
+            "h": 160
+          },
+          {
+            "x": 320,
+            "y": 240,
+            "w": 200,
+            "h": 160
+          },
+          {
+            "x": 540,
+            "y": 240,
+            "w": 200,
+            "h": 160
+          },
+          {
+            "x": 760,
+            "y": 240,
+            "w": 200,
+            "h": 160
+          },
+          {
+            "x": 980,
+            "y": 240,
+            "w": 200,
+            "h": 160
+          }
+        ]
+      },
+      "style": {
+        "sections": {
+          "align": "center",
+          "size": 28
+        },
+        "title": {
+          "font": "Inter",
+          "size": 30,
+          "weight": 700
+        }
+      }
+    },
+    {
+      "id": "alternating_grid_2x2",
+      "name": "Alternating Grid 2\u00d72 (Text & Image)",
+      "supports": {
+        "text_min": 2,
+        "text_max": 8,
+        "images_min": 2,
+        "images_max": 2
+      },
+      "weight": 0.78,
+      "preview_url": "/static/layouts/alternating_grid_2x2.png",
+      "frames": {
+        "title": {
+          "x": 80,
+          "y": 64,
+          "w": 1120,
+          "h": 64
+        },
+        "sections": [
+          {
+            "x": 660,
+            "y": 150,
+            "w": 540,
+            "h": 250
+          },
+          {
+            "x": 80,
+            "y": 440,
+            "w": 540,
+            "h": 250
+          }
+        ],
+        "images": [
+          {
+            "x": 80,
+            "y": 150,
+            "w": 540,
+            "h": 250
+          },
+          {
+            "x": 660,
+            "y": 440,
+            "w": 540,
+            "h": 250
+          }
+        ]
+      },
+      "style": {}
+    },
+    {
+      "id": "two_images_left_text_right",
+      "name": "Two Images (Left) + Text (Right)",
+      "supports": {
+        "text_min": 1,
+        "text_max": 10,
+        "images_min": 2,
+        "images_max": 2
+      },
+      "weight": 0.82,
+      "preview_url": "/static/layouts/two_images_left_text_right.png",
+      "frames": {
+        "title": {
+          "x": 80,
+          "y": 64,
+          "w": 1120,
+          "h": 64
+        },
+        "images": [
+          {
+            "x": 80,
+            "y": 160,
+            "w": 460,
+            "h": 200
+          },
+          {
+            "x": 80,
+            "y": 380,
+            "w": 460,
+            "h": 200
+          }
+        ],
+        "sections": [
+          {
+            "x": 560,
+            "y": 160,
+            "w": 640,
+            "h": 420
+          }
+        ]
+      },
+      "style": {}
+    },
+    {
+      "id": "text_left_two_images_right",
+      "name": "Text (Left) + Two Images (Right)",
+      "supports": {
+        "text_min": 1,
+        "text_max": 10,
+        "images_min": 2,
+        "images_max": 2
+      },
+      "weight": 0.82,
+      "preview_url": "/static/layouts/text_left_two_images_right.png",
+      "frames": {
+        "title": {
+          "x": 80,
+          "y": 64,
+          "w": 1120,
+          "h": 64
+        },
+        "sections": [
+          {
+            "x": 80,
+            "y": 160,
+            "w": 640,
+            "h": 420
+          }
+        ],
+        "images": [
+          {
+            "x": 740,
+            "y": 160,
+            "w": 460,
+            "h": 200
+          },
+          {
+            "x": 740,
+            "y": 380,
+            "w": 460,
+            "h": 200
+          }
+        ]
+      },
+      "style": {}
+    },
+    {
+      "id": "split_70_30_text_image",
+      "name": "Split 70/30 (Text | Image)",
+      "supports": {
+        "text_min": 1,
+        "text_max": 10,
+        "images_min": 1,
+        "images_max": 1
+      },
+      "weight": 0.86,
+      "preview_url": "/static/layouts/split_70_30_text_image.png",
+      "frames": {
+        "title": {
+          "x": 80,
+          "y": 64,
+          "w": 1120,
+          "h": 64
+        },
+        "sections": [
+          {
+            "x": 80,
+            "y": 150,
+            "w": 740,
+            "h": 460
+          }
+        ],
+        "images": [
+          {
+            "x": 900,
+            "y": 150,
+            "w": 300,
+            "h": 460
+          }
+        ]
+      },
+      "style": {
+        "title": {
+          "font": "Inter",
+          "size": 30,
+          "weight": 700
+        },
+        "sections": {
+          "size": 20
+        }
+      }
+    },
+    {
+      "id": "split_30_70_text_image",
+      "name": "Split 30/70 (Text | Image)",
+      "supports": {
+        "text_min": 1,
+        "text_max": 10,
+        "images_min": 1,
+        "images_max": 1
+      },
+      "weight": 0.86,
+      "preview_url": "/static/layouts/split_30_70_text_image.png",
+      "frames": {
+        "title": {
+          "x": 80,
+          "y": 64,
+          "w": 1120,
+          "h": 64
+        },
+        "sections": [
+          {
+            "x": 80,
+            "y": 150,
+            "w": 300,
+            "h": 460
+          }
+        ],
+        "images": [
+          {
+            "x": 460,
+            "y": 150,
+            "w": 740,
+            "h": 460
+          }
+        ]
+      },
+      "style": {
+        "title": {
+          "font": "Inter",
+          "size": 30,
+          "weight": 700
+        },
+        "sections": {
+          "size": 20
+        }
+      }
+    },
+    {
+      "id": "images_row_6",
+      "name": "Six Images (Row)",
+      "supports": {
+        "text_min": 0,
+        "text_max": 2,
+        "images_min": 6,
+        "images_max": 6
+      },
+      "weight": 0.75,
+      "preview_url": "/static/layouts/images_row_6.png",
+      "frames": {
+        "title": {
+          "x": 80,
+          "y": 60,
+          "w": 1120,
+          "h": 60
+        },
+        "images": [
+          {
+            "x": 80,
+            "y": 150,
+            "w": 170,
+            "h": 170
+          },
+          {
+            "x": 270,
+            "y": 150,
+            "w": 170,
+            "h": 170
+          },
+          {
+            "x": 460,
+            "y": 150,
+            "w": 170,
+            "h": 170
+          },
+          {
+            "x": 650,
+            "y": 150,
+            "w": 170,
+            "h": 170
+          },
+          {
+            "x": 840,
+            "y": 150,
+            "w": 170,
+            "h": 170
+          },
+          {
+            "x": 1030,
+            "y": 150,
+            "w": 170,
+            "h": 170
+          }
+        ]
+      },
+      "style": {}
+    },
+    {
+      "id": "images_col_4",
+      "name": "Four Images (Column)",
+      "supports": {
+        "text_min": 0,
+        "text_max": 2,
+        "images_min": 4,
+        "images_max": 4
+      },
+      "weight": 0.7,
+      "preview_url": "/static/layouts/images_col_4.png",
+      "frames": {
+        "title": {
+          "x": 80,
+          "y": 60,
+          "w": 1120,
+          "h": 60
+        },
+        "images": [
+          {
+            "x": 360,
+            "y": 150,
+            "w": 560,
+            "h": 120
+          },
+          {
+            "x": 360,
+            "y": 290,
+            "w": 560,
+            "h": 120
+          },
+          {
+            "x": 360,
+            "y": 430,
+            "w": 560,
+            "h": 120
+          },
+          {
+            "x": 360,
+            "y": 570,
+            "w": 560,
+            "h": 120
+          }
+        ]
+      },
+      "style": {}
+    },
+    {
+      "id": "images_col_5",
+      "name": "Five Images (Column)",
+      "supports": {
+        "text_min": 0,
+        "text_max": 2,
+        "images_min": 5,
+        "images_max": 5
+      },
+      "weight": 0.7,
+      "preview_url": "/static/layouts/images_col_5.png",
+      "frames": {
+        "title": {
+          "x": 80,
+          "y": 64,
+          "w": 1120,
+          "h": 64
+        },
+        "images": [
+          {
+            "x": 360,
+            "y": 150,
+            "w": 560,
+            "h": 100
+          },
+          {
+            "x": 360,
+            "y": 260,
+            "w": 560,
+            "h": 100
+          },
+          {
+            "x": 360,
+            "y": 370,
+            "w": 560,
+            "h": 100
+          },
+          {
+            "x": 360,
+            "y": 480,
+            "w": 560,
+            "h": 100
+          },
+          {
+            "x": 360,
+            "y": 590,
+            "w": 560,
+            "h": 100
+          }
+        ]
+      },
+      "style": {}
+    },
+    {
+      "id": "split_80_20_text_image",
+      "name": "Split 80/20 (Text | Image)",
+      "supports": {
+        "text_min": 1,
+        "text_max": 8,
+        "images_min": 1,
+        "images_max": 1
+      },
+      "weight": 0.85,
+      "preview_url": "/static/layouts/split_80_20_text_image.png",
+      "frames": {
+        "title": {
+          "x": 80,
+          "y": 64,
+          "w": 1120,
+          "h": 64
+        },
+        "sections": [
+          {
+            "x": 80,
+            "y": 150,
+            "w": 840,
+            "h": 460
+          }
+        ],
+        "images": [
+          {
+            "x": 1000,
+            "y": 150,
+            "w": 200,
+            "h": 460
+          }
+        ]
+      },
+      "style": {
+        "title": {
+          "font": "Inter",
+          "size": 30,
+          "weight": 700
+        },
+        "sections": {
+          "size": 20
+        }
+      }
+    },
+    {
+      "id": "split_20_80_text_image",
+      "name": "Split 20/80 (Text | Image)",
+      "supports": {
+        "text_min": 1,
+        "text_max": 8,
+        "images_min": 1,
+        "images_max": 1
+      },
+      "weight": 0.85,
+      "preview_url": "/static/layouts/split_20_80_text_image.png",
+      "frames": {
+        "title": {
+          "x": 80,
+          "y": 64,
+          "w": 1120,
+          "h": 64
+        },
+        "sections": [
+          {
+            "x": 80,
+            "y": 150,
+            "w": 200,
+            "h": 460
+          }
+        ],
+        "images": [
+          {
+            "x": 300,
+            "y": 150,
+            "w": 880,
+            "h": 460
+          }
+        ]
+      },
+      "style": {
+        "title": {
+          "font": "Inter",
+          "size": 30,
+          "weight": 700
+        },
+        "sections": {
+          "size": 20
+        }
+      }
+    },
+    {
+      "id": "grid_3x5_sections",
+      "name": "Grid 3\u00d75 Text Cells",
+      "supports": {
+        "text_min": 15,
+        "text_max": 30,
+        "images_min": 0,
+        "images_max": 0
+      },
+      "weight": 0.7,
+      "preview_url": "/static/layouts/grid_3x5_sections.png",
+      "frames": {
+        "title": {
+          "x": 80,
+          "y": 64,
+          "w": 1120,
+          "h": 64
+        },
+        "sections": [
+          {
+            "x": 80,
+            "y": 150,
+            "w": 360,
+            "h": 100
+          },
+          {
+            "x": 460,
+            "y": 150,
+            "w": 360,
+            "h": 100
+          },
+          {
+            "x": 840,
+            "y": 150,
+            "w": 360,
+            "h": 100
+          },
+          {
+            "x": 80,
+            "y": 260,
+            "w": 360,
+            "h": 100
+          },
+          {
+            "x": 460,
+            "y": 260,
+            "w": 360,
+            "h": 100
+          },
+          {
+            "x": 840,
+            "y": 260,
+            "w": 360,
+            "h": 100
+          },
+          {
+            "x": 80,
+            "y": 370,
+            "w": 360,
+            "h": 100
+          },
+          {
+            "x": 460,
+            "y": 370,
+            "w": 360,
+            "h": 100
+          },
+          {
+            "x": 840,
+            "y": 370,
+            "w": 360,
+            "h": 100
+          },
+          {
+            "x": 80,
+            "y": 480,
+            "w": 360,
+            "h": 100
+          },
+          {
+            "x": 460,
+            "y": 480,
+            "w": 360,
+            "h": 100
+          },
+          {
+            "x": 840,
+            "y": 480,
+            "w": 360,
+            "h": 100
+          },
+          {
+            "x": 80,
+            "y": 590,
+            "w": 360,
+            "h": 100
+          },
+          {
+            "x": 460,
+            "y": 590,
+            "w": 360,
+            "h": 100
+          },
+          {
+            "x": 840,
+            "y": 590,
+            "w": 360,
+            "h": 100
+          }
+        ]
+      },
+      "style": {}
+    },
+    {
+      "id": "grid_5x3_sections",
+      "name": "Grid 5\u00d73 Text Cells",
+      "supports": {
+        "text_min": 15,
+        "text_max": 30,
+        "images_min": 0,
+        "images_max": 0
+      },
+      "weight": 0.7,
+      "preview_url": "/static/layouts/grid_5x3_sections.png",
+      "frames": {
+        "title": {
+          "x": 80,
+          "y": 64,
+          "w": 1120,
+          "h": 64
+        },
+        "sections": [
+          {
+            "x": 100,
+            "y": 150,
+            "w": 200,
+            "h": 170
+          },
+          {
+            "x": 320,
+            "y": 150,
+            "w": 200,
+            "h": 170
+          },
+          {
+            "x": 540,
+            "y": 150,
+            "w": 200,
+            "h": 170
+          },
+          {
+            "x": 760,
+            "y": 150,
+            "w": 200,
+            "h": 170
+          },
+          {
+            "x": 980,
+            "y": 150,
+            "w": 200,
+            "h": 170
+          },
+          {
+            "x": 100,
+            "y": 340,
+            "w": 200,
+            "h": 170
+          },
+          {
+            "x": 320,
+            "y": 340,
+            "w": 200,
+            "h": 170
+          },
+          {
+            "x": 540,
+            "y": 340,
+            "w": 200,
+            "h": 170
+          },
+          {
+            "x": 760,
+            "y": 340,
+            "w": 200,
+            "h": 170
+          },
+          {
+            "x": 980,
+            "y": 340,
+            "w": 200,
+            "h": 170
+          },
+          {
+            "x": 100,
+            "y": 530,
+            "w": 200,
+            "h": 170
+          },
+          {
+            "x": 320,
+            "y": 530,
+            "w": 200,
+            "h": 170
+          },
+          {
+            "x": 540,
+            "y": 530,
+            "w": 200,
+            "h": 170
+          },
+          {
+            "x": 760,
+            "y": 530,
+            "w": 200,
+            "h": 170
+          },
+          {
+            "x": 980,
+            "y": 530,
+            "w": 200,
+            "h": 170
+          }
+        ]
+      },
+      "style": {}
+    },
+    {
+      "id": "grid_4x4_sections",
+      "name": "Grid 4\u00d74 Text Cells",
+      "supports": {
+        "text_min": 16,
+        "text_max": 32,
+        "images_min": 0,
+        "images_max": 0
+      },
+      "weight": 0.68,
+      "preview_url": "/static/layouts/grid_4x4_sections.png",
+      "frames": {
+        "title": {
+          "x": 80,
+          "y": 64,
+          "w": 1120,
+          "h": 64
+        },
+        "sections": [
+          {
+            "x": 80,
+            "y": 150,
+            "w": 265,
+            "h": 120
+          },
+          {
+            "x": 365,
+            "y": 150,
+            "w": 265,
+            "h": 120
+          },
+          {
+            "x": 650,
+            "y": 150,
+            "w": 265,
+            "h": 120
+          },
+          {
+            "x": 935,
+            "y": 150,
+            "w": 265,
+            "h": 120
+          },
+          {
+            "x": 80,
+            "y": 290,
+            "w": 265,
+            "h": 120
+          },
+          {
+            "x": 365,
+            "y": 290,
+            "w": 265,
+            "h": 120
+          },
+          {
+            "x": 650,
+            "y": 290,
+            "w": 265,
+            "h": 120
+          },
+          {
+            "x": 935,
+            "y": 290,
+            "w": 265,
+            "h": 120
+          },
+          {
+            "x": 80,
+            "y": 430,
+            "w": 265,
+            "h": 120
+          },
+          {
+            "x": 365,
+            "y": 430,
+            "w": 265,
+            "h": 120
+          },
+          {
+            "x": 650,
+            "y": 430,
+            "w": 265,
+            "h": 120
+          },
+          {
+            "x": 935,
+            "y": 430,
+            "w": 265,
+            "h": 120
+          },
+          {
+            "x": 80,
+            "y": 570,
+            "w": 265,
+            "h": 120
+          },
+          {
+            "x": 365,
+            "y": 570,
+            "w": 265,
+            "h": 120
+          },
+          {
+            "x": 650,
+            "y": 570,
+            "w": 265,
+            "h": 120
+          },
+          {
+            "x": 935,
+            "y": 570,
+            "w": 265,
+            "h": 120
+          }
+        ]
+      },
+      "style": {}
+    },
+    {
+      "id": "grid_4x5_sections",
+      "name": "Grid 4\u00d75 Text Cells",
+      "supports": {
+        "text_min": 20,
+        "text_max": 40,
+        "images_min": 0,
+        "images_max": 0
+      },
+      "weight": 0.65,
+      "preview_url": "/static/layouts/grid_4x5_sections.png",
+      "frames": {
+        "title": {
+          "x": 80,
+          "y": 64,
+          "w": 1120,
+          "h": 64
+        },
+        "sections": [
+          {
+            "x": 80,
+            "y": 150,
+            "w": 265,
+            "h": 100
+          },
+          {
+            "x": 365,
+            "y": 150,
+            "w": 265,
+            "h": 100
+          },
+          {
+            "x": 650,
+            "y": 150,
+            "w": 265,
+            "h": 100
+          },
+          {
+            "x": 935,
+            "y": 150,
+            "w": 265,
+            "h": 100
+          },
+          {
+            "x": 80,
+            "y": 260,
+            "w": 265,
+            "h": 100
+          },
+          {
+            "x": 365,
+            "y": 260,
+            "w": 265,
+            "h": 100
+          },
+          {
+            "x": 650,
+            "y": 260,
+            "w": 265,
+            "h": 100
+          },
+          {
+            "x": 935,
+            "y": 260,
+            "w": 265,
+            "h": 100
+          },
+          {
+            "x": 80,
+            "y": 370,
+            "w": 265,
+            "h": 100
+          },
+          {
+            "x": 365,
+            "y": 370,
+            "w": 265,
+            "h": 100
+          },
+          {
+            "x": 650,
+            "y": 370,
+            "w": 265,
+            "h": 100
+          },
+          {
+            "x": 935,
+            "y": 370,
+            "w": 265,
+            "h": 100
+          },
+          {
+            "x": 80,
+            "y": 480,
+            "w": 265,
+            "h": 100
+          },
+          {
+            "x": 365,
+            "y": 480,
+            "w": 265,
+            "h": 100
+          },
+          {
+            "x": 650,
+            "y": 480,
+            "w": 265,
+            "h": 100
+          },
+          {
+            "x": 935,
+            "y": 480,
+            "w": 265,
+            "h": 100
+          },
+          {
+            "x": 80,
+            "y": 590,
+            "w": 265,
+            "h": 100
+          },
+          {
+            "x": 365,
+            "y": 590,
+            "w": 265,
+            "h": 100
+          },
+          {
+            "x": 650,
+            "y": 590,
+            "w": 265,
+            "h": 100
+          },
+          {
+            "x": 935,
+            "y": 590,
+            "w": 265,
+            "h": 100
+          }
+        ]
+      },
+      "style": {}
+    },
+    {
+      "id": "grid_5x4_sections",
+      "name": "Grid 5\u00d74 Text Cells",
+      "supports": {
+        "text_min": 20,
+        "text_max": 40,
+        "images_min": 0,
+        "images_max": 0
+      },
+      "weight": 0.65,
+      "preview_url": "/static/layouts/grid_5x4_sections.png",
+      "frames": {
+        "title": {
+          "x": 80,
+          "y": 64,
+          "w": 1120,
+          "h": 64
+        },
+        "sections": [
+          {
+            "x": 100,
+            "y": 150,
+            "w": 200,
+            "h": 120
+          },
+          {
+            "x": 320,
+            "y": 150,
+            "w": 200,
+            "h": 120
+          },
+          {
+            "x": 540,
+            "y": 150,
+            "w": 200,
+            "h": 120
+          },
+          {
+            "x": 760,
+            "y": 150,
+            "w": 200,
+            "h": 120
+          },
+          {
+            "x": 980,
+            "y": 150,
+            "w": 200,
+            "h": 120
+          },
+          {
+            "x": 100,
+            "y": 290,
+            "w": 200,
+            "h": 120
+          },
+          {
+            "x": 320,
+            "y": 290,
+            "w": 200,
+            "h": 120
+          },
+          {
+            "x": 540,
+            "y": 290,
+            "w": 200,
+            "h": 120
+          },
+          {
+            "x": 760,
+            "y": 290,
+            "w": 200,
+            "h": 120
+          },
+          {
+            "x": 980,
+            "y": 290,
+            "w": 200,
+            "h": 120
+          },
+          {
+            "x": 100,
+            "y": 430,
+            "w": 200,
+            "h": 120
+          },
+          {
+            "x": 320,
+            "y": 430,
+            "w": 200,
+            "h": 120
+          },
+          {
+            "x": 540,
+            "y": 430,
+            "w": 200,
+            "h": 120
+          },
+          {
+            "x": 760,
+            "y": 430,
+            "w": 200,
+            "h": 120
+          },
+          {
+            "x": 980,
+            "y": 430,
+            "w": 200,
+            "h": 120
+          },
+          {
+            "x": 100,
+            "y": 570,
+            "w": 200,
+            "h": 120
+          },
+          {
+            "x": 320,
+            "y": 570,
+            "w": 200,
+            "h": 120
+          },
+          {
+            "x": 540,
+            "y": 570,
+            "w": 200,
+            "h": 120
+          },
+          {
+            "x": 760,
+            "y": 570,
+            "w": 200,
+            "h": 120
+          },
+          {
+            "x": 980,
+            "y": 570,
+            "w": 200,
+            "h": 120
+          }
+        ]
+      },
+      "style": {}
+    },
+    {
+      "id": "grid_5x5_sections",
+      "name": "Grid 5\u00d75 Text Cells",
+      "supports": {
+        "text_min": 25,
+        "text_max": 50,
+        "images_min": 0,
+        "images_max": 0
+      },
+      "weight": 0.6,
+      "preview_url": "/static/layouts/grid_5x5_sections.png",
+      "frames": {
+        "title": {
+          "x": 80,
+          "y": 64,
+          "w": 1120,
+          "h": 64
+        },
+        "sections": [
+          {
+            "x": 100,
+            "y": 150,
+            "w": 200,
+            "h": 100
+          },
+          {
+            "x": 320,
+            "y": 150,
+            "w": 200,
+            "h": 100
+          },
+          {
+            "x": 540,
+            "y": 150,
+            "w": 200,
+            "h": 100
+          },
+          {
+            "x": 760,
+            "y": 150,
+            "w": 200,
+            "h": 100
+          },
+          {
+            "x": 980,
+            "y": 150,
+            "w": 200,
+            "h": 100
+          },
+          {
+            "x": 100,
+            "y": 260,
+            "w": 200,
+            "h": 100
+          },
+          {
+            "x": 320,
+            "y": 260,
+            "w": 200,
+            "h": 100
+          },
+          {
+            "x": 540,
+            "y": 260,
+            "w": 200,
+            "h": 100
+          },
+          {
+            "x": 760,
+            "y": 260,
+            "w": 200,
+            "h": 100
+          },
+          {
+            "x": 980,
+            "y": 260,
+            "w": 200,
+            "h": 100
+          },
+          {
+            "x": 100,
+            "y": 370,
+            "w": 200,
+            "h": 100
+          },
+          {
+            "x": 320,
+            "y": 370,
+            "w": 200,
+            "h": 100
+          },
+          {
+            "x": 540,
+            "y": 370,
+            "w": 200,
+            "h": 100
+          },
+          {
+            "x": 760,
+            "y": 370,
+            "w": 200,
+            "h": 100
+          },
+          {
+            "x": 980,
+            "y": 370,
+            "w": 200,
+            "h": 100
+          },
+          {
+            "x": 100,
+            "y": 480,
+            "w": 200,
+            "h": 100
+          },
+          {
+            "x": 320,
+            "y": 480,
+            "w": 200,
+            "h": 100
+          },
+          {
+            "x": 540,
+            "y": 480,
+            "w": 200,
+            "h": 100
+          },
+          {
+            "x": 760,
+            "y": 480,
+            "w": 200,
+            "h": 100
+          },
+          {
+            "x": 980,
+            "y": 480,
+            "w": 200,
+            "h": 100
+          },
+          {
+            "x": 100,
+            "y": 590,
+            "w": 200,
+            "h": 100
+          },
+          {
+            "x": 320,
+            "y": 590,
+            "w": 200,
+            "h": 100
+          },
+          {
+            "x": 540,
+            "y": 590,
+            "w": 200,
+            "h": 100
+          },
+          {
+            "x": 760,
+            "y": 590,
+            "w": 200,
+            "h": 100
+          },
+          {
+            "x": 980,
+            "y": 590,
+            "w": 200,
+            "h": 100
+          }
+        ]
+      },
+      "style": {}
+    },
+    {
+      "id": "grid_4x3_images",
+      "name": "Grid 4\u00d73 Images",
+      "supports": {
+        "text_min": 0,
+        "text_max": 2,
+        "images_min": 12,
+        "images_max": 12
+      },
+      "weight": 0.78,
+      "preview_url": "/static/layouts/grid_4x3_images.png",
+      "frames": {
+        "title": {
+          "x": 80,
+          "y": 60,
+          "w": 1120,
+          "h": 60
+        },
+        "images": [
+          {
+            "x": 40,
+            "y": 150,
+            "w": 285,
+            "h": 170
+          },
+          {
+            "x": 345,
+            "y": 150,
+            "w": 285,
+            "h": 170
+          },
+          {
+            "x": 650,
+            "y": 150,
+            "w": 285,
+            "h": 170
+          },
+          {
+            "x": 955,
+            "y": 150,
+            "w": 285,
+            "h": 170
+          },
+          {
+            "x": 40,
+            "y": 340,
+            "w": 285,
+            "h": 170
+          },
+          {
+            "x": 345,
+            "y": 340,
+            "w": 285,
+            "h": 170
+          },
+          {
+            "x": 650,
+            "y": 340,
+            "w": 285,
+            "h": 170
+          },
+          {
+            "x": 955,
+            "y": 340,
+            "w": 285,
+            "h": 170
+          },
+          {
+            "x": 40,
+            "y": 530,
+            "w": 285,
+            "h": 170
+          },
+          {
+            "x": 345,
+            "y": 530,
+            "w": 285,
+            "h": 170
+          },
+          {
+            "x": 650,
+            "y": 530,
+            "w": 285,
+            "h": 170
+          },
+          {
+            "x": 955,
+            "y": 530,
+            "w": 285,
+            "h": 170
+          }
+        ]
+      },
+      "style": {}
+    },
+    {
+      "id": "grid_2x4_images",
+      "name": "Grid 2\u00d74 Images",
+      "supports": {
+        "text_min": 0,
+        "text_max": 2,
+        "images_min": 8,
+        "images_max": 8
+      },
+      "weight": 0.75,
+      "preview_url": "/static/layouts/grid_2x4_images.png",
+      "frames": {
+        "title": {
+          "x": 80,
+          "y": 60,
+          "w": 1120,
+          "h": 60
+        },
+        "images": [
+          {
+            "x": 120,
+            "y": 150,
+            "w": 500,
+            "h": 120
+          },
+          {
+            "x": 660,
+            "y": 150,
+            "w": 500,
+            "h": 120
+          },
+          {
+            "x": 120,
+            "y": 290,
+            "w": 500,
+            "h": 120
+          },
+          {
+            "x": 660,
+            "y": 290,
+            "w": 500,
+            "h": 120
+          },
+          {
+            "x": 120,
+            "y": 430,
+            "w": 500,
+            "h": 120
+          },
+          {
+            "x": 660,
+            "y": 430,
+            "w": 500,
+            "h": 120
+          },
+          {
+            "x": 120,
+            "y": 570,
+            "w": 500,
+            "h": 120
+          },
+          {
+            "x": 660,
+            "y": 570,
+            "w": 500,
+            "h": 120
+          }
+        ]
+      },
+      "style": {}
+    },
+    {
+      "id": "grid_3x4_images",
+      "name": "Grid 3\u00d74 Images",
+      "supports": {
+        "text_min": 0,
+        "text_max": 2,
+        "images_min": 12,
+        "images_max": 12
+      },
+      "weight": 0.78,
+      "preview_url": "/static/layouts/grid_3x4_images.png",
+      "frames": {
+        "title": {
+          "x": 80,
+          "y": 60,
+          "w": 1120,
+          "h": 60
+        },
+        "images": [
+          {
+            "x": 80,
+            "y": 150,
+            "w": 360,
+            "h": 120
+          },
+          {
+            "x": 460,
+            "y": 150,
+            "w": 360,
+            "h": 120
+          },
+          {
+            "x": 840,
+            "y": 150,
+            "w": 360,
+            "h": 120
+          },
+          {
+            "x": 80,
+            "y": 290,
+            "w": 360,
+            "h": 120
+          },
+          {
+            "x": 460,
+            "y": 290,
+            "w": 360,
+            "h": 120
+          },
+          {
+            "x": 840,
+            "y": 290,
+            "w": 360,
+            "h": 120
+          },
+          {
+            "x": 80,
+            "y": 430,
+            "w": 360,
+            "h": 120
+          },
+          {
+            "x": 460,
+            "y": 430,
+            "w": 360,
+            "h": 120
+          },
+          {
+            "x": 840,
+            "y": 430,
+            "w": 360,
+            "h": 120
+          },
+          {
+            "x": 80,
+            "y": 570,
+            "w": 360,
+            "h": 120
+          },
+          {
+            "x": 460,
+            "y": 570,
+            "w": 360,
+            "h": 120
+          },
+          {
+            "x": 840,
+            "y": 570,
+            "w": 360,
+            "h": 120
+          }
+        ]
+      },
+      "style": {}
+    },
+    {
+      "id": "row3_two_sections",
+      "name": "Three Images (Row) + Two Sections",
+      "supports": {
+        "text_min": 1,
+        "text_max": 6,
+        "images_min": 3,
+        "images_max": 3
+      },
+      "weight": 0.84,
+      "preview_url": "/static/layouts/row3_two_sections.png",
+      "frames": {
+        "title": {
+          "x": 80,
+          "y": 64,
+          "w": 1120,
+          "h": 64
+        },
+        "sections": [
+          {
+            "x": 80,
+            "y": 447,
+            "w": 550,
+            "h": 209
+          },
+          {
+            "x": 650,
+            "y": 447,
+            "w": 550,
+            "h": 209
+          }
+        ],
+        "images": [
+          {
+            "x": 80,
+            "y": 148,
+            "w": 360,
+            "h": 279
+          },
+          {
+            "x": 460,
+            "y": 148,
+            "w": 360,
+            "h": 279
+          },
+          {
+            "x": 840,
+            "y": 148,
+            "w": 360,
+            "h": 279
+          }
+        ]
+      },
+      "style": {}
+    },
+    {
+      "id": "stack3_right_two_sections_left",
+      "name": "Two Sections + 3 Stacked Images",
+      "supports": {
+        "text_min": 1,
+        "text_max": 8,
+        "images_min": 3,
+        "images_max": 3
+      },
+      "weight": 0.86,
+      "preview_url": "/static/layouts/stack3_right_two_sections_left.png",
+      "frames": {
+        "title": {
+          "x": 80,
+          "y": 64,
+          "w": 1120,
+          "h": 64
+        },
+        "sections": [
+          {
+            "x": 80,
+            "y": 148,
+            "w": 504,
+            "h": 244
+          },
+          {
+            "x": 80,
+            "y": 412,
+            "w": 504,
+            "h": 244
+          }
+        ],
+        "images": [
+          {
+            "x": 604,
+            "y": 148,
+            "w": 596,
+            "h": 156
+          },
+          {
+            "x": 604,
+            "y": 324,
+            "w": 596,
+            "h": 156
+          },
+          {
+            "x": 604,
+            "y": 500,
+            "w": 596,
+            "h": 156
+          }
+        ]
+      },
+      "style": {}
+    },
+    {
+      "id": "stack3_right_three_sections_left",
+      "name": "Three Sections + 3 Stacked Images",
+      "supports": {
+        "text_min": 2,
+        "text_max": 9,
+        "images_min": 3,
+        "images_max": 3
+      },
+      "weight": 0.84,
+      "preview_url": "/static/layouts/stack3_right_three_sections_left.png",
+      "frames": {
+        "title": {
+          "x": 80,
+          "y": 64,
+          "w": 1120,
+          "h": 64
+        },
+        "sections": [
+          {
+            "x": 80,
+            "y": 148,
+            "w": 504,
+            "h": 156
+          },
+          {
+            "x": 80,
+            "y": 324,
+            "w": 504,
+            "h": 156
+          },
+          {
+            "x": 80,
+            "y": 500,
+            "w": 504,
+            "h": 156
+          }
+        ],
+        "images": [
+          {
+            "x": 604,
+            "y": 148,
+            "w": 596,
+            "h": 156
+          },
+          {
+            "x": 604,
+            "y": 324,
+            "w": 596,
+            "h": 156
+          },
+          {
+            "x": 604,
+            "y": 500,
+            "w": 596,
+            "h": 156
+          }
+        ]
+      },
+      "style": {}
+    },
+    {
+      "id": "grid2x2_two_sections",
+      "name": "2\u00d72 Image Grid + Two Sections",
+      "supports": {
+        "text_min": 1,
+        "text_max": 6,
+        "images_min": 4,
+        "images_max": 4
+      },
+      "weight": 0.83,
+      "preview_url": "/static/layouts/grid2x2_two_sections.png",
+      "frames": {
+        "title": {
+          "x": 80,
+          "y": 64,
+          "w": 1120,
+          "h": 64
+        },
+        "sections": [
+          {
+            "x": 80,
+            "y": 460,
+            "w": 550,
+            "h": 196
+          },
+          {
+            "x": 650,
+            "y": 460,
+            "w": 550,
+            "h": 196
+          }
+        ],
+        "images": [
+          {
+            "x": 80,
+            "y": 148,
+            "w": 550,
+            "h": 136
+          },
+          {
+            "x": 650,
+            "y": 148,
+            "w": 550,
+            "h": 136
+          },
+          {
+            "x": 80,
+            "y": 304,
+            "w": 550,
+            "h": 136
+          },
+          {
+            "x": 650,
+            "y": 304,
+            "w": 550,
+            "h": 136
+          }
+        ]
+      },
+      "style": {}
+    },
+    {
+      "id": "grid3x2_five_images",
+      "name": "3\u00d72 Grid (5 Images) + Two Sections",
+      "supports": {
+        "text_min": 1,
+        "text_max": 6,
+        "images_min": 5,
+        "images_max": 5
+      },
+      "weight": 0.8,
+      "preview_url": "/static/layouts/grid3x2_five_images.png",
+      "frames": {
+        "title": {
+          "x": 80,
+          "y": 64,
+          "w": 1120,
+          "h": 64
+        },
+        "sections": [
+          {
+            "x": 80,
+            "y": 513,
+            "w": 550,
+            "h": 143
+          },
+          {
+            "x": 650,
+            "y": 513,
+            "w": 550,
+            "h": 143
+          }
+        ],
+        "images": [
+          {
+            "x": 80,
+            "y": 148,
+            "w": 360,
+            "h": 162
+          },
+          {
+            "x": 460,
+            "y": 148,
+            "w": 360,
+            "h": 162
+          },
+          {
+            "x": 840,
+            "y": 148,
+            "w": 360,
+            "h": 162
+          },
+          {
+            "x": 80,
+            "y": 330,
+            "w": 360,
+            "h": 162
+          },
+          {
+            "x": 460,
+            "y": 330,
+            "w": 360,
+            "h": 162
+          }
+        ]
+      },
+      "style": {}
+    },
+    {
+      "id": "mosaic_big_left_4small",
+      "name": "Mosaic: Big Left + 4 Right",
+      "supports": {
+        "text_min": 1,
+        "text_max": 6,
+        "images_min": 5,
+        "images_max": 5
+      },
+      "weight": 0.82,
+      "preview_url": "/static/layouts/mosaic_big_left_4small.png",
+      "frames": {
+        "title": {
+          "x": 80,
+          "y": 64,
+          "w": 1120,
+          "h": 64
+        },
+        "sections": [
+          {
+            "x": 80,
+            "y": 158,
+            "w": 527,
+            "h": 80
+          },
+          {
+            "x": 80,
+            "y": 248,
+            "w": 527,
+            "h": 100
+          }
+        ],
+        "images": [
+          {
+            "x": 80,
+            "y": 148,
+            "w": 537,
+            "h": 508
+          },
+          {
+            "x": 637,
+            "y": 148,
+            "w": 271,
+            "h": 244
+          },
+          {
+            "x": 928,
+            "y": 148,
+            "w": 271,
+            "h": 244
+          },
+          {
+            "x": 637,
+            "y": 412,
+            "w": 271,
+            "h": 244
+          },
+          {
+            "x": 928,
+            "y": 412,
+            "w": 271,
+            "h": 244
+          }
+        ]
+      },
+      "style": {}
+    },
+    {
+      "id": "strip5_two_sections",
+      "name": "Five Image Strip + Two Sections",
+      "supports": {
+        "text_min": 1,
+        "text_max": 6,
+        "images_min": 5,
+        "images_max": 5
+      },
+      "weight": 0.8,
+      "preview_url": "/static/layouts/strip5_two_sections.png",
+      "frames": {
+        "title": {
+          "x": 80,
+          "y": 64,
+          "w": 1120,
+          "h": 64
+        },
+        "sections": [
+          {
+            "x": 80,
+            "y": 447,
+            "w": 550,
+            "h": 209
+          },
+          {
+            "x": 650,
+            "y": 447,
+            "w": 550,
+            "h": 209
+          }
+        ],
+        "images": [
+          {
+            "x": 80,
+            "y": 148,
+            "w": 208,
+            "h": 279
+          },
+          {
+            "x": 308,
+            "y": 148,
+            "w": 208,
+            "h": 279
+          },
+          {
+            "x": 536,
+            "y": 148,
+            "w": 208,
+            "h": 279
+          },
+          {
+            "x": 764,
+            "y": 148,
+            "w": 208,
+            "h": 279
+          },
+          {
+            "x": 992,
+            "y": 148,
+            "w": 208,
+            "h": 279
+          }
+        ]
+      },
+      "style": {}
+    },
+    {
+      "id": "strip5_three_sections",
+      "name": "Five Image Strip + Three Sections",
+      "supports": {
+        "text_min": 2,
+        "text_max": 9,
+        "images_min": 5,
+        "images_max": 5
+      },
+      "weight": 0.78,
+      "preview_url": "/static/layouts/strip5_three_sections.png",
+      "frames": {
+        "title": {
+          "x": 80,
+          "y": 64,
+          "w": 1120,
+          "h": 64
+        },
+        "sections": [
+          {
+            "x": 80,
+            "y": 447,
+            "w": 360,
+            "h": 209
+          },
+          {
+            "x": 460,
+            "y": 447,
+            "w": 360,
+            "h": 209
+          },
+          {
+            "x": 840,
+            "y": 447,
+            "w": 360,
+            "h": 209
+          }
+        ],
+        "images": [
+          {
+            "x": 80,
+            "y": 148,
+            "w": 208,
+            "h": 279
+          },
+          {
+            "x": 308,
+            "y": 148,
+            "w": 208,
+            "h": 279
+          },
+          {
+            "x": 536,
+            "y": 148,
+            "w": 208,
+            "h": 279
+          },
+          {
+            "x": 764,
+            "y": 148,
+            "w": 208,
+            "h": 279
+          },
+          {
+            "x": 992,
+            "y": 148,
+            "w": 208,
+            "h": 279
+          }
+        ]
+      },
+      "style": {}
+    },
+    {
+      "id": "center_plus_corners_5",
+      "name": "Center Image + Corners (5)",
+      "supports": {
+        "text_min": 1,
+        "text_max": 4,
+        "images_min": 5,
+        "images_max": 5
+      },
+      "weight": 0.79,
+      "preview_url": "/static/layouts/center_plus_corners_5.png",
+      "frames": {
+        "title": {
+          "x": 80,
+          "y": 64,
+          "w": 1120,
+          "h": 64
+        },
+        "sections": [
+          {
+            "x": 80,
+            "y": 538,
+            "w": 1120,
+            "h": 100
+          }
+        ],
+        "images": [
+          {
+            "x": 427,
+            "y": 285,
+            "w": 425,
+            "h": 233
+          },
+          {
+            "x": 80,
+            "y": 148,
+            "w": 337,
+            "h": 127
+          },
+          {
+            "x": 862,
+            "y": 148,
+            "w": 337,
+            "h": 127
+          },
+          {
+            "x": 80,
+            "y": 528,
+            "w": 337,
+            "h": 127
+          },
+          {
+            "x": 862,
+            "y": 528,
+            "w": 337,
+            "h": 127
+          }
+        ]
+      },
+      "style": {}
+    },
+    {
+      "id": "right_grid4_left_text2",
+      "name": "Right Grid (4) + Left Two Sections",
+      "supports": {
+        "text_min": 1,
+        "text_max": 6,
+        "images_min": 4,
+        "images_max": 4
+      },
+      "weight": 0.83,
+      "preview_url": "/static/layouts/right_grid4_left_text2.png",
+      "frames": {
+        "title": {
+          "x": 80,
+          "y": 64,
+          "w": 1120,
+          "h": 64
+        },
+        "sections": [
+          {
+            "x": 80,
+            "y": 148,
+            "w": 504,
+            "h": 244
+          },
+          {
+            "x": 80,
+            "y": 412,
+            "w": 504,
+            "h": 244
+          }
+        ],
+        "images": [
+          {
+            "x": 604,
+            "y": 148,
+            "w": 288,
+            "h": 244
+          },
+          {
+            "x": 912,
+            "y": 148,
+            "w": 288,
+            "h": 244
+          },
+          {
+            "x": 604,
+            "y": 412,
+            "w": 288,
+            "h": 244
+          },
+          {
+            "x": 912,
+            "y": 412,
+            "w": 288,
+            "h": 244
+          }
+        ]
+      },
+      "style": {}
+    },
+    {
+      "id": "left_sidebar3_right_stack3",
+      "name": "Left Sidebar (3 Sections) + 3 Images",
+      "supports": {
+        "text_min": 2,
+        "text_max": 9,
+        "images_min": 3,
+        "images_max": 3
+      },
+      "weight": 0.81,
+      "preview_url": "/static/layouts/left_sidebar3_right_stack3.png",
+      "frames": {
+        "title": {
+          "x": 80,
+          "y": 64,
+          "w": 1120,
+          "h": 64
+        },
+        "sections": [
+          {
+            "x": 80,
+            "y": 148,
+            "w": 425,
+            "h": 156
+          },
+          {
+            "x": 80,
+            "y": 324,
+            "w": 425,
+            "h": 156
+          },
+          {
+            "x": 80,
+            "y": 500,
+            "w": 425,
+            "h": 156
+          }
+        ],
+        "images": [
+          {
+            "x": 525,
+            "y": 148,
+            "w": 675,
+            "h": 156
+          },
+          {
+            "x": 525,
+            "y": 324,
+            "w": 675,
+            "h": 156
+          },
+          {
+            "x": 525,
+            "y": 500,
+            "w": 675,
+            "h": 156
+          }
+        ]
+      },
+      "style": {}
+    },
+    {
+      "id": "row3_three_sections",
+      "name": "Three Images (Row) + Three Sections",
+      "supports": {
+        "text_min": 2,
+        "text_max": 9,
+        "images_min": 3,
+        "images_max": 3
+      },
+      "weight": 0.82,
+      "preview_url": "/static/layouts/row3_three_sections.png",
+      "frames": {
+        "title": {
+          "x": 80,
+          "y": 64,
+          "w": 1120,
+          "h": 64
+        },
+        "sections": [
+          {
+            "x": 80,
+            "y": 447,
+            "w": 360,
+            "h": 209
+          },
+          {
+            "x": 460,
+            "y": 447,
+            "w": 360,
+            "h": 209
+          },
+          {
+            "x": 840,
+            "y": 447,
+            "w": 360,
+            "h": 209
+          }
+        ],
+        "images": [
+          {
+            "x": 80,
+            "y": 148,
+            "w": 360,
+            "h": 279
+          },
+          {
+            "x": 460,
+            "y": 148,
+            "w": 360,
+            "h": 279
+          },
+          {
+            "x": 840,
+            "y": 148,
+            "w": 360,
+            "h": 279
+          }
+        ]
+      },
+      "style": {}
+    },
+    {
+      "id": "grid2x2_single_section",
+      "name": "2\u00d72 Image Grid + Single Section",
+      "supports": {
+        "text_min": 0,
+        "text_max": 4,
+        "images_min": 4,
+        "images_max": 4
+      },
+      "weight": 0.84,
+      "preview_url": "/static/layouts/grid2x2_single_section.png",
+      "frames": {
+        "title": {
+          "x": 80,
+          "y": 64,
+          "w": 1120,
+          "h": 64
+        },
+        "sections": [
+          {
+            "x": 80,
+            "y": 460,
+            "w": 1120,
+            "h": 196
+          }
+        ],
+        "images": [
+          {
+            "x": 80,
+            "y": 148,
+            "w": 550,
+            "h": 136
+          },
+          {
+            "x": 650,
+            "y": 148,
+            "w": 550,
+            "h": 136
+          },
+          {
+            "x": 80,
+            "y": 304,
+            "w": 550,
+            "h": 136
+          },
+          {
+            "x": 650,
+            "y": 304,
+            "w": 550,
+            "h": 136
+          }
+        ]
+      },
+      "style": {}
+    },
+    {
+      "id": "strip5_single_section",
+      "name": "Five Image Strip + Single Section",
+      "supports": {
+        "text_min": 0,
+        "text_max": 3,
+        "images_min": 5,
+        "images_max": 5
+      },
+      "weight": 0.82,
+      "preview_url": "/static/layouts/strip5_single_section.png",
+      "frames": {
+        "title": {
+          "x": 80,
+          "y": 64,
+          "w": 1120,
+          "h": 64
+        },
+        "sections": [
+          {
+            "x": 80,
+            "y": 447,
+            "w": 1120,
+            "h": 209
+          }
+        ],
+        "images": [
+          {
+            "x": 80,
+            "y": 148,
+            "w": 208,
+            "h": 279
+          },
+          {
+            "x": 308,
+            "y": 148,
+            "w": 208,
+            "h": 279
+          },
+          {
+            "x": 536,
+            "y": 148,
+            "w": 208,
+            "h": 279
+          },
+          {
+            "x": 764,
+            "y": 148,
+            "w": 208,
+            "h": 279
+          },
+          {
+            "x": 992,
+            "y": 148,
+            "w": 208,
+            "h": 279
+          }
+        ]
+      },
+      "style": {}
+    },
+    {
+      "id": "grid3x2_five_single_section",
+      "name": "3\u00d72 Grid (5) + Single Section",
+      "supports": {
+        "text_min": 0,
+        "text_max": 4,
+        "images_min": 5,
+        "images_max": 5
+      },
+      "weight": 0.81,
+      "preview_url": "/static/layouts/grid3x2_five_single_section.png",
+      "frames": {
+        "title": {
+          "x": 80,
+          "y": 64,
+          "w": 1120,
+          "h": 64
+        },
+        "sections": [
+          {
+            "x": 80,
+            "y": 513,
+            "w": 550,
+            "h": 143
+          },
+          {
+            "x": 650,
+            "y": 513,
+            "w": 550,
+            "h": 143
+          }
+        ],
+        "images": [
+          {
+            "x": 80,
+            "y": 148,
+            "w": 360,
+            "h": 162
+          },
+          {
+            "x": 460,
+            "y": 148,
+            "w": 360,
+            "h": 162
+          },
+          {
+            "x": 840,
+            "y": 148,
+            "w": 360,
+            "h": 162
+          },
+          {
+            "x": 80,
+            "y": 330,
+            "w": 360,
+            "h": 162
+          },
+          {
+            "x": 460,
+            "y": 330,
+            "w": 360,
+            "h": 162
+          }
+        ]
+      },
+      "style": {}
+    },
+    {
+      "id": "v2_grid2x2_left_images_right_text_1",
+      "name": "2\u00d72 Grid (Left) + Right Text (1)",
+      "supports": {
+        "text_min": 1,
+        "text_max": 3,
+        "images_min": 4,
+        "images_max": 4
+      },
+      "weight": 0.9,
+      "preview_url": "/static/layouts/v2_grid2x2_left_images_right_text_1.png",
+      "frames": {
+        "title": {
+          "x": 80,
+          "y": 64,
+          "w": 1120,
+          "h": 80
+        },
+        "sections": [
+          {
+            "x": 840,
+            "y": 170,
+            "w": 360,
+            "h": 360
+          }
+        ],
+        "images": [
+          {
+            "x": 80,
+            "y": 170,
+            "w": 352,
+            "h": 170
+          },
+          {
+            "x": 448,
+            "y": 170,
+            "w": 352,
+            "h": 170
+          },
+          {
+            "x": 80,
+            "y": 356,
+            "w": 352,
+            "h": 170
+          },
+          {
+            "x": 448,
+            "y": 356,
+            "w": 352,
+            "h": 170
+          }
+        ]
+      },
+      "style": {
+        "title": {
+          "font": "Inter",
+          "size": 36,
+          "weight": 700
+        }
+      }
+    },
+    {
+      "id": "v2_grid2x2_left_images_right_text_2",
+      "name": "2\u00d72 Grid (Left) + Right Text (2)",
+      "supports": {
+        "text_min": 2,
+        "text_max": 4,
+        "images_min": 4,
+        "images_max": 4
+      },
+      "weight": 0.9,
+      "preview_url": "/static/layouts/v2_grid2x2_left_images_right_text_2.png",
+      "frames": {
+        "title": {
+          "x": 80,
+          "y": 64,
+          "w": 1120,
+          "h": 80
+        },
+        "sections": [
+          {
+            "x": 840,
+            "y": 170,
+            "w": 360,
+            "h": 172
+          },
+          {
+            "x": 840,
+            "y": 358,
+            "w": 360,
+            "h": 172
+          }
+        ],
+        "images": [
+          {
+            "x": 80,
+            "y": 170,
+            "w": 352,
+            "h": 170
+          },
+          {
+            "x": 448,
+            "y": 170,
+            "w": 352,
+            "h": 170
+          },
+          {
+            "x": 80,
+            "y": 356,
+            "w": 352,
+            "h": 170
+          },
+          {
+            "x": 448,
+            "y": 356,
+            "w": 352,
+            "h": 170
+          }
+        ]
+      },
+      "style": {
+        "title": {
+          "font": "Inter",
+          "size": 36,
+          "weight": 700
+        }
+      }
+    },
+    {
+      "id": "v2_grid2x2_left_images_right_text_3",
+      "name": "2\u00d72 Grid (Left) + Right Text (3)",
+      "supports": {
+        "text_min": 3,
+        "text_max": 6,
+        "images_min": 4,
+        "images_max": 4
+      },
+      "weight": 0.9,
+      "preview_url": "/static/layouts/v2_grid2x2_left_images_right_text_3.png",
+      "frames": {
+        "title": {
+          "x": 80,
+          "y": 64,
+          "w": 1120,
+          "h": 80
+        },
+        "sections": [
+          {
+            "x": 840,
+            "y": 170,
+            "w": 360,
+            "h": 112
+          },
+          {
+            "x": 840,
+            "y": 298,
+            "w": 360,
+            "h": 112
+          },
+          {
+            "x": 840,
+            "y": 426,
+            "w": 360,
+            "h": 112
+          }
+        ],
+        "images": [
+          {
+            "x": 80,
+            "y": 170,
+            "w": 352,
+            "h": 170
+          },
+          {
+            "x": 448,
+            "y": 170,
+            "w": 352,
+            "h": 170
+          },
+          {
+            "x": 80,
+            "y": 356,
+            "w": 352,
+            "h": 170
+          },
+          {
+            "x": 448,
+            "y": 356,
+            "w": 352,
+            "h": 170
+          }
+        ]
+      },
+      "style": {
+        "title": {
+          "font": "Inter",
+          "size": 36,
+          "weight": 700
+        }
+      }
+    },
+    {
+      "id": "v2_grid2x2_right_images_left_text_1",
+      "name": "Left Text (1) + 2\u00d72 Grid (Right)",
+      "supports": {
+        "text_min": 1,
+        "text_max": 3,
+        "images_min": 4,
+        "images_max": 4
+      },
+      "weight": 0.9,
+      "preview_url": "/static/layouts/v2_grid2x2_right_images_left_text_1.png",
+      "frames": {
+        "title": {
+          "x": 80,
+          "y": 64,
+          "w": 1120,
+          "h": 80
+        },
+        "sections": [
+          {
+            "x": 80,
+            "y": 170,
+            "w": 540,
+            "h": 360
+          }
+        ],
+        "images": [
+          {
+            "x": 660,
+            "y": 170,
+            "w": 352,
+            "h": 170
+          },
+          {
+            "x": 1028,
+            "y": 170,
+            "w": 352,
+            "h": 170
+          },
+          {
+            "x": 660,
+            "y": 356,
+            "w": 352,
+            "h": 170
+          },
+          {
+            "x": 1028,
+            "y": 356,
+            "w": 352,
+            "h": 170
+          }
+        ]
+      },
+      "style": {
+        "title": {
+          "font": "Inter",
+          "size": 36,
+          "weight": 700
+        }
+      }
+    },
+    {
+      "id": "v2_grid2x2_right_images_left_text_3",
+      "name": "Left Text (3) + 2\u00d72 Grid (Right)",
+      "supports": {
+        "text_min": 3,
+        "text_max": 6,
+        "images_min": 4,
+        "images_max": 4
+      },
+      "weight": 0.9,
+      "preview_url": "/static/layouts/v2_grid2x2_right_images_left_text_3.png",
+      "frames": {
+        "title": {
+          "x": 80,
+          "y": 64,
+          "w": 1120,
+          "h": 80
+        },
+        "sections": [
+          {
+            "x": 80,
+            "y": 170,
+            "w": 540,
+            "h": 112
+          },
+          {
+            "x": 80,
+            "y": 298,
+            "w": 540,
+            "h": 112
+          },
+          {
+            "x": 80,
+            "y": 426,
+            "w": 540,
+            "h": 112
+          }
+        ],
+        "images": [
+          {
+            "x": 660,
+            "y": 170,
+            "w": 352,
+            "h": 170
+          },
+          {
+            "x": 1028,
+            "y": 170,
+            "w": 352,
+            "h": 170
+          },
+          {
+            "x": 660,
+            "y": 356,
+            "w": 352,
+            "h": 170
+          },
+          {
+            "x": 1028,
+            "y": 356,
+            "w": 352,
+            "h": 170
+          }
+        ]
+      },
+      "style": {
+        "title": {
+          "font": "Inter",
+          "size": 36,
+          "weight": 700
+        }
+      }
+    },
+    {
+      "id": "v2_row3_top_text_2",
+      "name": "Row of 3 + Top Text (2)",
+      "supports": {
+        "text_min": 2,
+        "text_max": 4,
+        "images_min": 3,
+        "images_max": 3
+      },
+      "weight": 0.9,
+      "preview_url": "/static/layouts/v2_row3_top_text_2.png",
+      "frames": {
+        "title": {
+          "x": 80,
+          "y": 64,
+          "w": 1120,
+          "h": 80
+        },
+        "sections": [
+          {
+            "x": 80,
+            "y": 170,
+            "w": 1120,
+            "h": 32
+          },
+          {
+            "x": 80,
+            "y": 418,
+            "w": 1120,
+            "h": 80
+          }
+        ],
+        "images": [
+          {
+            "x": 80,
+            "y": 210,
+            "w": 352,
+            "h": 200
+          },
+          {
+            "x": 448,
+            "y": 210,
+            "w": 352,
+            "h": 200
+          },
+          {
+            "x": 816,
+            "y": 210,
+            "w": 352,
+            "h": 200
+          }
+        ]
+      },
+      "style": {
+        "title": {
+          "font": "Inter",
+          "size": 36,
+          "weight": 700
+        }
+      }
+    },
+    {
+      "id": "v2_row3_bottom_text_3",
+      "name": "Row of 3 + Bottom Text (3)",
+      "supports": {
+        "text_min": 3,
+        "text_max": 6,
+        "images_min": 3,
+        "images_max": 3
+      },
+      "weight": 0.9,
+      "preview_url": "/static/layouts/v2_row3_bottom_text_3.png",
+      "frames": {
+        "title": {
+          "x": 80,
+          "y": 64,
+          "w": 1120,
+          "h": 80
+        },
+        "sections": [
+          {
+            "x": 80,
+            "y": 418,
+            "w": 1120,
+            "h": 80
+          },
+          {
+            "x": 80,
+            "y": 506,
+            "w": 1120,
+            "h": 72
+          },
+          {
+            "x": 80,
+            "y": 586,
+            "w": 1120,
+            "h": 72
+          }
+        ],
+        "images": [
+          {
+            "x": 80,
+            "y": 210,
+            "w": 352,
+            "h": 200
+          },
+          {
+            "x": 448,
+            "y": 210,
+            "w": 352,
+            "h": 200
+          },
+          {
+            "x": 816,
+            "y": 210,
+            "w": 352,
+            "h": 200
+          }
+        ]
+      },
+      "style": {
+        "title": {
+          "font": "Inter",
+          "size": 36,
+          "weight": 700
+        }
+      }
+    },
+    {
+      "id": "v2_stack3_right_left_text_2",
+      "name": "Left Text (2) + Right Stack of 3",
+      "supports": {
+        "text_min": 2,
+        "text_max": 5,
+        "images_min": 3,
+        "images_max": 3
+      },
+      "weight": 0.9,
+      "preview_url": "/static/layouts/v2_stack3_right_left_text_2.png",
+      "frames": {
+        "title": {
+          "x": 80,
+          "y": 64,
+          "w": 1120,
+          "h": 80
+        },
+        "sections": [
+          {
+            "x": 80,
+            "y": 170,
+            "w": 720,
+            "h": 172
+          },
+          {
+            "x": 80,
+            "y": 358,
+            "w": 720,
+            "h": 172
+          }
+        ],
+        "images": [
+          {
+            "x": 840,
+            "y": 170,
+            "w": 360,
+            "h": 112
+          },
+          {
+            "x": 840,
+            "y": 298,
+            "w": 360,
+            "h": 112
+          },
+          {
+            "x": 840,
+            "y": 426,
+            "w": 360,
+            "h": 112
+          }
+        ]
+      },
+      "style": {
+        "title": {
+          "font": "Inter",
+          "size": 36,
+          "weight": 700
+        }
+      }
+    },
+    {
+      "id": "v2_stack3_right_left_text_3",
+      "name": "Left Text (3) + Right Stack of 3",
+      "supports": {
+        "text_min": 3,
+        "text_max": 8,
+        "images_min": 3,
+        "images_max": 3
+      },
+      "weight": 0.9,
+      "preview_url": "/static/layouts/v2_stack3_right_left_text_3.png",
+      "frames": {
+        "title": {
+          "x": 80,
+          "y": 64,
+          "w": 1120,
+          "h": 80
+        },
+        "sections": [
+          {
+            "x": 80,
+            "y": 170,
+            "w": 720,
+            "h": 112
+          },
+          {
+            "x": 80,
+            "y": 298,
+            "w": 720,
+            "h": 112
+          },
+          {
+            "x": 80,
+            "y": 426,
+            "w": 720,
+            "h": 112
+          }
+        ],
+        "images": [
+          {
+            "x": 840,
+            "y": 170,
+            "w": 360,
+            "h": 112
+          },
+          {
+            "x": 840,
+            "y": 298,
+            "w": 360,
+            "h": 112
+          },
+          {
+            "x": 840,
+            "y": 426,
+            "w": 360,
+            "h": 112
+          }
+        ]
+      },
+      "style": {
+        "title": {
+          "font": "Inter",
+          "size": 36,
+          "weight": 700
+        }
+      }
+    },
+    {
+      "id": "v2_grid3x2_five_top_mid_text_1",
+      "name": "3\u00d72 Grid (5) + Text (Top-Mid)",
+      "supports": {
+        "text_min": 1,
+        "text_max": 3,
+        "images_min": 5,
+        "images_max": 5
+      },
+      "weight": 0.9,
+      "preview_url": "/static/layouts/v2_grid3x2_five_top_mid_text_1.png",
+      "frames": {
+        "title": {
+          "x": 80,
+          "y": 64,
+          "w": 1120,
+          "h": 80
+        },
+        "sections": [
+          {
+            "x": 448,
+            "y": 170,
+            "w": 352,
+            "h": 164
+          }
+        ],
+        "images": [
+          {
+            "x": 80,
+            "y": 170,
+            "w": 352,
+            "h": 164
+          },
+          {
+            "x": 816,
+            "y": 170,
+            "w": 352,
+            "h": 164
+          },
+          {
+            "x": 80,
+            "y": 350,
+            "w": 352,
+            "h": 164
+          },
+          {
+            "x": 448,
+            "y": 350,
+            "w": 352,
+            "h": 164
+          },
+          {
+            "x": 816,
+            "y": 350,
+            "w": 352,
+            "h": 164
+          }
+        ]
+      },
+      "style": {
+        "title": {
+          "font": "Inter",
+          "size": 36,
+          "weight": 700
+        }
+      }
+    },
+    {
+      "id": "v2_grid3x2_five_top_mid_text_2",
+      "name": "3\u00d72 Grid (5) + Text (Top-Mid, 2 sections)",
+      "supports": {
+        "text_min": 2,
+        "text_max": 4,
+        "images_min": 5,
+        "images_max": 5
+      },
+      "weight": 0.9,
+      "preview_url": "/static/layouts/v2_grid3x2_five_top_mid_text_2.png",
+      "frames": {
+        "title": {
+          "x": 80,
+          "y": 64,
+          "w": 1120,
+          "h": 80
+        },
+        "sections": [
+          {
+            "x": 448,
+            "y": 170,
+            "w": 352,
+            "h": 80
+          },
+          {
+            "x": 448,
+            "y": 254,
+            "w": 352,
+            "h": 80
+          }
+        ],
+        "images": [
+          {
+            "x": 80,
+            "y": 170,
+            "w": 352,
+            "h": 164
+          },
+          {
+            "x": 816,
+            "y": 170,
+            "w": 352,
+            "h": 164
+          },
+          {
+            "x": 80,
+            "y": 350,
+            "w": 352,
+            "h": 164
+          },
+          {
+            "x": 448,
+            "y": 350,
+            "w": 352,
+            "h": 164
+          },
+          {
+            "x": 816,
+            "y": 350,
+            "w": 352,
+            "h": 164
+          }
+        ]
+      },
+      "style": {
+        "title": {
+          "font": "Inter",
+          "size": 36,
+          "weight": 700
+        }
+      }
+    },
+    {
+      "id": "v2_mosaic_big_left_4small_top_text_1",
+      "name": "Mosaic: Big Left + 2\u00d72 Right (Top Text)",
+      "supports": {
+        "text_min": 1,
+        "text_max": 2,
+        "images_min": 5,
+        "images_max": 5
+      },
+      "weight": 0.9,
+      "preview_url": "/static/layouts/v2_mosaic_big_left_4small_top_text_1.png",
+      "frames": {
+        "title": {
+          "x": 80,
+          "y": 64,
+          "w": 1120,
+          "h": 80
+        },
+        "sections": [
+          {
+            "x": 80,
+            "y": 162,
+            "w": 1120,
+            "h": 32
+          }
+        ],
+        "images": [
+          {
+            "x": 80,
+            "y": 170,
+            "w": 540,
+            "h": 360
+          },
+          {
+            "x": 840,
+            "y": 170,
+            "w": 172,
+            "h": 172
+          },
+          {
+            "x": 1028,
+            "y": 170,
+            "w": 172,
+            "h": 172
+          },
+          {
+            "x": 840,
+            "y": 358,
+            "w": 172,
+            "h": 172
+          },
+          {
+            "x": 1028,
+            "y": 358,
+            "w": 172,
+            "h": 172
+          }
+        ]
+      },
+      "style": {
+        "title": {
+          "font": "Inter",
+          "size": 36,
+          "weight": 700
+        }
+      }
+    },
+    {
+      "id": "v2_mosaic_big_left_4small_bottom_text_2",
+      "name": "Mosaic: Big Left + 2\u00d72 Right (Bottom Text \u00d72)",
+      "supports": {
+        "text_min": 2,
+        "text_max": 3,
+        "images_min": 5,
+        "images_max": 5
+      },
+      "weight": 0.9,
+      "preview_url": "/static/layouts/v2_mosaic_big_left_4small_bottom_text_2.png",
+      "frames": {
+        "title": {
+          "x": 80,
+          "y": 64,
+          "w": 1120,
+          "h": 80
+        },
+        "sections": [
+          {
+            "x": 80,
+            "y": 542,
+            "w": 1120,
+            "h": 56
+          },
+          {
+            "x": 80,
+            "y": 602,
+            "w": 1120,
+            "h": 56
+          }
+        ],
+        "images": [
+          {
+            "x": 80,
+            "y": 170,
+            "w": 540,
+            "h": 360
+          },
+          {
+            "x": 840,
+            "y": 170,
+            "w": 172,
+            "h": 172
+          },
+          {
+            "x": 1028,
+            "y": 170,
+            "w": 172,
+            "h": 172
+          },
+          {
+            "x": 840,
+            "y": 358,
+            "w": 172,
+            "h": 172
+          },
+          {
+            "x": 1028,
+            "y": 358,
+            "w": 172,
+            "h": 172
+          }
+        ]
+      },
+      "style": {
+        "title": {
+          "font": "Inter",
+          "size": 36,
+          "weight": 700
+        }
+      }
+    },
+    {
+      "id": "v2_strip5_top_text_2",
+      "name": "Strip of 5 (Top) + Bottom Text (2)",
+      "supports": {
+        "text_min": 2,
+        "text_max": 4,
+        "images_min": 5,
+        "images_max": 5
+      },
+      "weight": 0.9,
+      "preview_url": "/static/layouts/v2_strip5_top_text_2.png",
+      "frames": {
+        "title": {
+          "x": 80,
+          "y": 64,
+          "w": 1120,
+          "h": 80
+        },
+        "sections": [
+          {
+            "x": 80,
+            "y": 314,
+            "w": 1120,
+            "h": 96
+          },
+          {
+            "x": 80,
+            "y": 414,
+            "w": 1120,
+            "h": 72
+          }
+        ],
+        "images": [
+          {
+            "x": 80,
+            "y": 170,
+            "w": 208,
+            "h": 128
+          },
+          {
+            "x": 304,
+            "y": 170,
+            "w": 208,
+            "h": 128
+          },
+          {
+            "x": 528,
+            "y": 170,
+            "w": 208,
+            "h": 128
+          },
+          {
+            "x": 752,
+            "y": 170,
+            "w": 208,
+            "h": 128
+          },
+          {
+            "x": 976,
+            "y": 170,
+            "w": 208,
+            "h": 128
+          }
+        ]
+      },
+      "style": {
+        "title": {
+          "font": "Inter",
+          "size": 36,
+          "weight": 700
+        }
+      }
+    },
+    {
+      "id": "v2_strip5_bottom_text_3",
+      "name": "Strip of 5 (Bottom) + Top Text (3)",
+      "supports": {
+        "text_min": 3,
+        "text_max": 6,
+        "images_min": 5,
+        "images_max": 5
+      },
+      "weight": 0.9,
+      "preview_url": "/static/layouts/v2_strip5_bottom_text_3.png",
+      "frames": {
+        "title": {
+          "x": 80,
+          "y": 64,
+          "w": 1120,
+          "h": 80
+        },
+        "sections": [
+          {
+            "x": 80,
+            "y": 170,
+            "w": 1120,
+            "h": 64
+          },
+          {
+            "x": 80,
+            "y": 242,
+            "w": 1120,
+            "h": 72
+          },
+          {
+            "x": 80,
+            "y": 318,
+            "w": 1120,
+            "h": 72
+          }
+        ],
+        "images": [
+          {
+            "x": 80,
+            "y": 426,
+            "w": 208,
+            "h": 128
+          },
+          {
+            "x": 304,
+            "y": 426,
+            "w": 208,
+            "h": 128
+          },
+          {
+            "x": 528,
+            "y": 426,
+            "w": 208,
+            "h": 128
+          },
+          {
+            "x": 752,
+            "y": 426,
+            "w": 208,
+            "h": 128
+          },
+          {
+            "x": 976,
+            "y": 426,
+            "w": 208,
+            "h": 128
+          }
+        ]
+      },
+      "style": {
+        "title": {
+          "font": "Inter",
+          "size": 36,
+          "weight": 700
+        }
+      }
+    },
+    {
+      "id": "v2_center_big_plus_corners_left_text_2",
+      "name": "Center Big + Corners (5) + Left Text (2)",
+      "supports": {
+        "text_min": 2,
+        "text_max": 4,
+        "images_min": 5,
+        "images_max": 5
+      },
+      "weight": 0.9,
+      "preview_url": "/static/layouts/v2_center_big_plus_corners_left_text_2.png",
+      "frames": {
+        "title": {
+          "x": 80,
+          "y": 64,
+          "w": 1120,
+          "h": 80
+        },
+        "sections": [
+          {
+            "x": 80,
+            "y": 346,
+            "w": 320,
+            "h": 96
+          },
+          {
+            "x": 80,
+            "y": 446,
+            "w": 320,
+            "h": 96
+          }
+        ],
+        "images": [
+          {
+            "x": 480,
+            "y": 266,
+            "w": 320,
+            "h": 200
+          },
+          {
+            "x": 80,
+            "y": 170,
+            "w": 240,
+            "h": 160
+          },
+          {
+            "x": 960,
+            "y": 170,
+            "w": 240,
+            "h": 160
+          },
+          {
+            "x": 80,
+            "y": 426,
+            "w": 240,
+            "h": 160
+          },
+          {
+            "x": 960,
+            "y": 426,
+            "w": 240,
+            "h": 160
+          }
+        ]
+      },
+      "style": {
+        "title": {
+          "font": "Inter",
+          "size": 36,
+          "weight": 700
+        }
+      }
+    },
+    {
+      "id": "v2_left_text2_right_grid4_banner_top5",
+      "name": "Left Text (2) + Right 2\u00d72 + Top Banner",
+      "supports": {
+        "text_min": 2,
+        "text_max": 4,
+        "images_min": 5,
+        "images_max": 5
+      },
+      "weight": 0.9,
+      "preview_url": "/static/layouts/v2_left_text2_right_grid4_banner_top5.png",
+      "frames": {
+        "title": {
+          "x": 80,
+          "y": 64,
+          "w": 1120,
+          "h": 80
+        },
+        "sections": [
+          {
+            "x": 80,
+            "y": 170,
+            "w": 720,
+            "h": 172
+          },
+          {
+            "x": 80,
+            "y": 358,
+            "w": 720,
+            "h": 172
+          }
+        ],
+        "images": [
+          {
+            "x": 840,
+            "y": 170,
+            "w": 360,
+            "h": 56
+          },
+          {
+            "x": 840,
+            "y": 242,
+            "w": 172,
+            "h": 172
+          },
+          {
+            "x": 1028,
+            "y": 242,
+            "w": 172,
+            "h": 172
+          },
+          {
+            "x": 840,
+            "y": 430,
+            "w": 172,
+            "h": 172
+          },
+          {
+            "x": 1028,
+            "y": 430,
+            "w": 172,
+            "h": 172
+          }
+        ]
+      },
+      "style": {
+        "title": {
+          "font": "Inter",
+          "size": 36,
+          "weight": 700
+        }
+      }
+    },
+    {
+      "id": "v2_left_grid4_plus_bottom_wide_right_text",
+      "name": "Left 2\u00d72 + Bottom Wide + Right Text",
+      "supports": {
+        "text_min": 1,
+        "text_max": 3,
+        "images_min": 5,
+        "images_max": 5
+      },
+      "weight": 0.9,
+      "preview_url": "/static/layouts/v2_left_grid4_plus_bottom_wide_right_text.png",
+      "frames": {
+        "title": {
+          "x": 80,
+          "y": 64,
+          "w": 1120,
+          "h": 80
+        },
+        "sections": [
+          {
+            "x": 840,
+            "y": 170,
+            "w": 360,
+            "h": 360
+          }
+        ],
+        "images": [
+          {
+            "x": 80,
+            "y": 170,
+            "w": 352,
+            "h": 170
+          },
+          {
+            "x": 448,
+            "y": 170,
+            "w": 352,
+            "h": 170
+          },
+          {
+            "x": 80,
+            "y": 356,
+            "w": 352,
+            "h": 170
+          },
+          {
+            "x": 448,
+            "y": 356,
+            "w": 352,
+            "h": 170
+          },
+          {
+            "x": 80,
+            "y": 546,
+            "w": 720,
+            "h": 88
+          }
+        ]
+      },
+      "style": {
+        "title": {
+          "font": "Inter",
+          "size": 36,
+          "weight": 700
+        }
+      }
+    },
+    {
+      "id": "v2_triptych_plus_two_right_bottom_text_2",
+      "name": "Triptych + Two Right + Bottom Text (2)",
+      "supports": {
+        "text_min": 2,
+        "text_max": 4,
+        "images_min": 5,
+        "images_max": 5
+      },
+      "weight": 0.9,
+      "preview_url": "/static/layouts/v2_triptych_plus_two_right_bottom_text_2.png",
+      "frames": {
+        "title": {
+          "x": 80,
+          "y": 64,
+          "w": 1120,
+          "h": 80
+        },
+        "sections": [
+          {
+            "x": 80,
+            "y": 538,
+            "w": 720,
+            "h": 80
+          },
+          {
+            "x": 80,
+            "y": 626,
+            "w": 720,
+            "h": 64
+          }
+        ],
+        "images": [
+          {
+            "x": 80,
+            "y": 170,
+            "w": 352,
+            "h": 200
+          },
+          {
+            "x": 448,
+            "y": 170,
+            "w": 352,
+            "h": 200
+          },
+          {
+            "x": 816,
+            "y": 170,
+            "w": 352,
+            "h": 200
+          },
+          {
+            "x": 816,
+            "y": 386,
+            "w": 352,
+            "h": 144
+          },
+          {
+            "x": 816,
+            "y": 546,
+            "w": 352,
+            "h": 144
+          }
+        ]
+      },
+      "style": {
+        "title": {
+          "font": "Inter",
+          "size": 36,
+          "weight": 700
+        }
+      }
+    },
+    {
+      "id": "v2_tall_left_right_grid4_top_text_1",
+      "name": "Tall Left + Right 2\u00d72 + Top Text",
+      "supports": {
+        "text_min": 1,
+        "text_max": 3,
+        "images_min": 5,
+        "images_max": 5
+      },
+      "weight": 0.9,
+      "preview_url": "/static/layouts/v2_tall_left_right_grid4_top_text_1.png",
+      "frames": {
+        "title": {
+          "x": 80,
+          "y": 64,
+          "w": 1120,
+          "h": 80
+        },
+        "sections": [
+          {
+            "x": 80,
+            "y": 162,
+            "w": 1120,
+            "h": 32
+          }
+        ],
+        "images": [
+          {
+            "x": 80,
+            "y": 170,
+            "w": 352,
+            "h": 360
+          },
+          {
+            "x": 448,
+            "y": 170,
+            "w": 352,
+            "h": 170
+          },
+          {
+            "x": 816,
+            "y": 170,
+            "w": 352,
+            "h": 170
+          },
+          {
+            "x": 448,
+            "y": 356,
+            "w": 352,
+            "h": 170
+          },
+          {
+            "x": 816,
+            "y": 356,
+            "w": 352,
+            "h": 170
+          }
+        ]
+      },
+      "style": {
+        "title": {
+          "font": "Inter",
+          "size": 36,
+          "weight": 700
+        }
+      }
+    },
+    {
+      "id": "t1_i1_lefttext_righthero",
+      "name": "1\u00d7 Hero Right, Text Left (1)",
+      "supports": {
+        "text_min": 1,
+        "text_max": 1,
+        "images_min": 1,
+        "images_max": 1
+      },
+      "weight": 0.93,
+      "frames": {
+        "title": {
+          "x": 80,
+          "y": 64,
+          "w": 1120,
+          "h": 80
+        },
+        "sections": [
+          {
+            "x": 80,
+            "y": 170,
+            "w": 560,
+            "h": 360
+          }
+        ],
+        "images": [
+          {
+            "x": 680,
+            "y": 150,
+            "w": 520,
+            "h": 380
+          }
+        ]
+      },
+      "style": {
+        "title": {
+          "font": "Inter",
+          "size": 36,
+          "weight": 700
+        }
+      }
+    },
+    {
+      "id": "t1_i1_righttext_lefthero",
+      "name": "1\u00d7 Hero Left, Text Right (1)",
+      "supports": {
+        "text_min": 1,
+        "text_max": 1,
+        "images_min": 1,
+        "images_max": 1
+      },
+      "weight": 0.92,
+      "frames": {
+        "title": {
+          "x": 80,
+          "y": 64,
+          "w": 1120,
+          "h": 80
+        },
+        "sections": [
+          {
+            "x": 680,
+            "y": 170,
+            "w": 520,
+            "h": 360
+          }
+        ],
+        "images": [
+          {
+            "x": 80,
+            "y": 150,
+            "w": 560,
+            "h": 380
+          }
+        ]
+      },
+      "style": {
+        "title": {
+          "font": "Inter",
+          "size": 36,
+          "weight": 700
+        }
+      }
+    },
+    {
+      "id": "t1_i1_toptext_bighero",
+      "name": "1\u00d7 Big Hero Bottom, Text Top (1)",
+      "supports": {
+        "text_min": 1,
+        "text_max": 1,
+        "images_min": 1,
+        "images_max": 1
+      },
+      "weight": 0.9,
+      "frames": {
+        "title": {
+          "x": 80,
+          "y": 64,
+          "w": 1120,
+          "h": 80
+        },
+        "sections": [
+          {
+            "x": 80,
+            "y": 170,
+            "w": 1120,
+            "h": 140
+          }
+        ],
+        "images": [
+          {
+            "x": 80,
+            "y": 320,
+            "w": 1120,
+            "h": 320
+          }
+        ]
+      },
+      "style": {
+        "title": {
+          "font": "Inter",
+          "size": 36,
+          "weight": 700
+        }
+      }
+    },
+    {
+      "id": "t1_i2_rightstack_textleft",
+      "name": "2\u00d7 Stack Right, Text Left (1)",
+      "supports": {
+        "text_min": 1,
+        "text_max": 1,
+        "images_min": 2,
+        "images_max": 2
+      },
+      "weight": 0.92,
+      "frames": {
+        "title": {
+          "x": 80,
+          "y": 64,
+          "w": 1120,
+          "h": 80
+        },
+        "sections": [
+          {
+            "x": 80,
+            "y": 170,
+            "w": 560,
+            "h": 360
+          }
+        ],
+        "images": [
+          {
+            "x": 680,
+            "y": 170,
+            "w": 520,
+            "h": 170
+          },
+          {
+            "x": 680,
+            "y": 360,
+            "w": 520,
+            "h": 170
+          }
+        ]
+      },
+      "style": {
+        "title": {
+          "font": "Inter",
+          "size": 36,
+          "weight": 700
+        }
+      }
+    },
+    {
+      "id": "t1_i2_leftstack_textright",
+      "name": "2\u00d7 Stack Left, Text Right (1)",
+      "supports": {
+        "text_min": 1,
+        "text_max": 1,
+        "images_min": 2,
+        "images_max": 2
+      },
+      "weight": 0.92,
+      "frames": {
+        "title": {
+          "x": 80,
+          "y": 64,
+          "w": 1120,
+          "h": 80
+        },
+        "sections": [
+          {
+            "x": 680,
+            "y": 170,
+            "w": 520,
+            "h": 360
+          }
+        ],
+        "images": [
+          {
+            "x": 80,
+            "y": 170,
+            "w": 520,
+            "h": 170
+          },
+          {
+            "x": 80,
+            "y": 360,
+            "w": 520,
+            "h": 170
+          }
+        ]
+      },
+      "style": {
+        "title": {
+          "font": "Inter",
+          "size": 36,
+          "weight": 700
+        }
+      }
+    },
+    {
+      "id": "t1_i2_toptext_2wide",
+      "name": "2\u00d7 Wide Row, Text Top (1)",
+      "supports": {
+        "text_min": 1,
+        "text_max": 1,
+        "images_min": 2,
+        "images_max": 2
+      },
+      "weight": 0.9,
+      "frames": {
+        "title": {
+          "x": 80,
+          "y": 64,
+          "w": 1120,
+          "h": 80
+        },
+        "sections": [
+          {
+            "x": 80,
+            "y": 170,
+            "w": 1120,
+            "h": 120
+          }
+        ],
+        "images": [
+          {
+            "x": 80,
+            "y": 300,
+            "w": 540,
+            "h": 340
+          },
+          {
+            "x": 660,
+            "y": 300,
+            "w": 540,
+            "h": 340
+          }
+        ]
+      },
+      "style": {
+        "title": {
+          "font": "Inter",
+          "size": 36,
+          "weight": 700
+        }
+      }
+    },
+    {
+      "id": "t1_i3_grid_right_texleft",
+      "name": "3\u00d7 Grid Right (2\u00d71 + 1), Text Left (1)",
+      "supports": {
+        "text_min": 1,
+        "text_max": 1,
+        "images_min": 3,
+        "images_max": 3
+      },
+      "weight": 0.9,
+      "frames": {
+        "title": {
+          "x": 80,
+          "y": 64,
+          "w": 1120,
+          "h": 80
+        },
+        "sections": [
+          {
+            "x": 80,
+            "y": 170,
+            "w": 520,
+            "h": 360
+          }
+        ],
+        "images": [
+          {
+            "x": 620,
+            "y": 170,
+            "w": 260,
+            "h": 170
+          },
+          {
+            "x": 890,
+            "y": 170,
+            "w": 310,
+            "h": 170
+          },
+          {
+            "x": 620,
+            "y": 360,
+            "w": 580,
+            "h": 170
+          }
+        ]
+      },
+      "style": {
+        "title": {
+          "font": "Inter",
+          "size": 36,
+          "weight": 700
+        }
+      }
+    },
+    {
+      "id": "t1_i3_grid_left_textright",
+      "name": "3\u00d7 Grid Left (2\u00d71 + 1), Text Right (1)",
+      "supports": {
+        "text_min": 1,
+        "text_max": 1,
+        "images_min": 3,
+        "images_max": 3
+      },
+      "weight": 0.9,
+      "frames": {
+        "title": {
+          "x": 80,
+          "y": 64,
+          "w": 1120,
+          "h": 80
+        },
+        "sections": [
+          {
+            "x": 680,
+            "y": 170,
+            "w": 520,
+            "h": 360
+          }
+        ],
+        "images": [
+          {
+            "x": 80,
+            "y": 170,
+            "w": 580,
+            "h": 170
+          },
+          {
+            "x": 80,
+            "y": 360,
+            "w": 260,
+            "h": 170
+          },
+          {
+            "x": 350,
+            "y": 360,
+            "w": 310,
+            "h": 170
+          }
+        ]
+      },
+      "style": {
+        "title": {
+          "font": "Inter",
+          "size": 36,
+          "weight": 700
+        }
+      }
+    },
+    {
+      "id": "t1_i3_row_texbottom",
+      "name": "3\u00d7 Row, Text Bottom (1)",
+      "supports": {
+        "text_min": 1,
+        "text_max": 1,
+        "images_min": 3,
+        "images_max": 3
+      },
+      "weight": 0.88,
+      "frames": {
+        "title": {
+          "x": 80,
+          "y": 64,
+          "w": 1120,
+          "h": 80
+        },
+        "sections": [
+          {
+            "x": 80,
+            "y": 520,
+            "w": 1120,
+            "h": 140
+          }
+        ],
+        "images": [
+          {
+            "x": 80,
+            "y": 170,
+            "w": 360,
+            "h": 320
+          },
+          {
+            "x": 460,
+            "y": 170,
+            "w": 360,
+            "h": 320
+          },
+          {
+            "x": 840,
+            "y": 170,
+            "w": 360,
+            "h": 320
+          }
+        ]
+      },
+      "style": {
+        "title": {
+          "font": "Inter",
+          "size": 36,
+          "weight": 700
+        }
+      }
+    },
+    {
+      "id": "t1_i3_column_textright",
+      "name": "3\u00d7 Column Left, Text Right (1)",
+      "supports": {
+        "text_min": 1,
+        "text_max": 1,
+        "images_min": 3,
+        "images_max": 3
+      },
+      "weight": 0.9,
+      "frames": {
+        "title": {
+          "x": 80,
+          "y": 64,
+          "w": 1120,
+          "h": 80
+        },
+        "sections": [
+          {
+            "x": 700,
+            "y": 170,
+            "w": 500,
+            "h": 360
+          }
+        ],
+        "images": [
+          {
+            "x": 80,
+            "y": 170,
+            "w": 580,
+            "h": 100
+          },
+          {
+            "x": 80,
+            "y": 280,
+            "w": 580,
+            "h": 100
+          },
+          {
+            "x": 80,
+            "y": 390,
+            "w": 580,
+            "h": 100
+          }
+        ]
+      },
+      "style": {
+        "title": {
+          "font": "Inter",
+          "size": 36,
+          "weight": 700
+        }
+      }
+    },
+    {
+      "id": "t1_i4_grid2x2_textright",
+      "name": "4\u00d7 Grid 2\u00d72 Left, Text Right (1)",
+      "supports": {
+        "text_min": 1,
+        "text_max": 1,
+        "images_min": 4,
+        "images_max": 4
+      },
+      "weight": 0.9,
+      "frames": {
+        "title": {
+          "x": 80,
+          "y": 64,
+          "w": 1120,
+          "h": 80
+        },
+        "sections": [
+          {
+            "x": 900,
+            "y": 170,
+            "w": 300,
+            "h": 360
+          }
+        ],
+        "images": [
+          {
+            "x": 80,
+            "y": 170,
+            "w": 380,
+            "h": 170
+          },
+          {
+            "x": 470,
+            "y": 170,
+            "w": 380,
+            "h": 170
+          },
+          {
+            "x": 80,
+            "y": 360,
+            "w": 380,
+            "h": 170
+          },
+          {
+            "x": 470,
+            "y": 360,
+            "w": 380,
+            "h": 170
+          }
+        ]
+      },
+      "style": {
+        "title": {
+          "font": "Inter",
+          "size": 36,
+          "weight": 700
+        }
+      }
+    },
+    {
+      "id": "t1_i4_grid2x2_textleft",
+      "name": "4\u00d7 Grid 2\u00d72 Right, Text Left (1)",
+      "supports": {
+        "text_min": 1,
+        "text_max": 1,
+        "images_min": 4,
+        "images_max": 4
+      },
+      "weight": 0.9,
+      "frames": {
+        "title": {
+          "x": 80,
+          "y": 64,
+          "w": 1120,
+          "h": 80
+        },
+        "sections": [
+          {
+            "x": 80,
+            "y": 170,
+            "w": 300,
+            "h": 360
+          }
+        ],
+        "images": [
+          {
+            "x": 400,
+            "y": 170,
+            "w": 380,
+            "h": 170
+          },
+          {
+            "x": 790,
+            "y": 170,
+            "w": 410,
+            "h": 170
+          },
+          {
+            "x": 400,
+            "y": 360,
+            "w": 380,
+            "h": 170
+          },
+          {
+            "x": 790,
+            "y": 360,
+            "w": 410,
+            "h": 170
+          }
+        ]
+      },
+      "style": {
+        "title": {
+          "font": "Inter",
+          "size": 36,
+          "weight": 700
+        }
+      }
+    },
+    {
+      "id": "t1_i4_hero_left_3stack_right",
+      "name": "Hero Left + 3 Stack Right, Text Bottom (1)",
+      "supports": {
+        "text_min": 1,
+        "text_max": 1,
+        "images_min": 4,
+        "images_max": 4
+      },
+      "weight": 0.88,
+      "frames": {
+        "title": {
+          "x": 80,
+          "y": 64,
+          "w": 1120,
+          "h": 80
+        },
+        "sections": [
+          {
+            "x": 80,
+            "y": 530,
+            "w": 1120,
+            "h": 120
+          }
+        ],
+        "images": [
+          {
+            "x": 80,
+            "y": 170,
+            "w": 560,
+            "h": 340
+          },
+          {
+            "x": 660,
+            "y": 170,
+            "w": 180,
+            "h": 100
+          },
+          {
+            "x": 850,
+            "y": 170,
+            "w": 180,
+            "h": 100
+          },
+          {
+            "x": 1040,
+            "y": 170,
+            "w": 160,
+            "h": 100
+          }
+        ]
+      },
+      "style": {
+        "title": {
+          "font": "Inter",
+          "size": 36,
+          "weight": 700
+        }
+      }
+    },
+    {
+      "id": "t1_i4_strip_toptext",
+      "name": "4\u00d7 Strip, Text Top (1)",
+      "supports": {
+        "text_min": 1,
+        "text_max": 1,
+        "images_min": 4,
+        "images_max": 4
+      },
+      "weight": 0.88,
+      "frames": {
+        "title": {
+          "x": 80,
+          "y": 64,
+          "w": 1120,
+          "h": 80
+        },
+        "sections": [
+          {
+            "x": 80,
+            "y": 170,
+            "w": 1120,
+            "h": 110
+          }
+        ],
+        "images": [
+          {
+            "x": 80,
+            "y": 290,
+            "w": 260,
+            "h": 320
+          },
+          {
+            "x": 350,
+            "y": 290,
+            "w": 260,
+            "h": 320
+          },
+          {
+            "x": 620,
+            "y": 290,
+            "w": 260,
+            "h": 320
+          },
+          {
+            "x": 890,
+            "y": 290,
+            "w": 310,
+            "h": 320
+          }
+        ]
+      },
+      "style": {
+        "title": {
+          "font": "Inter",
+          "size": 36,
+          "weight": 700
+        }
+      }
+    },
+    {
+      "id": "t1_i4_mosaic_righttext",
+      "name": "4\u00d7 Mosaic, Text Right (1)",
+      "supports": {
+        "text_min": 1,
+        "text_max": 1,
+        "images_min": 4,
+        "images_max": 4
+      },
+      "weight": 0.89,
+      "frames": {
+        "title": {
+          "x": 80,
+          "y": 64,
+          "w": 1120,
+          "h": 80
+        },
+        "sections": [
+          {
+            "x": 900,
+            "y": 170,
+            "w": 300,
+            "h": 360
+          }
+        ],
+        "images": [
+          {
+            "x": 80,
+            "y": 170,
+            "w": 500,
+            "h": 360
+          },
+          {
+            "x": 590,
+            "y": 170,
+            "w": 300,
+            "h": 170
+          },
+          {
+            "x": 590,
+            "y": 360,
+            "w": 145,
+            "h": 170
+          },
+          {
+            "x": 745,
+            "y": 360,
+            "w": 145,
+            "h": 170
+          }
+        ]
+      },
+      "style": {
+        "title": {
+          "font": "Inter",
+          "size": 36,
+          "weight": 700
+        }
+      }
+    },
+    {
+      "id": "t1_i5_hero_left_2x2_right_textrightbar",
+      "name": "Hero Left + 2\u00d72 Right, Text Right (1)",
+      "supports": {
+        "text_min": 1,
+        "text_max": 1,
+        "images_min": 5,
+        "images_max": 5
+      },
+      "weight": 0.9,
+      "frames": {
+        "title": {
+          "x": 80,
+          "y": 64,
+          "w": 1120,
+          "h": 80
+        },
+        "sections": [
+          {
+            "x": 900,
+            "y": 170,
+            "w": 300,
+            "h": 360
+          }
+        ],
+        "images": [
+          {
+            "x": 80,
+            "y": 170,
+            "w": 560,
+            "h": 360
+          },
+          {
+            "x": 660,
+            "y": 170,
+            "w": 220,
+            "h": 170
+          },
+          {
+            "x": 885,
+            "y": 170,
+            "w": 215,
+            "h": 170
+          },
+          {
+            "x": 660,
+            "y": 360,
+            "w": 220,
+            "h": 170
+          },
+          {
+            "x": 885,
+            "y": 360,
+            "w": 215,
+            "h": 170
+          }
+        ]
+      },
+      "style": {
+        "title": {
+          "font": "Inter",
+          "size": 36,
+          "weight": 700
+        }
+      }
+    },
+    {
+      "id": "t1_i5_toprow_2x2_bottom_textright",
+      "name": "Top Row + 2\u00d72 Bottom, Text Right (1)",
+      "supports": {
+        "text_min": 1,
+        "text_max": 1,
+        "images_min": 5,
+        "images_max": 5
+      },
+      "weight": 0.86,
+      "frames": {
+        "title": {
+          "x": 80,
+          "y": 64,
+          "w": 1120,
+          "h": 80
+        },
+        "sections": [
+          {
+            "x": 900,
+            "y": 170,
+            "w": 300,
+            "h": 360
+          }
+        ],
+        "images": [
+          {
+            "x": 80,
+            "y": 170,
+            "w": 340,
+            "h": 150
+          },
+          {
+            "x": 430,
+            "y": 170,
+            "w": 340,
+            "h": 150
+          },
+          {
+            "x": 80,
+            "y": 330,
+            "w": 340,
+            "h": 200
+          },
+          {
+            "x": 430,
+            "y": 330,
+            "w": 340,
+            "h": 200
+          },
+          {
+            "x": 780,
+            "y": 330,
+            "w": 100,
+            "h": 100
+          }
+        ]
+      },
+      "style": {
+        "title": {
+          "font": "Inter",
+          "size": 36,
+          "weight": 700
+        }
+      }
+    },
+    {
+      "id": "t1_i5_row_of5_textbottom",
+      "name": "Row of 5, Text Bottom (1)",
+      "supports": {
+        "text_min": 1,
+        "text_max": 1,
+        "images_min": 5,
+        "images_max": 5
+      },
+      "weight": 0.87,
+      "frames": {
+        "title": {
+          "x": 80,
+          "y": 64,
+          "w": 1120,
+          "h": 80
+        },
+        "sections": [
+          {
+            "x": 80,
+            "y": 520,
+            "w": 1120,
+            "h": 130
+          }
+        ],
+        "images": [
+          {
+            "x": 80,
+            "y": 170,
+            "w": 210,
+            "h": 330
+          },
+          {
+            "x": 300,
+            "y": 170,
+            "w": 210,
+            "h": 330
+          },
+          {
+            "x": 520,
+            "y": 170,
+            "w": 210,
+            "h": 330
+          },
+          {
+            "x": 740,
+            "y": 170,
+            "w": 210,
+            "h": 330
+          },
+          {
+            "x": 960,
+            "y": 170,
+            "w": 240,
+            "h": 330
+          }
+        ]
+      },
+      "style": {
+        "title": {
+          "font": "Inter",
+          "size": 36,
+          "weight": 700
+        }
+      }
+    },
+    {
+      "id": "t1_i5_mosaic_center_textleft",
+      "name": "Mosaic Center, Text Left (1)",
+      "supports": {
+        "text_min": 1,
+        "text_max": 1,
+        "images_min": 5,
+        "images_max": 5
+      },
+      "weight": 0.9,
+      "frames": {
+        "title": {
+          "x": 80,
+          "y": 64,
+          "w": 1120,
+          "h": 80
+        },
+        "sections": [
+          {
+            "x": 80,
+            "y": 170,
+            "w": 300,
+            "h": 360
+          }
+        ],
+        "images": [
+          {
+            "x": 400,
+            "y": 170,
+            "w": 360,
+            "h": 360
+          },
+          {
+            "x": 770,
+            "y": 170,
+            "w": 190,
+            "h": 170
+          },
+          {
+            "x": 970,
+            "y": 170,
+            "w": 230,
+            "h": 170
+          },
+          {
+            "x": 770,
+            "y": 360,
+            "w": 190,
+            "h": 170
+          },
+          {
+            "x": 970,
+            "y": 360,
+            "w": 230,
+            "h": 170
+          }
+        ]
+      },
+      "style": {
+        "title": {
+          "font": "Inter",
+          "size": 36,
+          "weight": 700
+        }
+      }
+    },
+    {
+      "id": "t1_i5_grid2x3_minus1_textright",
+      "name": "Grid 2\u00d73 minus one, Text Right (1)",
+      "supports": {
+        "text_min": 1,
+        "text_max": 1,
+        "images_min": 5,
+        "images_max": 5
+      },
+      "weight": 0.88,
+      "frames": {
+        "title": {
+          "x": 80,
+          "y": 64,
+          "w": 1120,
+          "h": 80
+        },
+        "sections": [
+          {
+            "x": 900,
+            "y": 170,
+            "w": 300,
+            "h": 360
+          }
+        ],
+        "images": [
+          {
+            "x": 80,
+            "y": 170,
+            "w": 250,
+            "h": 170
+          },
+          {
+            "x": 335,
+            "y": 170,
+            "w": 250,
+            "h": 170
+          },
+          {
+            "x": 590,
+            "y": 170,
+            "w": 250,
+            "h": 170
+          },
+          {
+            "x": 80,
+            "y": 360,
+            "w": 250,
+            "h": 170
+          },
+          {
+            "x": 335,
+            "y": 360,
+            "w": 250,
+            "h": 170
+          }
+        ]
+      },
+      "style": {
+        "title": {
+          "font": "Inter",
+          "size": 36,
+          "weight": 700
+        }
+      }
+    },
+    {
+      "id": "t1_i6_grid3x2_textright",
+      "name": "Grid 3\u00d72 Left, Text Right (1)",
+      "supports": {
+        "text_min": 1,
+        "text_max": 1,
+        "images_min": 6,
+        "images_max": 6
+      },
+      "weight": 0.91,
+      "frames": {
+        "title": {
+          "x": 80,
+          "y": 64,
+          "w": 1120,
+          "h": 80
+        },
+        "sections": [
+          {
+            "x": 900,
+            "y": 170,
+            "w": 300,
+            "h": 360
+          }
+        ],
+        "images": [
+          {
+            "x": 80,
+            "y": 170,
+            "w": 250,
+            "h": 170
+          },
+          {
+            "x": 335,
+            "y": 170,
+            "w": 250,
+            "h": 170
+          },
+          {
+            "x": 590,
+            "y": 170,
+            "w": 250,
+            "h": 170
+          },
+          {
+            "x": 80,
+            "y": 360,
+            "w": 250,
+            "h": 170
+          },
+          {
+            "x": 335,
+            "y": 360,
+            "w": 250,
+            "h": 170
+          },
+          {
+            "x": 590,
+            "y": 360,
+            "w": 250,
+            "h": 170
+          }
+        ]
+      },
+      "style": {
+        "title": {
+          "font": "Inter",
+          "size": 36,
+          "weight": 700
+        }
+      }
+    },
+    {
+      "id": "t1_i6_grid3x2_textleft",
+      "name": "Grid 3\u00d72 Right, Text Left (1)",
+      "supports": {
+        "text_min": 1,
+        "text_max": 1,
+        "images_min": 6,
+        "images_max": 6
+      },
+      "weight": 0.91,
+      "frames": {
+        "title": {
+          "x": 80,
+          "y": 64,
+          "w": 1120,
+          "h": 80
+        },
+        "sections": [
+          {
+            "x": 80,
+            "y": 170,
+            "w": 300,
+            "h": 360
+          }
+        ],
+        "images": [
+          {
+            "x": 400,
+            "y": 170,
+            "w": 250,
+            "h": 170
+          },
+          {
+            "x": 655,
+            "y": 170,
+            "w": 250,
+            "h": 170
+          },
+          {
+            "x": 910,
+            "y": 170,
+            "w": 290,
+            "h": 170
+          },
+          {
+            "x": 400,
+            "y": 360,
+            "w": 250,
+            "h": 170
+          },
+          {
+            "x": 655,
+            "y": 360,
+            "w": 250,
+            "h": 170
+          },
+          {
+            "x": 910,
+            "y": 360,
+            "w": 290,
+            "h": 170
+          }
+        ]
+      },
+      "style": {
+        "title": {
+          "font": "Inter",
+          "size": 36,
+          "weight": 700
+        }
+      }
+    },
+    {
+      "id": "t1_i6_row3_top_row3_bottom_texttop",
+      "name": "3 Top + 3 Bottom, Text Top (1)",
+      "supports": {
+        "text_min": 1,
+        "text_max": 1,
+        "images_min": 6,
+        "images_max": 6
+      },
+      "weight": 0.89,
+      "frames": {
+        "title": {
+          "x": 80,
+          "y": 64,
+          "w": 1120,
+          "h": 80
+        },
+        "sections": [
+          {
+            "x": 80,
+            "y": 170,
+            "w": 1120,
+            "h": 110
+          }
+        ],
+        "images": [
+          {
+            "x": 80,
+            "y": 290,
+            "w": 360,
+            "h": 180
+          },
+          {
+            "x": 460,
+            "y": 290,
+            "w": 360,
+            "h": 180
+          },
+          {
+            "x": 840,
+            "y": 290,
+            "w": 360,
+            "h": 180
+          },
+          {
+            "x": 80,
+            "y": 480,
+            "w": 360,
+            "h": 180
+          },
+          {
+            "x": 460,
+            "y": 480,
+            "w": 360,
+            "h": 180
+          },
+          {
+            "x": 840,
+            "y": 480,
+            "w": 360,
+            "h": 180
+          }
+        ]
+      },
+      "style": {
+        "title": {
+          "font": "Inter",
+          "size": 36,
+          "weight": 700
+        }
+      }
+    },
+    {
+      "id": "t1_i6_strip5_plus_hero_textleft",
+      "name": "Strip of 5 + Hero, Text Left (1)",
+      "supports": {
+        "text_min": 1,
+        "text_max": 1,
+        "images_min": 6,
+        "images_max": 6
+      },
+      "weight": 0.87,
+      "frames": {
+        "title": {
+          "x": 80,
+          "y": 64,
+          "w": 1120,
+          "h": 80
+        },
+        "sections": [
+          {
+            "x": 80,
+            "y": 170,
+            "w": 300,
+            "h": 360
+          }
+        ],
+        "images": [
+          {
+            "x": 400,
+            "y": 170,
+            "w": 860,
+            "h": 180
+          },
+          {
+            "x": 400,
+            "y": 360,
+            "w": 170,
+            "h": 170
+          },
+          {
+            "x": 575,
+            "y": 360,
+            "w": 170,
+            "h": 170
+          },
+          {
+            "x": 750,
+            "y": 360,
+            "w": 170,
+            "h": 170
+          },
+          {
+            "x": 925,
+            "y": 360,
+            "w": 170,
+            "h": 170
+          },
+          {
+            "x": 1100,
+            "y": 360,
+            "w": 160,
+            "h": 170
+          }
+        ]
+      },
+      "style": {
+        "title": {
+          "font": "Inter",
+          "size": 36,
+          "weight": 700
+        }
+      }
+    },
+    {
+      "id": "t1_i6_quilt_hero_center_textbottom",
+      "name": "Quilt with Center Hero, Text Bottom (1)",
+      "supports": {
+        "text_min": 1,
+        "text_max": 1,
+        "images_min": 6,
+        "images_max": 6
+      },
+      "weight": 0.86,
+      "frames": {
+        "title": {
+          "x": 80,
+          "y": 64,
+          "w": 1120,
+          "h": 80
+        },
+        "sections": [
+          {
+            "x": 80,
+            "y": 520,
+            "w": 1120,
+            "h": 120
+          }
+        ],
+        "images": [
+          {
+            "x": 80,
+            "y": 170,
+            "w": 250,
+            "h": 160
+          },
+          {
+            "x": 335,
+            "y": 170,
+            "w": 250,
+            "h": 160
+          },
+          {
+            "x": 590,
+            "y": 170,
+            "w": 250,
+            "h": 160
+          },
+          {
+            "x": 80,
+            "y": 335,
+            "w": 250,
+            "h": 160
+          },
+          {
+            "x": 335,
+            "y": 335,
+            "w": 250,
+            "h": 160
+          },
+          {
+            "x": 590,
+            "y": 335,
+            "w": 250,
+            "h": 160
+          }
+        ]
+      },
+      "style": {
+        "title": {
+          "font": "Inter",
+          "size": 36,
+          "weight": 700
+        }
+      }
     }
   ],
   "page": 1,
-  "page_size": 24,
-  "total": 24
+  "page_size": 152,
+  "total": 152
 }
