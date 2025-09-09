@@ -84,17 +84,16 @@ export default function EditorWorkbench({
           {exportStatus && <span className="text-gray-500 hidden sm:inline">{exportStatus}</span>}
           {previewBusy && <span className="text-xs text-gray-500">preview updating…</span>}
         </div>
-        <button
+        <Button
           onClick={onBuildEditor}
           disabled={building || !selectionComplete}
-          className={`rounded-xl px-3 py-1 text-white ${
-            building || !selectionComplete ? "bg-gray-400 cursor-not-allowed" : "bg-black hover:opacity-90"
-          }`}
+          variant="solid"
+          size="sm"
           title={!selectionComplete ? "Choose a layout for each slide" : "Build editor and continue"}
           type="button"
         >
           {building ? "Building…" : "Build & Continue"}
-        </button>
+        </Button>
       </div>
 
       {/* Slide tabs */}
@@ -208,12 +207,13 @@ function Tab({
 }) {
   const active = current === id;
   return (
-    <button
-      className={`text-xs rounded-md px-2 py-1 border ${active ? "bg-black text-white border-black" : "hover:bg-gray-50"}`}
+    <Button
+      size="xs"
+      className={active ? "bg-black text-white border-black" : ""}
       onClick={() => setTab(id)}
       type="button"
     >
       {children}
-    </button>
+    </Button>
   );
 }

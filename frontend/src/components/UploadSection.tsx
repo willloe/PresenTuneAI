@@ -1,13 +1,23 @@
-import { useRef } from "react";
+import { useRef, useState } from "react";
 import type { UploadResponse } from "../lib/upload";
 import { useDropZone } from "../hooks/useDropZone";
 import { useAssets } from "../hooks/useAssets";
+import { M } from "./ui/Motion";
 
 type Props = {
   uploadErr: string | null;
   uploadMeta: UploadResponse | null;
   onPick: (e: React.ChangeEvent<HTMLInputElement>) => void;
 };
+
+function Shimmer({ width = "100%", height = 12 }: { width?: number | string; height?: number }) {
+  return (
+    <div
+      className="relative overflow-hidden rounded"
+      style={{ width, height, background: "linear-gradient(90deg,#eee,#f5f5f5,#eee)" }}
+    />
+  );
+}
 
 export default function UploadSection({ uploadErr, uploadMeta, onPick }: Props) {
   const inputRef = useRef<HTMLInputElement | null>(null);
@@ -22,6 +32,8 @@ export default function UploadSection({ uploadErr, uploadMeta, onPick }: Props) 
     onPick(synthetic);
   };
   const { isDragging, zoneProps } = useDropZone(handleFiles);
+
+  const [hover, setHover] = useState(false);
 
   const inputId = "file-input";
   const helpId = "upload-help";
@@ -41,11 +53,12 @@ export default function UploadSection({ uploadErr, uploadMeta, onPick }: Props) 
       <h2 className="text-lg font-medium mb-4">Upload</h2>
 
       {/* Click-to-browse + Drag-and-drop zone */}
-      <div
+      <M.div
         {...zoneProps}
+        whileHover={{ scale: 1.002 }}
         className={[
           "rounded-xl border-2 border-dashed px-4 py-6 text-center transition",
-          isDragging ? "border-black bg-gray-50" : "border-gray-300 hover:bg-gray-50",
+          isDragging || hover ? "border-black bg-gray-50" : "border-gray-300 hover:bg-gray-50",
         ].join(" ")}
         onClick={() => inputRef.current?.click()}
         role="button"
@@ -54,12 +67,14 @@ export default function UploadSection({ uploadErr, uploadMeta, onPick }: Props) 
           if (e.key === "Enter" || e.key === " ") inputRef.current?.click();
         }}
         aria-describedby={helpId}
+        onMouseEnter={() => setHover(true)}
+        onMouseLeave={() => setHover(false)}
       >
         <div className="text-sm font-medium">Drop a PDF/DOCX/TXT here</div>
         <div id={helpId} className="text-xs text-gray-500 mt-1">
           or click to browse
         </div>
-      </div>
+      </M.div>
 
       <input
         ref={inputRef}
@@ -72,23 +87,28 @@ export default function UploadSection({ uploadErr, uploadMeta, onPick }: Props) 
 
       {uploadErr && <p className="mt-2 text-sm text-red-600">{uploadErr}</p>}
 
-      {uploadMeta && (
+      {uploadMeta ? (
         <div className="mt-3 text-sm">
           <div className="font-medium">{uploadMeta.filename}</div>
           <div className="text-gray-600">
-            {kb(uploadMeta.size)} • {uploadMeta.content_type} • type: {uploadMeta.parsed.kind} • pages: {pagesLabel} • assets: {assetsLabel}
-            {assetsError ? (
-              <span className="ml-2 text-red-600">(assets load failed)</span>
-            ) : null}
+            {kb(uploadMeta.size)} • {uploadMeta.content_type} • type: {uploadMeta.parsed.kind} • pages: {pagesLabel} • assets{" "}
+            {assetsLoading ? "…" : assetsLabel}
+            {assetsError ? <span className="ml-2 text-red-600">(assets load failed)</span> : null}
           </div>
 
           {uploadMeta.parsed.text_preview ? (
             <pre className="mt-2 whitespace-pre-wrap rounded-lg bg-gray-50 p-3 border">
               {uploadMeta.parsed.text_preview}
             </pre>
-          ) : null}
+          ) : (
+            <div className="mt-2 flex gap-2 items-center">
+              <Shimmer width={160} height={12} />
+              <Shimmer width={80} height={12} />
+              <Shimmer width={100} height={12} />
+            </div>
+          )}
         </div>
-      )}
+      ) : null}
     </section>
   );
 }

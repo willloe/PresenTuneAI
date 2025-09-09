@@ -1,4 +1,5 @@
 import Tag, { type Tone } from "./ui/Tag";
+import Button from "./ui/Button";
 
 type Props = {
   health: "checking" | "ok" | "error";
@@ -13,8 +14,7 @@ export default function HeaderBar({ health, schemaVersion, onOpenSettings }: Pro
     checking: "neutral",
   };
 
-  const healthLabel =
-    health === "checking" ? "checking…" : health === "ok" ? "ok" : "error";
+  const healthLabel = health === "checking" ? "checking…" : health === "ok" ? "ok" : "error";
 
   return (
     <header className="mx-auto max-w-4xl px-6 py-8">
@@ -35,15 +35,10 @@ export default function HeaderBar({ health, schemaVersion, onOpenSettings }: Pro
             )}
           </p>
         </div>
-        <button
-          onClick={onOpenSettings}
-          className="rounded-xl border px-3 py-2 text-sm hover:bg-white"
-          title="Open settings"
-          type="button"
-          aria-expanded="true"
-        >
+
+        <Button onClick={onOpenSettings} title="Open settings" size="sm" type="button">
           Settings
-        </button>
+        </Button>
       </div>
     </header>
   );

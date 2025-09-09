@@ -1,6 +1,7 @@
 import { type Deck, deriveComponentsForFilter } from "../../types/deck";
 import type { LayoutItem } from "../../lib/api";
 import LayoutPicker from "./LayoutPicker";
+import Button from "../ui/Button";
 
 type LayoutRecommendation = {
   selected_layout?: string | null;
@@ -48,8 +49,7 @@ export default function LayoutSelectionList({
         const imageSlotsNeeded = rec?.image_slots_needed ?? null;
 
         const selectedId =
-          selection[s.id] ??
-          (selectedFromRec || (allowAuto ? "AUTO" : ""));
+          selection[s.id] ?? (selectedFromRec || (allowAuto ? "AUTO" : ""));
 
         const itemsForPicker = pickTopKItems(rec?.top_k);
 
@@ -58,27 +58,28 @@ export default function LayoutSelectionList({
             <div className="flex items-center justify-between">
               <div className="font-medium truncate pr-3">{s.title}</div>
               {allowAuto && (
-                <button
-                  className={`text-xs rounded-full px-2 py-1 border ${
-                    selectedId === "AUTO"
-                      ? "bg-black text-white border-black"
-                      : "hover:bg-gray-50"
-                  }`}
+                <Button
+                  size="xs"
                   onClick={() => onSelect(s.id, "AUTO")}
                   title="Let the backend pick the best layout for this slide"
+                  className={selectedId === "AUTO" ? "bg-black text-white" : undefined}
                 >
                   Auto-fit
-                </button>
+                </Button>
               )}
             </div>
 
             <div className="text-sm text-gray-600 flex items-center gap-2 flex-wrap">
-              <span>{textBlocks} sections • {images} images</span>
+              <span>
+                {textBlocks} sections • {images} images
+              </span>
               {imageSlotsNeeded !== null && (
                 <span className="inline-flex items-center gap-1 text-xs rounded-full bg-gray-100 px-2 py-0.5">
                   <span className="opacity-70">needs</span>
                   <b>{imageSlotsNeeded}</b>
-                  <span className="opacity-70">image slot{imageSlotsNeeded === 1 ? "" : "s"}</span>
+                  <span className="opacity-70">
+                    image slot{imageSlotsNeeded === 1 ? "" : "s"}
+                  </span>
                 </span>
               )}
             </div>
@@ -87,7 +88,7 @@ export default function LayoutSelectionList({
               items={itemsForPicker}
               selectedId={selectedId || ""}
               onSelect={(id) => onSelect(s.id, id)}
-              counts={comps}  // ← sections-aware { text_count, image_count }
+              counts={comps} // ← sections-aware { text_count, image_count }
               page={{ width: 1280, height: 720 }}
               topK={6}
               initialView="selected"

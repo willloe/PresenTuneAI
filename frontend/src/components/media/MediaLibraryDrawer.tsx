@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { api } from "../../lib/api";
 import ImageGenModal from "../media/ImageGenModal";
 import { useAssets } from "../../hooks/useAssets";
+import Button from "../ui/Button";
 
 type Asset = { id: string; filename: string };
 
@@ -42,8 +43,13 @@ export default function MediaLibraryDrawer({
   useEffect(() => {
     if (!open || !enableAI) return;
     let alive = true;
-    api.imageProvider().then(({ data }) => alive && setProviderLabel(data)).catch(() => {});
-    return () => { alive = false; };
+    api
+      .imageProvider()
+      .then(({ data }) => alive && setProviderLabel(data))
+      .catch(() => {});
+    return () => {
+      alive = false;
+    };
   }, [open, enableAI]);
 
   // Escape closes drawer
@@ -92,15 +98,13 @@ export default function MediaLibraryDrawer({
                 className="text-[11px] rounded-full border px-2 py-0.5 bg-gray-50 text-gray-700"
                 title="Image provider"
               >
-                {providerLabel.provider}{providerLabel.model ? ` • ${providerLabel.model}` : ""}
+                {providerLabel.provider}
+                {providerLabel.model ? ` • ${providerLabel.model}` : ""}
               </span>
             )}
-            <button
-              onClick={onClose}
-              className="rounded-lg px-3 py-1 border hover:bg-gray-50 dark:hover:bg-slate-800"
-            >
+            <Button onClick={onClose} className="px-3 py-1" aria-label="Close media library">
               Close
-            </button>
+            </Button>
           </div>
         </div>
 

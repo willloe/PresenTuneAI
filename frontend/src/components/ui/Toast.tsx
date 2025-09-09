@@ -1,4 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useReducer, useRef, useState } from "react";
+import { AnimatePresence } from "framer-motion";
+import { M, scaleIn } from "./Motion";
 
 export type ToastTone = "info" | "success" | "warning" | "danger";
 
@@ -109,43 +111,51 @@ function ToastViewport() {
 
   return (
     <div className="fixed bottom-4 right-4 z-[1000] flex flex-col gap-2 w-[320px] max-w-[90vw]">
-      {items.map((t) => {
-        const isHovered = hovered === t.id; // ← read the state so TS is happy and we can style on hover
-        return (
-          <div
-            key={t.id}
-            className={[
-              "rounded-xl border shadow-lg p-3 transition",
-              toneClasses(t.tone),
-              isHovered ? "ring-1 ring-black/15 translate-y-[-2px]" : ""
-            ].join(" ")}
-            role={t.tone === "danger" || t.tone === "success" ? "alert" : "status"}
-            aria-live={t.tone === "danger" ? "assertive" : "polite"}
-            onMouseEnter={() => setHovered(t.id)}
-            onMouseLeave={() => setHovered((id) => (id === t.id ? null : id))}
-          >
-            <div className="flex items-start gap-3">
-              <div className="flex-1 min-w-0">
-                {t.title ? <div className="font-medium truncate">{t.title}</div> : null}
-                {t.description ? (
-                  <div className="text-sm mt-0.5 whitespace-pre-wrap break-words">{t.description}</div>
-                ) : null}
+      <AnimatePresence initial={false}>
+        {items.map((t) => {
+          const isHovered = hovered === t.id;
+          return (
+            <M.div
+              key={t.id}
+              variants={scaleIn}
+              initial="initial"
+              animate="animate"
+              exit="exit"
+              className={[
+                "rounded-xl border shadow-lg p-3 transition",
+                toneClasses(t.tone),
+                isHovered ? "ring-1 ring-black/15 translate-y-[-2px]" : "",
+              ].join(" ")}
+              role={t.tone === "danger" || t.tone === "success" ? "alert" : "status"}
+              aria-live={t.tone === "danger" ? "assertive" : "polite"}
+              onMouseEnter={() => setHovered(t.id)}
+              onMouseLeave={() => setHovered((id) => (id === t.id ? null : id))}
+            >
+              <div className="flex items-start gap-3">
+                <div className="flex-1 min-w-0">
+                  {t.title ? <div className="font-medium truncate">{t.title}</div> : null}
+                  {t.description ? (
+                    <div className="text-sm mt-0.5 whitespace-pre-wrap break-words">{t.description}</div>
+                  ) : null}
+                </div>
+                <button
+                  onClick={() => remove(t.id)}
+                  className="text-xs rounded-md border px-2 py-1 hover:bg-black hover:text-white"
+                  aria-label="Dismiss"
+                  title="Dismiss"
+                >
+                  ×
+                </button>
               </div>
-              <button
-                onClick={() => remove(t.id)}
-                className="text-xs rounded-md border px-2 py-1 hover:bg-black hover:text-white"
-                aria-label="Dismiss"
-                title="Dismiss"
-              >
-                ×
-              </button>
-            </div>
-            <div className="mt-2 text-[11px] text-gray-500">
-              <button onClick={clear} className="underline">clear all</button>
-            </div>
-          </div>
-        );
-      })}
+              <div className="mt-2 text-[11px] text-gray-500">
+                <button onClick={clear} className="underline">
+                  clear all
+                </button>
+              </div>
+            </M.div>
+          );
+        })}
+      </AnimatePresence>
     </div>
   );
 }

@@ -1,4 +1,5 @@
 import { useEffect, useLayoutEffect, useRef } from "react";
+import Button from "./Button";
 
 type ModalProps = {
   open: boolean;
@@ -119,15 +120,15 @@ export default function Modal({
           ) : (
             <span />
           )}
-          <button
+          <Button
             ref={closeButtonRef}
             onClick={onClose}
-            className="rounded-lg border px-3 py-1 text-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-black"
-            type="button"
+            size="sm"
             aria-label="Close"
+            title="Close"
           >
             Close
-          </button>
+          </Button>
         </div>
         <div className="p-5">{children}</div>
       </div>

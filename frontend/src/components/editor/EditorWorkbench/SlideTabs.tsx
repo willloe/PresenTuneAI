@@ -1,4 +1,5 @@
 import type { Deck } from "../../../types/deck";
+import Button from "../../ui/Button";
 type Slide = Deck["slides"][number];
 
 export default function SlideTabs({
@@ -15,12 +16,11 @@ export default function SlideTabs({
     <div className="rounded-xl border bg-white px-2 pt-2">
       <div className="flex overflow-x-auto gap-2 pb-2">
         {slides.map((s, i) => (
-          <button
+          <Button
             key={s.id || i}
             onClick={() => setActive(i)}
-            className={`shrink-0 rounded-lg border px-3 py-1 text-sm hover:bg-gray-50 ${
-              i === active ? "bg-black text-white border-black" : ""
-            }`}
+            size="sm"
+            className={`shrink-0 ${i === active ? "bg-black text-white border-black" : ""}`}
             title={s.title || `Slide ${i + 1}`}
           >
             <span className="text-xs mr-1 text-gray-400">{i + 1}.</span>
@@ -30,7 +30,7 @@ export default function SlideTabs({
                 {imgCount(s)} img
               </span>
             )}
-          </button>
+          </Button>
         ))}
       </div>
     </div>

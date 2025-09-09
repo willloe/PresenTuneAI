@@ -1,4 +1,5 @@
 import type { Deck } from "../../../../types/deck";
+import Button from "../../../ui/Button";
 type Slide = Deck["slides"][number];
 
 export default function MediaPanel({
@@ -22,27 +23,18 @@ export default function MediaPanel({
             alt={m.alt || ""}
             className="h-12 w-20 object-cover rounded border"
           />
-          <button
-            className="text-xs rounded-md border px-2 py-1 hover:bg-gray-50"
-            onClick={() => onOpenSlot(i)}
-          >
+          <Button size="xs" onClick={() => onOpenSlot(i)} title="Replace this image">
             Replace
-          </button>
-          <button
-            className="text-xs rounded-md border px-2 py-1 hover:bg-gray-50"
-            onClick={() => onRemoveSlot(i)}
-          >
+          </Button>
+          <Button size="xs" onClick={() => onRemoveSlot(i)} title="Remove this image">
             Remove
-          </button>
+          </Button>
         </div>
       ))}
 
-      <button
-        className="rounded-md border px-2 py-1 text-xs hover:bg-gray-50"
-        onClick={() => onOpenSlot(imgs.length)}
-      >
+      <Button size="xs" onClick={() => onOpenSlot(imgs.length)}>
         Add image
-      </button>
+      </Button>
     </div>
   );
 }

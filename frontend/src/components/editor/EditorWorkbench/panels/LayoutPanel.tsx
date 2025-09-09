@@ -2,6 +2,7 @@ import type { Deck } from "../../../../types/deck";
 import LayoutPicker from "../../../layout/LayoutPicker";
 import { sectionsFromSlide, sanitizeSections } from "../../../slide/sections";
 import { bulletsFromSectionsForBuilder } from "../../../../utils/textBridge";
+import Button from "../../../ui/Button";
 
 type Slide = Deck["slides"][number];
 
@@ -23,9 +24,9 @@ export default function LayoutPanel({
     <div className="space-y-2">
       <div className="flex items-center justify-between">
         <div className="text-sm font-medium">Layout</div>
-        <button className="text-xs underline underline-offset-2" onClick={onAutoFit}>
+        <Button size="xs" onClick={onAutoFit} title="Pick a best-fit layout">
           Auto-fit
-        </button>
+        </Button>
       </div>
       <LayoutPicker
         items={(undefined as any) /* parent passes layouts via props in wrapper; see index.tsx */}
