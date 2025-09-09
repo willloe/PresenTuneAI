@@ -304,3 +304,67 @@ The exporter accepts `theme_meta` (fonts/colors) either from the explicit Export
 ```
 
 These defaults are safe; missing keys are backfilled in the exporter.
+
+---
+## 2025-09-09 – Models Addendum
+
+### Text Sections (canonical)
+
+`Slide.meta.sections` is the canonical text model and can be **omitted** or **empty** for title‑only slides.
+
+#### `ParagraphSection`
+```ts
+kind: "paragraph"
+id: string         // client generated
+text: string       // may be empty ("") for placeholder paragraphs
+role?: string
+```
+
+> The minimum length for `ParagraphSection.text` is now **0** to allow temporary empty paragraphs in the editor UI.
+
+#### `ListSection`
+```ts
+kind: "list"
+id: string
+bullets: string[]  // server trims empty entries
+role?: string
+```
+
+### Legacy bullets mirroring
+
+- If a primary `ListSection` exists, its bullets are mirrored to legacy `Slide.bullets` for backward compatibility.
+- If there are **no** sections but legacy `bullets` exist, the server synthesizes a primary `ListSection`.
+- If there are paragraphs (or other sections) and **no** list section, legacy `bullets` is **cleared** server‑side to avoid drift.
+
+### Media
+
+```ts
+type Media = {
+  type: "image",
+  url?: string,           // HttpUrl (can be data: URL for in‑memory images)
+  alt?: string,
+  source?: "asset" | "external", // backend literal
+  asset_id?: string
+}
+```
+
+> The UI may also track `source` as `"library" | "generated" | "external" | "empty"` in its internal plan, but the **backend accepts only** `"asset"` or `"external"`.
+
+### Slide
+
+```ts
+id: string
+title: string
+bullets?: string[]          // legacy mirror
+notes?: string
+layout?: string             // advisory; used by /editor/build
+media?: Media[]
+meta?: { sections?: (ParagraphSection | ListSection)[] }
+```
+
+Title‑only slides are valid: `meta.sections` can be `null`/`[]`, and there is **no requirement** to include a paragraph or list.
+
+### Deck
+
+- `slide_count` is normalized server‑side to `len(slides)`.
+- `version` is set from `SCHEMA_VERSION`.

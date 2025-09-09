@@ -221,3 +221,36 @@ UPLOAD_ID=$(awk -F': ' '/X-Upload-Id/ {print $2}' /tmp/upload_headers.txt | tr -
 curl -s "$API/assets?upload_id=$UPLOAD_ID" | jq .count
 ```
 
+
+---
+## 2025-09-09 – Config Addendum
+
+### Feature Flags
+- `FEATURE_USE_MODEL` (bool): Use the external agent for outline/regeneration when `true` and `AGENT_URL` is set.
+- `FEATURE_IMAGE_API` (bool, default **true**): If enabled, the outline service enriches slides that lack media with a provider image based on the slide title.
+
+### Image Providers
+- `IMAGE_PROVIDER`: `"stub"` (default), `"pexels"`, or `"openai"`.
+- `PEXELS_API_KEY`: required for `"pexels"`.
+- `OPENAI_API_KEY`: required for `"openai"`.
+- `IMAGE_OPENAI_MODEL`: e.g., `"gpt-image-1"`.
+- `IMAGE_OPENAI_STYLE`: an optional style hint (`"photo"`, `"illustration"`, `"diagram"`, `"icon"`).
+
+### Agent
+- `AGENT_URL`: base URL for the outline agent.
+- `AGENT_TIMEOUT_MS`: request timeout (ms) for agent calls.
+
+### Layouts
+- Library file path: `app/static/layouts/layouts.json`  
+  The server **normalizes** JSON as follows:
+  - `supports`: accept either explicit `{text_min,max,images_min,max}` or compact `{text_count,image_count}`.
+  - `frames`: accept single objects or arrays for `sections` and `images`; keys like `img0`, `img1` are collected into `images[]`.
+  - legacy `frames.bullets` is mapped to `frames.sections`.
+- Dev hot‑reload: `/layouts` rechecks file mtime and reloads when changed.
+- Scoring: `/layouts/filter` penalizes out‑of‑range counts and mismatched section‑slot counts; slides with **only a title** are treated as `text_count = 0`.
+
+### Idempotency
+- `/editor/build` honors `Idempotency-Key` to de‑duplicate identical build requests.
+
+### Auth
+- When `AUTH_ENABLED` is `true`, all API routes are behind `require_token` (unchanged).

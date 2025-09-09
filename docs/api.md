@@ -1,6 +1,6 @@
 # PresenTuneAI API
 
-Schema version: **1.0** (Deck/Slide)  
+Schema version: **1.0** (Deck/Slide)
 Status: **upload → outline → per‑slide regenerate → media library → layout filter → editor build → export & download (Google Slides ready)**
 
 ---
@@ -488,3 +488,109 @@ renders 1:1 (same geometry used by the Workbench preview).
 
 - Legacy flows (`title`, `bullets`, single `media[0]`) remain valid.
 - New sections are **additive**; they become the authoritative source once the full migration lands.
+
+---
+## 2025-09-09 – API Addendum
+
+This addendum documents **new endpoints** and **behavior changes** introduced in the latest release. It **does not remove** any legacy functionality.
+
+### Layouts
+
+**GET** `/layouts` → `LayoutLibrary`  
+Returns the current layout library. In dev, the server **auto‑reloads** `app/static/layouts/layouts.json` if its mtime changes.
+
+**POST** `/layouts/filter` → `{ candidates: string[] }`  
+Scores layouts for a slide based on simple component counts:
+
+```jsonc
+// Request body
+{
+  "components": { "text_count": 0, "image_count": 0 },
+  "top_k": 3
+}
+```
+
+Scoring considers declared support ranges (`supports.text_min/text_max`, `supports.images_min/images_max`) and the number of text **sections** the layout exposes (`frames.sections.length`). Slides with only a **title** are treated as `text_count = 0` and will prefer title‑only/hero layouts when present.
+
+> JSON normalization: when loading `layouts.json`, the backend accepts either:
+> - `supports: { text_min/max, images_min/max }` or compact `{ text_count, image_count }`
+> - `frames`: `sections` and `images` can be arrays or single objects; keys like `img0`, `img1` are collected into `images[]`
+> - legacy `frames.bullets` is mapped to `frames.sections`
+
+**(Optional)** **POST** `/layouts/recommend`  
+If enabled, returns richer recommendations (Top‑K with simple reasons and estimated image slots). The frontend falls back to `/layouts/filter` if this route is not present.
+
+### Images
+
+**GET** `/images/provider` → `{ provider: string, model?: string }`  
+Introspects which image backend is active (e.g., `"pexels"`, `"openai"`, or `"stub"`).
+
+**POST** `/images/generate` → `ImageGenResponse`  
+Generates placeholder/stock/AI images depending on the configured provider.
+
+```jsonc
+// Request body
+{
+  "prompt": "Hero image for: Example",
+  "n": 4,
+  "size": "1024x1024",       // also 1024x768, 768x1024, 512x512
+  "style": "photo",          // provider hint only
+  "reference_image": null,   // optional data URL
+  "mask": null               // optional data URL
+}
+```
+
+```jsonc
+// Response
+{
+  "assets": [{ "url": "https://..." }],
+  "provider": "pexels",      // or "openai" / "stub"
+  "model": "gpt-image-1",
+  "used_query": "example"
+}
+```
+
+### Outline
+
+No schema changes to the request. The service may attach a **deterministic image** per slide when `FEATURE_IMAGE_API=true` and a slide lacks media. This uses the **title** as a keyword via the configured image provider.
+
+### Editor Build
+
+**POST** `/editor/build`  
+Builds an editor document from a `Deck` and a selection of layout IDs.
+
+Headers:
+- `Idempotency-Key: <uuid>` — **recommended**. The server deduplicates identical builds for the same key.
+
+Body:
+```jsonc
+{
+  "deck": { ... },
+  "selections": [{ "slide_id": "...", "layout_id": "two_col_text_image" }],
+  "theme": "default",
+  "policy": "best_fit",          // or "strict"
+  "theme_meta": { /* tokens */ }
+}
+```
+
+Returns `EditorBuildResponse` with `editor`, `warnings[]`, and optional `meta`.
+
+### Export
+
+**POST** `/export`  
+Accepts either raw `slides` or a built `editor` document. `theme_meta` is forwarded to the exporter if present.
+
+Return:
+```jsonc
+{
+  "path": "export-1234.pptx",
+  "format": "pptx",
+  "theme": "default",
+  "bytes": 123456
+}
+```
+
+Use the client helper to resolve a download URL:
+```
+exportDownloadUrl(resp.path)
+```
