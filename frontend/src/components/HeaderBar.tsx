@@ -20,7 +20,9 @@ export default function HeaderBar({ health, schemaVersion, onOpenSettings }: Pro
     <header className="mx-auto max-w-4xl px-6 py-8">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-semibold">PresenTuneAI</h1>
+          <h1 className="text-2xl font-semibold">
+            <a href="/" className="hover:underline">PresenTuneAI</a>
+          </h1>
           <p className="text-sm text-gray-600 mt-1 flex items-center gap-2">
             <span>API:</span>
             <Tag tone={toneByHealth[health]} size="xs">
@@ -38,6 +40,7 @@ export default function HeaderBar({ health, schemaVersion, onOpenSettings }: Pro
           className="rounded-xl border px-3 py-2 text-sm hover:bg-white"
           title="Open settings"
           type="button"
+          aria-expanded="true"
         >
           Settings
         </button>

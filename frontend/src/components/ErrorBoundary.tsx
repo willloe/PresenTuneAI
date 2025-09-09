@@ -86,7 +86,14 @@ class ErrorBoundaryCore extends React.Component<InternalProps, State> {
             <button
               onClick={() =>
                 copyToClipboardSafe(
-                  `${error.message}\nstatus=${status}\nurl=${url}\nrequestId=${requestId ?? ""}\nserver-timing=${serverTiming ?? ""}\n${formatDetail(detail)}`
+                  [
+                    error.message,
+                    `status=${status}`,
+                    `url=${url}`,
+                    `requestId=${requestId ?? ""}`,
+                    `server-timing=${serverTiming ?? ""}`,
+                    formatDetail(detail)
+                  ].filter(Boolean).join("\n")
                 )
               }
               className="rounded-lg border px-3 py-1 text-sm hover:bg-gray-50"
@@ -99,20 +106,34 @@ class ErrorBoundaryCore extends React.Component<InternalProps, State> {
       );
     }
 
-    // Generic fallback
+    if (this.props.fallback) return this.props.fallback;
+    const err = error as any;
     return (
-      this.props.fallback ?? (
-        <div className="m-6 rounded-2xl border bg-white p-6 shadow-sm" role="alert" aria-live="assertive">
-          <div className="text-lg font-semibold">Something went wrong</div>
-          <p className="mt-2 text-sm text-gray-600">An unexpected error occurred in the UI.</p>
-          <button
-            onClick={this.reset}
-            className="mt-3 rounded-lg border px-3 py-1 text-sm hover:bg-gray-50"
-          >
+      <div className="m-6 rounded-2xl border bg-white p-6 shadow-sm" role="alert" aria-live="assertive">
+        <div className="text-lg font-semibold">Something went wrong</div>
+        <p className="mt-2 text-sm text-gray-600 break-words">
+          {err?.message ?? "An unexpected error occurred in the UI."}
+        </p>
+        {err?.stack && (
+          <details className="mt-3">
+            <summary className="cursor-pointer text-sm">Stack trace</summary>
+            <pre className="mt-2 max-h-60 overflow-auto rounded-lg bg-gray-50 p-3 text-xs border">
+              {String(err.stack)}
+            </pre>
+          </details>
+        )}
+        <div className="mt-3 flex items-center gap-2">
+          <button onClick={this.reset} className="rounded-lg border px-3 py-1 text-sm hover:bg-gray-50">
             Try again
           </button>
+          <button
+            onClick={() => copyToClipboardSafe(String(err?.stack ?? err?.message ?? "Unknown error"))}
+            className="rounded-lg border px-3 py-1 text-sm hover:bg-gray-50"
+          >
+            Copy stack
+          </button>
         </div>
-      )
+      </div>
     );
   }
 }

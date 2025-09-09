@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext, useMemo, useReducer } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useReducer, useRef, useState } from "react";
 
 export type ToastTone = "info" | "success" | "warning" | "danger";
 
@@ -37,11 +37,15 @@ function reducer(state: State, action: Action): State {
 }
 
 function randomId() {
-  return Math.random().toString(36).slice(2, 10);
+  if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
+    return crypto.randomUUID();
+  }
+  return Math.random().toString(36).slice(2, 10) + Date.now().toString(36);
 }
 
 export function ToastProvider({ children }: { children: React.ReactNode }) {
   const [state, dispatch] = useReducer(reducer, { items: [] });
+  const timersRef = useRef<Record<string, number>>({});
 
   const remove = useCallback((id: string) => dispatch({ type: "remove", id }), []);
   const clear = useCallback(() => dispatch({ type: "clear" }), []);
@@ -52,12 +56,23 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
       const timeout = item.timeoutMs ?? 4000;
       dispatch({ type: "push", item: { id, ...item } });
       if (timeout > 0) {
-        setTimeout(() => remove(id), timeout);
+        const handle = window.setTimeout(() => {
+          remove(id);
+          delete timersRef.current[id];
+        }, timeout);
+        timersRef.current[id] = handle;
       }
       return id;
     },
     [remove]
   );
+
+  useEffect(() => {
+    return () => {
+      Object.values(timersRef.current).forEach((h) => window.clearTimeout(h));
+      timersRef.current = {};
+    };
+  }, []);
 
   const value = useMemo(() => ({ items: state.items, show, remove, clear }), [state.items, show, remove, clear]);
 
@@ -90,35 +105,47 @@ function toneClasses(tone: ToastTone | undefined) {
 
 function ToastViewport() {
   const { items, remove, clear } = useToast();
+  const [hovered, setHovered] = useState<string | null>(null);
 
   return (
     <div className="fixed bottom-4 right-4 z-[1000] flex flex-col gap-2 w-[320px] max-w-[90vw]">
-      {items.map((t) => (
-        <div
-          key={t.id}
-          className={`rounded-xl border shadow-lg p-3 ${toneClasses(t.tone)}`}
-          role="status"
-          aria-live="polite"
-        >
-          <div className="flex items-start gap-3">
-            <div className="flex-1 min-w-0">
-              {t.title ? <div className="font-medium truncate">{t.title}</div> : null}
-              {t.description ? <div className="text-sm mt-0.5 whitespace-pre-wrap break-words">{t.description}</div> : null}
+      {items.map((t) => {
+        const isHovered = hovered === t.id; // ← read the state so TS is happy and we can style on hover
+        return (
+          <div
+            key={t.id}
+            className={[
+              "rounded-xl border shadow-lg p-3 transition",
+              toneClasses(t.tone),
+              isHovered ? "ring-1 ring-black/15 translate-y-[-2px]" : ""
+            ].join(" ")}
+            role={t.tone === "danger" || t.tone === "success" ? "alert" : "status"}
+            aria-live={t.tone === "danger" ? "assertive" : "polite"}
+            onMouseEnter={() => setHovered(t.id)}
+            onMouseLeave={() => setHovered((id) => (id === t.id ? null : id))}
+          >
+            <div className="flex items-start gap-3">
+              <div className="flex-1 min-w-0">
+                {t.title ? <div className="font-medium truncate">{t.title}</div> : null}
+                {t.description ? (
+                  <div className="text-sm mt-0.5 whitespace-pre-wrap break-words">{t.description}</div>
+                ) : null}
+              </div>
+              <button
+                onClick={() => remove(t.id)}
+                className="text-xs rounded-md border px-2 py-1 hover:bg-black hover:text-white"
+                aria-label="Dismiss"
+                title="Dismiss"
+              >
+                ×
+              </button>
             </div>
-            <button
-              onClick={() => remove(t.id)}
-              className="text-xs rounded-md border px-2 py-1 hover:bg-black hover:text-white"
-              aria-label="Dismiss"
-              title="Dismiss"
-            >
-              ×
-            </button>
+            <div className="mt-2 text-[11px] text-gray-500">
+              <button onClick={clear} className="underline">clear all</button>
+            </div>
           </div>
-          <div className="mt-2 text-[11px] text-gray-500">
-            <button onClick={clear} className="underline">clear all</button>
-          </div>
-        </div>
-      ))}
+        );
+      })}
     </div>
   );
 }

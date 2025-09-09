@@ -9,9 +9,8 @@ import type { ThemeMeta } from "../theme/meta";
 export type Slide = Deck["slides"][number];
 
 /** Keep a single source for the base (matches http.ts) */
-export const API_BASE: string =
-  (import.meta as any).env?.VITE_API_BASE ??
-  ((import.meta as any).env?.DEV ? "http://localhost:8000/v1" : "/v1");
+const ENV = import.meta.env as { VITE_API_BASE?: string; DEV?: boolean };
+export const API_BASE: string = ENV.VITE_API_BASE ?? (ENV.DEV ? "http://localhost:8000/v1" : "/v1");
 
 /** Build a download URL from a server path or filename */
 export function exportDownloadUrl(serverPath: string) {
@@ -30,6 +29,14 @@ const qs = (params?: Record<string, any>) => {
   }
   const s = sp.toString();
   return s ? `?${s}` : "";
+};
+
+/** Pass-through options (kept optional everywhere) */
+export type ApiRequestOpts = {
+  signal?: AbortSignal;
+  timeoutMs?: number;
+  retries?: number;
+  idempotencyKey?: string;
 };
 
 /* -------------------- Health -------------------- */
@@ -65,7 +72,7 @@ export type LayoutLibrary = {
 
 export type LayoutFilterRequest = {
   components: { text_count: number; image_count: number };
-  top_k?: number;
+  top_k?: number; // callers should pass >=1; server clamps
 };
 
 export type EditorLayer = {
@@ -151,70 +158,126 @@ export type LayoutsQuery = { page?: number; page_size?: number };
 
 export const api = {
   // Health
-  health: () => request<HealthResp>("/health"),
-  healthWithMeta: () => requestWithMeta<HealthResp>("/health"),
+  health: (opts?: ApiRequestOpts) =>
+    request<HealthResp>("/health", { signal: opts?.signal, timeoutMs: opts?.timeoutMs, retries: opts?.retries }),
+  healthWithMeta: (opts?: ApiRequestOpts) =>
+    requestWithMeta<HealthResp>("/health", { signal: opts?.signal, timeoutMs: opts?.timeoutMs, retries: opts?.retries }),
 
   // Outline
-  outline: (body: { topic?: string; text?: string; slide_count?: number }) =>
-    request<Deck>("/outline", { method: "POST", body: JSON.stringify(body) }),
-  outlineWithMeta: (body: { topic?: string; text?: string; slide_count?: number }) =>
-    requestWithMeta<Deck>("/outline", { method: "POST", body: JSON.stringify(body) }),
+  outline: (body: { topic?: string; text?: string; slide_count?: number }, opts?: ApiRequestOpts) =>
+    request<Deck>("/outline", {
+      method: "POST",
+      body: JSON.stringify(body),
+      signal: opts?.signal,
+      timeoutMs: opts?.timeoutMs,
+      retries: opts?.retries,
+    }),
+  outlineWithMeta: (body: { topic?: string; text?: string; slide_count?: number }, opts?: ApiRequestOpts) =>
+    requestWithMeta<Deck>("/outline", {
+      method: "POST",
+      body: JSON.stringify(body),
+      signal: opts?.signal,
+      timeoutMs: opts?.timeoutMs,
+      retries: opts?.retries,
+    }),
 
   // Regenerate a specific slide
-  regenerateSlide: (index: number, body: { topic?: string; text?: string; slide_count?: number }) =>
+  regenerateSlide: (index: number, body: { topic?: string; text?: string; slide_count?: number }, opts?: ApiRequestOpts) =>
     request<Slide>(`/outline/${index}/regenerate`, {
       method: "POST",
       body: JSON.stringify(body),
+      signal: opts?.signal,
+      timeoutMs: opts?.timeoutMs,
+      retries: opts?.retries,
     }),
-  regenerateSlideWithMeta: (index: number, body: { topic?: string; text?: string; slide_count?: number }) =>
+  regenerateSlideWithMeta: (index: number, body: { topic?: string; text?: string; slide_count?: number }, opts?: ApiRequestOpts) =>
     requestWithMeta<Slide>(`/outline/${index}/regenerate`, {
       method: "POST",
       body: JSON.stringify(body),
+      signal: opts?.signal,
+      timeoutMs: opts?.timeoutMs,
+      retries: opts?.retries,
     }),
 
   /* -------------------- Export (new schema) -------------------- */
-  exportDeck: (payload: {
-    slides?: Deck["slides"];
-    editor?: EditorDocOut;
-    theme?: string | null;
-    theme_meta?: ThemeMeta; // allow tokens even for slides-only export
-  }) =>
+  exportDeck: (
+    payload: {
+      slides?: Deck["slides"];
+      editor?: EditorDocOut;
+      theme?: string | null;
+      theme_meta?: ThemeMeta; // allow tokens even for slides-only export
+    },
+    opts?: ApiRequestOpts
+  ) =>
     requestWithMeta<ExportResp>("/export", {
       method: "POST",
       body: JSON.stringify(payload),
+      signal: opts?.signal,
+      timeoutMs: opts?.timeoutMs,
+      retries: opts?.retries,
     }),
 
   // Allow theme_meta
-  exportEditor: (payload: {
-    editor: EditorDocOut;
-    theme?: string | null;
-    theme_meta?: ThemeMeta;
-  }) =>
+  exportEditor: (
+    payload: {
+      editor: EditorDocOut;
+      theme?: string | null;
+      theme_meta?: ThemeMeta;
+    },
+    opts?: ApiRequestOpts
+  ) =>
     requestWithMeta<ExportResp>("/export", {
       method: "POST",
       body: JSON.stringify(payload),
+      signal: opts?.signal,
+      timeoutMs: opts?.timeoutMs,
+      retries: opts?.retries,
     }),
 
   // Schemas (optional)
   schema: {
-    deck: () => request<Record<string, unknown>>("/schema/deck"),
-    slide: () => request<Record<string, unknown>>("/schema/slide"),
+    deck: (opts?: ApiRequestOpts) =>
+      request<Record<string, unknown>>("/schema/deck", {
+        method: "GET",
+        signal: opts?.signal,
+        timeoutMs: opts?.timeoutMs,
+        retries: opts?.retries,
+      }),
+    slide: (opts?: ApiRequestOpts) =>
+      request<Record<string, unknown>>("/schema/slide", {
+        method: "GET",
+        signal: opts?.signal,
+        timeoutMs: opts?.timeoutMs,
+        retries: opts?.retries,
+      }),
   },
 
   // Layouts + editor build
-  layouts: (params?: LayoutsQuery) =>
-    requestWithMeta<LayoutLibrary>(`/layouts${qs(params)}`, { method: "GET" }),
-  filterLayouts: (body: LayoutFilterRequest) =>
+  layouts: (params?: LayoutsQuery, opts?: ApiRequestOpts) =>
+    requestWithMeta<LayoutLibrary>(`/layouts${qs(params)}`, {
+      method: "GET",
+      signal: opts?.signal,
+      timeoutMs: opts?.timeoutMs,
+      retries: opts?.retries,
+    }),
+
+  filterLayouts: (body: LayoutFilterRequest, opts?: ApiRequestOpts) =>
     requestWithMeta<{ candidates: string[] }>("/layouts/filter", {
       method: "POST",
       body: JSON.stringify(body),
+      signal: opts?.signal,
+      timeoutMs: opts?.timeoutMs,
+      retries: opts?.retries,
     }),
 
   // NEW: batch recommend (Top-K + image slot needs)
-  recommendLayoutsBatch: (payload: { slides: LayoutRecommendSlideSummary[]; top_k?: number }) =>
+  recommendLayoutsBatch: (payload: { slides: LayoutRecommendSlideSummary[]; top_k?: number }, opts?: ApiRequestOpts) =>
     requestWithMeta<LayoutRecommendBatchResponse>("/layouts/recommend", {
       method: "POST",
       body: JSON.stringify(payload),
+      signal: opts?.signal,
+      timeoutMs: opts?.timeoutMs,
+      retries: opts?.retries,
     }),
 
   // Allow theme_meta in builder so doc carries tokens
@@ -226,7 +289,7 @@ export const api = {
       policy?: "best_fit" | "strict";
       theme_meta?: ThemeMeta;
     },
-    opts?: { idempotencyKey?: string }
+    opts?: ApiRequestOpts
   ) => {
     const headers: HeadersInit = {};
     if (opts?.idempotencyKey) (headers as any)["Idempotency-Key"] = opts.idempotencyKey;
@@ -238,18 +301,31 @@ export const api = {
         policy: payload.policy ? payload.policy : "best_fit",
         ...payload,
       }),
+      signal: opts?.signal,
+      timeoutMs: opts?.timeoutMs,
+      retries: opts?.retries,
     });
   },
 
   // Images
-  generateImages: (payload: ImageGenRequest, opts?: { idempotencyKey?: string }) => {
+  generateImages: (payload: ImageGenRequest, opts?: ApiRequestOpts) => {
     const headers: HeadersInit = {};
     if (opts?.idempotencyKey) (headers as any)["Idempotency-Key"] = opts.idempotencyKey;
     return requestWithMeta<ImageGenResponse>("/images/generate", {
       method: "POST",
       headers,
       body: JSON.stringify(payload),
+      signal: opts?.signal,
+      timeoutMs: opts?.timeoutMs,
+      retries: opts?.retries,
     });
   },
-  imageProvider: () => requestWithMeta<{ provider: string; model?: string }>("/images/provider"),
+
+  imageProvider: (opts?: ApiRequestOpts) =>
+    requestWithMeta<{ provider: string; model?: string }>("/images/provider", {
+      method: "GET",
+      signal: opts?.signal,
+      timeoutMs: opts?.timeoutMs,
+      retries: opts?.retries,
+    }),
 };
