@@ -194,3 +194,20 @@ volumes:
 ### 20) sbt / pdffigures2 build errors
 If you enable the Scala-based figure extractor, install `sbt` (via Coursier) **inside the build stage**.
 By default, the system falls back to Python-based DOCX/PDF extraction and doesn’t require `sbt`.
+
+### 422: media.source literal_error
+**Symptom**
+`Input should be 'asset' or 'external'` for `slides[i].media[j].source`.
+
+**Fix**
+Ensure frontend writes `source: "asset"` for library picks and `source: "external"` for URLs/data URLs. UI-only tags (`"library"|"generated"`) must **not** be sent to backend.
+
+### 422: paragraph string_too_short
+**Symptom**
+Earlier builds required `ParagraphSection.text` to be non-empty.
+
+**Fix**
+Slides may have `meta.sections = null`. When a user deletes the only section, send `meta: { "sections": null }` or omit it. Do not send an empty `paragraph` with `""` text.
+
+### “image unavailable” in preview
+Usually happens when the image URL is not reachable from the browser (e.g., private blob). Library assets should resolve via your asset server. AI images returned as `data:image/png;base64,…` will render inline.

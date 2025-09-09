@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.4.2]
+- Image generation API (`/images/generate`, `/images/provider`) with providers: stub/pexels/openai.
+- Layout library v2 loader with JSON auto-reload + slot-aware scoring.
+- Auto-fit treats a non-empty **title** as one text block.
+- Editor Build now accepts `theme_meta`; Export accepts `theme_meta` with or without editor doc.
+- Media Library Drawer integrates in-drawer AI generation and provider pill.
+- Media items now include `source: "asset" | "external"` for backend validation.
+- Slides may have no text sections (`meta.sections: null`).
+
+
 ## [0.4.1] - 2025-09-03
 ### Added
 - **Assets / Media Library API docs**: `/assets` endpoints documented (list, meta, file). Store tolerates missing/corrupt `index.json` and writes atomically.

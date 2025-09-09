@@ -220,3 +220,23 @@ type TextSection =
 - If preview text doesn’t show: ensure **Save** was clicked (or title blurred), and confirm `slide.meta.sections` contains non‑empty sections.
 - Paragraph sections must have at least 1 character after trimming; empty items will be dropped by `sanitizeSections`.
 - The preview container **must** be `position: relative` (handled by `ActiveSlideStage`).
+
+### Editor Workbench
+- Real-time preview from a debounced editor doc (`useDebouncedEditorDoc`).
+- Tabs: **Content** (edits sections), **Layout** (picker + Auto-fit), **Media**.
+- Auto-fit calls `/layouts/filter` using:
+  - `text_count`: number of `meta.sections` if present, else 1 if legacy bullets exist, else **1 if title is non-empty**, otherwise 0.
+  - `image_count`: current `slide.media.length`.
+
+### Media Library Drawer
+- Opens per-slide with optional `slotIndex` for replace.
+- Top half: extracted assets grid (scrollable).
+- Bottom half: in-drawer **Generate with AI** (uses `/images/generate`).
+  A pill shows the active provider (`/images/provider`).
+- Selecting an item updates:
+  - Backend shape: `media[i].source = "asset" | "external"`.
+  - UI plan tag: `"library" | "external" | "generated"`.
+
+### Image sources
+- “Library” assets → `source: "asset"`.
+- External URLs & AI data URLs → `source: "external"`.

@@ -187,3 +187,9 @@ def _fetch_image_png_bytes(url: str) -> bytes|None:
 The exporter sets the true slide background **and** inserts a back-most rectangle that fills the
 slide. Many importers (e.g., Google Slides) honor the rectangle even when they ignore the slide
 background fill.
+
+- **Server-Timing** spans via `aspan(...)`:
+  - `outline_generate`, `outline_regenerate`
+  - `agent_outline_request`, `agent_regen_request`
+  - `image_enrich_deck`, `image_enrich_slide`
+- Logs include strategy and counts; image provider class is emitted on enrich.
