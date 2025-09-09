@@ -250,3 +250,26 @@ def filter_layouts(req: LayoutFilterRequest):
     scored = sorted(lib.items, key=lambda li: _score_layout(li, text_count, image_count))
     topk = max(1, min(getattr(req, "top_k", 1) or 1, 50))
     return {"candidates": [li.id for li in scored[:topk]]}
+
+@router.get("/layouts/_debug")
+def debug_layouts(reload: bool = Query(False)):
+    lib = get_layout_library(reload=reload)
+    ids = [it.id for it in lib.items]
+    from collections import Counter
+    dup_ids = [i for i, c in Counter(ids).items() if c > 1]
+    try:
+        mtime = LAYOUTS_JSON.stat().st_mtime
+    except FileNotFoundError:
+        mtime = None
+    return {
+        "path": str(LAYOUTS_JSON),
+        "mtime": mtime,
+        "count_items": len(ids),
+        "count_unique_ids": len(set(ids)),
+        "duplicate_ids": dup_ids,
+        "page": lib.page,
+        "page_size": lib.page_size,
+        "total": lib.total,
+        "sample_first5": ids[:5],
+        "sample_last5": ids[-5:],
+    }

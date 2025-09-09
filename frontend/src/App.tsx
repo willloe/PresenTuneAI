@@ -1,4 +1,3 @@
-// App.tsx
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   api,
@@ -86,7 +85,7 @@ export default function App() {
 
   // Derived
   const slides: Deck["slides"] = deck?.slides ?? [];
-  const currentSlide = openLibTarget ? slides[openLibTarget.slide] : null; // ← used by the drawer
+  const currentSlide = openLibTarget ? slides[openLibTarget.slide] : null;
 
   // Toasts
   const { show } = useToast();
@@ -283,19 +282,45 @@ export default function App() {
     }
   }, [deck, editorResp?.editor, theme, show]);
 
-  // Place/replace at an exact slot index
+  // Place/replace at an exact slot index (now includes 'source' metadata)
+  type BackendSource = "asset" | "external";
+  type UiSource = "library" | "external" | "generated" | "empty";
+
   const setImageForSlot = useCallback(
-    (slideIdx: number, slotIdx: number, url: string, alt?: string) => {
+    (
+      slideIdx: number,
+      slotIdx: number,
+      url: string,
+      alt?: string,
+      backendSource?: BackendSource,
+      uiSourceOverride?: UiSource
+    ) => {
       if (!deck) return;
+
+      // --- update deck for backend (send asset|external) ---
       updateSlide(slideIdx, (prev) => {
         const current = Array.isArray(prev.media) ? [...prev.media] : [];
-        const img = { type: "image", url, alt: alt ?? prev.title } as any;
+        const img: any = { type: "image", url, alt: alt ?? prev.title };
+        if (backendSource) img.source = backendSource; // ✅ backend literal
         if (slotIdx < current.length) current[slotIdx] = img;
         else current.push(img);
         return { ...prev, media: current } as any;
       });
+
+      // --- update local plan (map to UI tags) ---
       const slideId = deck.slides[slideIdx]?.id;
-      if (slideId) setSlot(slideId, slotIdx, { source: "library", url, alt });
+      if (slideId) {
+        const uiSource: UiSource =
+          uiSourceOverride ??
+          (backendSource === "asset" ? "library" : "external");
+        setSlot(slideId, slotIdx, {
+          source: uiSource,
+          url,
+          alt: alt ?? deck.slides[slideIdx]?.title,
+        });
+      }
+
+      // any change invalidates prior built editor output
       setEditorResp(null);
     },
     [deck, setSlot, updateSlide]
@@ -432,37 +457,35 @@ export default function App() {
         onClose={() => setOpenLibTarget(null)}
         uploadId={uploadId}
         slotIndex={openLibTarget?.slot ?? null}
-        enableAI = {true}
+        enableAI
         slideTitle={currentSlide?.title}
         slotCount={Math.max(0, currentSlide?.media?.length ?? 0)}
         onSelect={(url) => {
           if (!openLibTarget) return;
           const { slide, slot } = openLibTarget;
-          if (slot === null || slot === undefined) {
-            // Append
-            updateSlide(slide, (prev) => {
-              const current = Array.isArray(prev.media) ? [...prev.media] : [];
-              if (current.some((m: any) => m?.url === url)) return prev;
-              return { ...prev, media: [...current, { type: "image", url, alt: prev.title }] } as any;
-            });
-          } else {
-            // Place at slot
-            setImageForSlot(slide, slot, url);
-          }
+          const idx = slot ?? Number.MAX_SAFE_INTEGER; // append if null
+          // External URL (or extracted image URL)
+          setImageForSlot(slide, idx, url, undefined, "external", "external");
           setOpenLibTarget(null);
         }}
-        onSelectAsset={(_, url, slotIndex) => {
+        onSelectAsset={(asset: any, url, slotIndex) => {
           if (!openLibTarget) return;
           const { slide } = openLibTarget;
-          if (slotIndex === null || slotIndex === undefined) {
-            updateSlide(slide, (prev) => {
-              const current = Array.isArray(prev.media) ? [...prev.media] : [];
-              if (current.some((m: any) => m?.url === url)) return prev;
-              return { ...prev, media: [...current, { type: "image", url, alt: prev.title }] } as any;
-            });
-          } else {
-            setImageForSlot(slide, slotIndex, url);
-          }
+          const idx = slotIndex ?? openLibTarget.slot ?? Number.MAX_SAFE_INTEGER;
+
+          // AI images from the in-drawer generator use id="__ai__"
+          const isAI = asset?.id === "__ai__";
+
+          // Backend: AI images are data/external → "external"
+          // UI plan: tag AI as "generated", library assets as "library"
+          setImageForSlot(
+            slide,
+            idx,
+            url,
+            undefined,
+            isAI ? "external" : "asset",
+            isAI ? "generated" : "library"
+          );
           setOpenLibTarget(null);
         }}
       />
