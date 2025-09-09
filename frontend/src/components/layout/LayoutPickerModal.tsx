@@ -60,13 +60,9 @@ export default function LayoutPickerModal({
                 Auto-fit
               </Button>
             )}
-            <button
-              className="rounded-md border px-2 py-1 text-sm hover:bg-gray-50"
-              onClick={onClose}
-              type="button"
-            >
+            <Button size="sm" onClick={onClose} title="Close">
               Close
-            </button>
+            </Button>
           </div>
         </header>
 

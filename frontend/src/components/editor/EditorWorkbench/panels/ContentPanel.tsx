@@ -4,6 +4,7 @@ import BlocksEditor from "../../../slide/BlocksEditor";
 import { sectionsFromSlide, sanitizeSections } from "../../../slide/sections";
 import type { TextSection } from "../../../../types/deck";
 import { applySectionsToSlide } from "../../../../utils/textBridge";
+import Button from "../../../ui/Button";
 
 type Slide = Deck["slides"][number];
 
@@ -59,16 +60,6 @@ export default function ContentPanel({
     setSectionsLocal(sectionsFromSlide(slide));
   }
 
-  const saveBtnClass =
-    "rounded-md px-3 py-1 text-sm transition " +
-    (canSave
-      ? "bg-black text-white hover:opacity-90"
-      : "bg-gray-200 text-gray-500 cursor-not-allowed");
-
-  const cancelBtnClass =
-    "rounded-md border px-3 py-1 text-sm transition " +
-    (isDirty && !saving ? "hover:bg-gray-50" : "opacity-50 cursor-not-allowed");
-
   return (
     <div className="space-y-4">
       <div>
@@ -90,12 +81,12 @@ export default function ContentPanel({
       />
 
       <div className="flex gap-2">
-        <button className={saveBtnClass} onClick={save} disabled={!canSave}>
+        <Button variant="solid" size="sm" onClick={save} disabled={!canSave}>
           {saving ? "Saving…" : "Save"}
-        </button>
-        <button className={cancelBtnClass} onClick={cancel} disabled={!isDirty || saving}>
+        </Button>
+        <Button size="sm" onClick={cancel} disabled={!isDirty || saving}>
           Cancel
-        </button>
+        </Button>
       </div>
     </div>
   );

@@ -54,7 +54,9 @@ export default function ImageGenModal({
         { prompt: prompt.trim(), style, size, n: Math.max(1, Math.min(8, n)) },
         { idempotencyKey: safeUUID() }
       );
-      const urls = (data.assets || []).map((a: ImageGenResponse["assets"][number]) => a.url).filter(Boolean);
+      const urls = (data.assets || [])
+        .map((a: ImageGenResponse["assets"][number]) => a.url)
+        .filter(Boolean) as string[];
       setResults(urls);
       if (!urls.length) setErr("No images returned.");
     } catch (e: any) {
@@ -78,7 +80,9 @@ export default function ImageGenModal({
       {variant === "modal" ? (
         <div className="p-4 border-b flex items-center justify-between">
           <div className="font-medium">Generate image with AI</div>
-          <button onClick={onClose} className="text-sm hover:opacity-70">Close</button>
+          <Button size="xs" onClick={onClose} aria-label="Close image generator">
+            Close
+          </Button>
         </div>
       ) : (
         <div className="px-4 pt-2 pb-3 border-t">

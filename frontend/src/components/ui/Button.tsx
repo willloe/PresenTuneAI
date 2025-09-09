@@ -1,12 +1,17 @@
-import type { ButtonHTMLAttributes } from "react";
+import * as React from "react";
+import { type HTMLMotionProps } from "framer-motion";
+import { M } from "./Motion";
 import { cn } from "./cn";
 
 type Variant = "solid" | "outline" | "ghost" | "danger";
 type Size = "xs" | "sm" | "md";
 
-export type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
+export type ButtonProps = Omit<HTMLMotionProps<"button">, "ref"> & {
   variant?: Variant;
   size?: Size;
+  fullWidth?: boolean;
+  /** If provided, forces a square button of N px (useful for icon buttons). */
+  square?: number;
 };
 
 const base =
@@ -25,6 +30,42 @@ const variants: Record<Variant, string> = {
   danger: "border border-red-500 text-red-600 hover:bg-red-50",
 };
 
-export default function Button({ variant = "outline", size = "sm", className, ...rest }: ButtonProps) {
-  return <button className={cn(base, sizes[size], variants[variant], className)} {...rest} />;
-}
+const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
+  (
+    {
+      variant = "outline",
+      size = "sm",
+      fullWidth = false,
+      square,
+      className,
+      whileTap = { scale: 0.98 },
+      whileHover = { y: -1 },
+      style,
+      ...rest
+    },
+    ref
+  ) => {
+    const dimStyle =
+      typeof square === "number" ? { width: square, height: square } : undefined;
+
+    return (
+      <M.button
+        ref={ref}
+        whileTap={whileTap}
+        whileHover={whileHover}
+        className={cn(
+          base,
+          sizes[size],
+          variants[variant],
+          fullWidth ? "w-full" : "",
+          className
+        )}
+        style={{ ...dimStyle, ...style }}
+        {...rest}
+      />
+    );
+  }
+);
+
+Button.displayName = "Button";
+export default Button;

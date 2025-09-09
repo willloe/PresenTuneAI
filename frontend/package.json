@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "@azure/msal-browser": "^4.21.1",
+    "canvas-confetti": "^1.9.3",
     "framer-motion": "^12.23.12",
     "lucide-react": "^0.543.0",
     "react": "^19.1.1",

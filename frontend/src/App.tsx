@@ -451,6 +451,8 @@ export default function App() {
           currentStep={step}
           onNext={next}
           nextLabel="Continue to Outline"
+          /* 👇 prevent auto-scroll on first visit to /app */
+          autoScroll={false}
         >
           <UploadSection uploadErr={uploadErr} uploadMeta={uploadMeta} onPick={onPick} />
         </PhaseContainer>

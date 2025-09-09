@@ -3,6 +3,7 @@ import type { ApiMeta } from "../lib/api";
 import SlideCard from "./slide/SlideCard";
 import ExportBanner from "./preview/ExportBanner";
 import DeckStats from "./preview/DeckStats";
+import Button from "./ui/Button";
 
 type Props = {
   deck: Deck | null;
@@ -111,22 +112,19 @@ export default function Preview({
 
               <div className="flex items-center gap-2 pl-2 flex-wrap">
                 {onOpenMediaLibrary && !!uploadId && (
-                  <button
-                    className="rounded-lg border px-3 py-1 text-sm hover:bg-gray-50"
-                    onClick={() => onOpenMediaLibrary(i)}
-                  >
+                  <Button size="xs" onClick={() => onOpenMediaLibrary(i)}>
                     Add from Library
-                  </button>
+                  </Button>
                 )}
 
                 {onOpenMediaLibrarySlot && !!uploadId && deficit > 0 && (
-                  <button
-                    className="rounded-lg border px-3 py-1 text-sm hover:bg-gray-50"
+                  <Button
+                    size="xs"
                     onClick={() => onOpenMediaLibrarySlot(i, have /* next empty slot */)}
                     title="Fill the next empty image slot for this slide"
                   >
                     Fill next image slot ({deficit} needed)
-                  </button>
+                  </Button>
                 )}
 
                 {deficit > 0 && (

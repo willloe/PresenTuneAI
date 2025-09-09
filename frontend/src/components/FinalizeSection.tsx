@@ -6,9 +6,11 @@ import { usePhases } from "../hooks/usePhases";
 import { openInGoogleSlides } from "../integrations/externalEditor";
 import { ensureGoogleDriveToken } from "../integrations/oauth/google";
 import { getConfig } from "../config";
+import Celebrate from "./ui/Celebrate";
 
 import { themeKeyToMeta, type ThemeMeta } from "../theme/meta";
 import { THEMES, type ThemeKey } from "../theme/themes";
+import Button from "./ui/Button";
 
 type Props = {
   editorResp: EditorBuildResponse | null;
@@ -62,6 +64,16 @@ export default function FinalizeSection({ editorResp, onOpenWorkbench }: Props) 
   const [copied, setCopied] = useState(false);
   const [opening, setOpening] = useState<null | "google">(null);
   const [googleConfigured, setGoogleConfigured] = useState<boolean>(true);
+
+  // subtle ring + celebration when export becomes available
+  const [celebrate, setCelebrate] = useState(false);
+  useEffect(() => {
+    if (exportInfo) {
+      setCelebrate(true);
+      const t = setTimeout(() => setCelebrate(false), 1300);
+      return () => clearTimeout(t);
+    }
+  }, [exportInfo]);
 
   useEffect(() => {
     (async () => {
@@ -138,6 +150,9 @@ export default function FinalizeSection({ editorResp, onOpenWorkbench }: Props) 
 
   return (
     <div className="space-y-3">
+      {/* celebration overlay – simple, respects reduced motion inside the component */}
+      <Celebrate fire={celebrate} />
+
       <div className="flex items-center justify-between rounded-xl border bg-white p-3 text-sm">
         <div className="flex items-center gap-3 flex-wrap">
           <span className={ready ? "text-green-700" : "text-gray-700"}>{statusLabel}</span>
@@ -159,24 +174,24 @@ export default function FinalizeSection({ editorResp, onOpenWorkbench }: Props) 
 
         <div className="flex items-center gap-2">
           {normalizedEditor && (
-            <button
+            <Button
+              variant="outline"
               onClick={onOpenWorkbench}
-              className="rounded-xl px-3 py-1 border hover:bg-gray-50"
               title="Open the editor workbench"
+              className="px-3 py-1"
             >
               Open Workbench
-            </button>
+            </Button>
           )}
-          <button
+          <Button
+            variant="solid"
             onClick={runExport}
             disabled={exporting || !ready}
-            className={`rounded-xl px-4 py-2 text-white ${
-              exporting || !ready ? "bg-gray-400 cursor-not-allowed" : "bg-black hover:opacity-90"
-            }`}
             title={!ready ? "Build the editor doc first" : "Export deck"}
+            className="px-4 py-2"
           >
             {exporting ? "Exporting…" : exportInfo ? "Re-export" : "Export"}
-          </button>
+          </Button>
         </div>
       </div>
 
@@ -209,7 +224,7 @@ export default function FinalizeSection({ editorResp, onOpenWorkbench }: Props) 
 
       {normalizedEditor && (
         <div
-          className="themed-card p-3 anim-in"
+          className={`themed-card p-3 anim-in ${celebrate ? "ring-2 ring-black/30" : ""}`}
           style={{ fontFamily: "var(--font-body)", letterSpacing: "var(--font-tracking)" }}
         >
           <EditorPreview
@@ -278,17 +293,19 @@ export default function FinalizeSection({ editorResp, onOpenWorkbench }: Props) 
               Download
             </a>
 
-            <button
-              className="inline-flex items-center text-xs rounded-md border px-2 py-1 hover:bg-gray-50 disabled:opacity-50"
+            <Button
+              variant="outline"
+              size="xs"
               disabled={exporting || !lastExport.url}
               onClick={() => lastExport.url && copyUrl(lastExport.url)}
               title={exporting ? "Export in progress…" : "Copy download URL"}
             >
               {copied ? "Copied!" : "Copy URL"}
-            </button>
+            </Button>
 
-            <button
-              className="inline-flex items-center text-xs rounded-md border px-2 py-1 hover:bg-gray-50 disabled:opacity-50"
+            <Button
+              variant="outline"
+              size="xs"
               disabled={exporting || !lastExport.url || opening !== null || !googleConfigured}
               title={
                 exporting
@@ -317,7 +334,7 @@ export default function FinalizeSection({ editorResp, onOpenWorkbench }: Props) 
               }}
             >
               {opening === "google" ? "Opening…" : "Open in Google Slides"}
-            </button>
+            </Button>
           </div>
         </div>
       )}

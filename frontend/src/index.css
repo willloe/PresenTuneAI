@@ -1,4 +1,13 @@
+/* Tailwind v4 */
 @import "tailwindcss";
+
+/* Tailwind v3 users: uncomment these and remove the @import above
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+*/
+
+/* Prefer-reduced-motion: respect user settings and override smooth scroll */
 @media (prefers-reduced-motion: reduce) {
   * {
     animation-duration: 0.01ms !important;
@@ -8,10 +17,81 @@
   }
 }
 
-/* Smoother font rendering on dark bg */
+/* Baseline document */
 :root {
   color-scheme: light dark;
+  /* sensible fallbacks used before ThemeRoot hydrates */
+  --app-bg: #0f172a;    /* slate-900-ish */
+  --surface: #ffffff;
+  --border: #e5e7eb;
 }
+
 html, body, #root {
   min-height: 100%;
+}
+
+/* Smooth scroll for keyboard/nav focus (overridden by reduced-motion above) */
+html:focus-within { scroll-behavior: smooth; }
+
+/* Crisp text on dark surfaces (harmless in light mode) */
+body {
+  background: var(--app-bg);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Subtle “pop in” utility used in FinalizeSection */
+.anim-in {
+  animation: cardIn 380ms cubic-bezier(.2,.8,.2,1) both;
+}
+@keyframes cardIn {
+  from { opacity: 0; transform: translateY(6px) scale(.995); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+/* Optional themed card surface */
+.themed-card {
+  border-radius: 1rem;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  box-shadow: 0 6px 16px rgba(0,0,0,.06);
+}
+
+/* Nice selection color */
+::selection {
+  background: rgba(17, 24, 39, 0.18); /* black/gray-900 at ~18% */
+}
+
+/* Hide scrollbars for horizontal chip row */
+.no-scrollbar {
+  -ms-overflow-style: none; /* IE/Edge */
+  scrollbar-width: none;    /* Firefox */
+}
+.no-scrollbar::-webkit-scrollbar { display: none; }
+
+/* Animated ink progress bar (subtle) */
+.ink-bar {
+  background: linear-gradient(
+    90deg,
+    #111 0%,
+    #1f2937 50%,
+    #111 100%
+  );
+  background-size: 200% 100%;
+  animation: inkShift 4s linear infinite;
+  box-shadow: 0 0 0 1px rgba(0,0,0,.05);
+}
+@keyframes inkShift {
+  from { background-position: 0% 0; }
+  to   { background-position: 200% 0; }
+}
+/* Respect reduced motion (your global rule already helps; this is a guard) */
+@media (prefers-reduced-motion: reduce) {
+  .ink-bar { animation: none; }
+}
+
+@keyframes pbShimmer {
+  0%   { transform: translateX(-60%); opacity: .0; }
+  40%  { opacity: .8; }
+  100% { transform: translateX(0%);  opacity: 0; }
 }

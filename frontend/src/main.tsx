@@ -5,6 +5,7 @@ import App from "./App"; // now just the app flow
 import ErrorBoundary from "./components/ErrorBoundary";
 import { ToastProvider } from "./components/ui/Toast";
 import GlobalErrorCatcher from "./components/GlobalErrorCatcher";
+import { MotionProvider } from "./components/ui/Motion";
 import Landing from "./components/Landing";
 import "./index.css";
 
@@ -35,7 +36,9 @@ function RootRouter() {
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
     <ToastProvider>
-      <RootRouter />
-    </ToastProvider>
-  </React.StrictMode>
-);
+            <MotionProvider>
+              <RootRouter />
+            </MotionProvider>
+          </ToastProvider>
+        </React.StrictMode>
+      );
