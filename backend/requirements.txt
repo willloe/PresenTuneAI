@@ -13,3 +13,4 @@ pdfplumber
 python-docx
 openai>=1.30.0
 httpx>=0.25
+requests>=2.31.0

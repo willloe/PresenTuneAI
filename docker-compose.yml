@@ -1,22 +1,45 @@
 services:
   backend:
-    # Will be built in Step 2
     build:
       context: ./backend
       dockerfile: Dockerfile
     env_file: .env
-    ports:
-      - "8000:8000"
+    environment:
+      GROBID_ENABLED: "true"
+      GROBID_URL: "http://grobid:8070"
+      GROBID_TIMEOUT: "60"
+    ports: ["8000:8000"]
     volumes:
       - ./backend/data:/app/data
       - ./backend/app/static:/app/app/static:ro
+    depends_on:
+      grobid:
+        condition: service_started
     healthcheck:
       test: ["CMD-SHELL", "python -c \"import urllib.request,sys; sys.exit(0) if urllib.request.urlopen('http://localhost:8000/v1/health', timeout=2).status==200 else sys.exit(1)\""]
       interval: 5s
       timeout: 3s
       retries: 12
       start_period: 10s
-    # command: ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+
+  grobid:
+    # If you only need fulltext extraction, this lean image is recommended:
+    image: grobid/grobid:0.8.2-crf
+    # For DL features, switch to: grobid/grobid:0.8.2-full
+    ports:
+      - "8070:8070"   # service API
+      # - "8071:8071" # optional to expose health/metrics externally
+    volumes:
+      - grobid-models:/opt/grobid/grobid-home
+    # Give it more warm-up time; probe the correct port:
+    healthcheck:
+      test: ["CMD", "bash", "-lc", "exec 3<>/dev/tcp/127.0.0.1/8071 && printf 'GET /api/isalive HTTP/1.1\r\nHost: localhost\r\n\r\n' >&3 && dd bs=1 count=2048 <&3 2>/dev/null | grep -qi true"]
+      interval: 5s
+      timeout: 5s
+      retries: 80
+      start_period: 120s
+    restart: unless-stopped
+    # Note: No need for depends_on here
 
   frontend:
     build:
@@ -27,3 +50,6 @@ services:
     ports: ["5173:80"]
     depends_on:
       - backend
+
+volumes:
+  grobid-models:
