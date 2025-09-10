@@ -27,8 +27,8 @@ from app.models.schemas.upload import ParsedPreview
 # Helpers
 # ────────────────────────────────────────────────────────────────────────────────
 
-def _ensure_dir(path: str) -> None:
-    os.makedirs(path, exist_ok=True)
+def _ensure_dir(path: str | Path) -> None:
+    os.makedirs(str(path), exist_ok=True)
 
 def _sha256_bytes(b: bytes) -> str:
     h = hashlib.sha256(); h.update(b); return h.hexdigest()
@@ -46,6 +46,29 @@ def _write_bytes(out_dir: str, upload_id: str, data: bytes, ext: str) -> Tuple[s
         f.write(data)
     rel_path = str(Path("data") / "uploads" / upload_id / "assets" / final_name).replace("\\", "/")
     return final_name, rel_path
+
+def _to_dict(obj):
+    # Pydantic v2
+    if hasattr(obj, "model_dump") and callable(getattr(obj, "model_dump")):
+        return obj.model_dump()
+    # Pydantic v1
+    if hasattr(obj, "dict") and callable(getattr(obj, "dict")):
+        return obj.dict()
+    # Fallback
+    if hasattr(obj, "__dict__"):
+        return dict(obj.__dict__)
+    return obj
+
+def _write_json(path: Path, data) -> None:
+    _ensure_dir(path.parent)
+    path.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
+
+def _append_note(path: Path, note: str) -> None:
+    try:
+        with path.open("a", encoding="utf-8") as f:
+            f.write(note + "\n")
+    except Exception:
+        pass
 
 
 # ────────────────────────────────────────────────────────────────────────────────
@@ -68,8 +91,8 @@ def _extract_docx_images(src: Path, out_dir: str, upload_id: str) -> List[Asset]
                 if rel.reltype != RT.IMAGE:
                     continue
 
-                part = rel.target_part                       # image part
-                data: bytes = part.blob                      # raw bytes
+                part = rel.target_part
+                data: bytes = part.blob
                 # ext from part name or content-type
                 ext = Path(str(part.partname)).suffix.lower().lstrip(".")
                 if not ext:
@@ -78,13 +101,12 @@ def _extract_docx_images(src: Path, out_dir: str, upload_id: str) -> List[Asset]
                 if ext == "jpeg":
                     ext = "jpg"
 
-                # Try to read dimensions
+                # dimensions (best-effort; EMF/WMF/SVG may fail)
                 w = h = 0
                 try:
                     with Image.open(io.BytesIO(data)) as im:
                         w, h = im.size
                 except Exception:
-                    # If Pillow can't read (e.g., EMF/WMF/SVG), keep dims 0
                     pass
 
                 final_name, rel_path = _write_bytes(out_dir, upload_id, data, ext)
@@ -104,7 +126,7 @@ def _extract_docx_images(src: Path, out_dir: str, upload_id: str) -> List[Asset]
             except Exception:
                 continue
     except Exception:
-        # If python-docx fails to load, we’ll try the zip fallback next
+        # fall through to zip scan
         pass
 
     # ── Pass 2: fallback ZIP scan of word/media if nothing found
@@ -115,23 +137,18 @@ def _extract_docx_images(src: Path, out_dir: str, upload_id: str) -> List[Asset]
                     lower = name.lower()
                     if not lower.startswith("word/media/"):
                         continue
-
-                    # pull any file in media (don’t over-filter extensions)
                     try:
                         data = z.read(name)
                     except Exception:
                         continue
 
-                    # ext by filename; normalize
                     ext = Path(lower).suffix.lstrip(".")
                     if ext == "jpeg":
                         ext = "jpg"
                     if not ext:
-                        # last-ditch: guess by sniffing
                         guessed = (mimetypes.guess_extension(name) or "").lstrip(".")
                         ext = (guessed or "bin").lower()
 
-                    # Try to read dimensions
                     w = h = 0
                     try:
                         with Image.open(io.BytesIO(data)) as im:
@@ -169,10 +186,10 @@ def _extract_pdf_images_mupdf(src: Path, out_dir: str, upload_id: str) -> List[A
         with fitz.open(str(src)) as doc:
             for page in doc:
                 for img in page.get_images(full=True):
-                    xref = img[0]  # (xref, smask, w, h, bpc, colorspace, ..., filter)
+                    xref = img[0]
                     try:
                         pix = fitz.Pixmap(doc, xref)
-                        # Convert CMYK/gray/with-alpha to RGB to ensure PNG is fine
+                        # Normalize to RGB if needed
                         if pix.n > 4 or pix.alpha:
                             pix = fitz.Pixmap(fitz.csRGB, pix)
                         data = pix.tobytes("png")
@@ -205,32 +222,22 @@ def _extract_pdf_images_mupdf(src: Path, out_dir: str, upload_id: str) -> List[A
 # ────────────────────────────────────────────────────────────────────────────────
 
 def _which_pdffigures2() -> Optional[str]:
-    # prefer explicit env var; else search PATH
     return os.environ.get("PDFFIGURES2_BIN") or shutil.which("pdffigures2")
 
 def _parse_pdffigures2_json_meta(json_path: Path) -> Dict[str, Dict]:
-    """
-    Parse <base>.json from pdffigures2 and map figure image filename -> {caption, bbox}.
-    Be liberal with schema: handle caption as dict or string, and different region keys.
-    """
     info: Dict[str, Dict] = {}
     try:
         data = json.loads(json_path.read_text(encoding="utf-8"))
         if not isinstance(data, list):
             return info
         for fig in data:
-            # filename
             render = fig.get("renderURL") or fig.get("renderUrl") or fig.get("renderUri") or fig.get("imageURL")
-            name = None
-            if isinstance(render, str):
-                name = Path(render).name
-            # caption
+            name = Path(render).name if isinstance(render, str) else None
             cap = fig.get("caption") or fig.get("figCaption") or fig.get("captionText")
             if isinstance(cap, dict):
                 caption = cap.get("text") or cap.get("raw") or None
             else:
                 caption = str(cap).strip() if cap else None
-            # bbox
             reg = fig.get("region") or fig.get("figureRegion") or fig.get("regionBoundary") or {}
             try:
                 x1 = float(reg.get("x1", 0)); y1 = float(reg.get("y1", 0))
@@ -270,7 +277,6 @@ def _extract_pdf_figures_pdffigures2(src: Path, out_dir: str, upload_id: str) ->
             with Image.open(p) as im:
                 w, h = im.size
             data = p.read_bytes()
-
             fig_meta = meta_map.get(p.name, {})
             caption = fig_meta.get("caption")
             bbox = fig_meta.get("bbox")
@@ -292,7 +298,7 @@ def _extract_pdf_figures_pdffigures2(src: Path, out_dir: str, upload_id: str) ->
 
 
 # ────────────────────────────────────────────────────────────────────────────────
-# Public: Unified extraction
+# Public: Unified extraction (persists assets.json)
 # ────────────────────────────────────────────────────────────────────────────────
 
 def extract_images(
@@ -306,6 +312,7 @@ def extract_images(
     """
     - .docx → images from word/media/*
     - .pdf  → MuPDF rasters (+ pdffigures2 figures if enabled)
+    Also writes data/uploads/<upload_id>/assets.json (deduped).
     """
     src = Path(file_path)
     suffix = src.suffix.lower()
@@ -324,19 +331,28 @@ def extract_images(
     else:
         return []
 
-    if not dedup:
-        return found
+    final_assets = found
+    if dedup:
+        unique: Dict[str, Asset] = {}
+        for a in found:
+            key = a.checksum or f"{a.width}x{a.height}:{a.filename}"
+            if key not in unique:
+                unique[key] = a
+        final_assets = list(unique.values())
 
-    unique: Dict[str, Asset] = {}
-    for a in found:
-        key = a.checksum or f"{a.width}x{a.height}:{a.filename}"
-        if key not in unique:
-            unique[key] = a
-    return list(unique.values())
+    # Persist: assets.json at upload root
+    try:
+        upload_root = Path(out_dir).resolve().parent  # .../uploads/<upload_id>
+        _write_json(upload_root / "assets.json", [_to_dict(a) for a in final_assets])
+        _append_note(upload_root / "README.txt", "Assets metadata written to assets.json")
+    except Exception:
+        pass
+
+    return final_assets
 
 
 # ────────────────────────────────────────────────────────────────────────────────
-# Text extraction (unchanged)
+# Text extraction (+ persistence to parsed_preview.json & parsed.json)
 # ────────────────────────────────────────────────────────────────────────────────
 
 def _read_pdf(path: Path) -> Tuple[str, int]:
@@ -356,7 +372,18 @@ def _read_docx(path: Path) -> Tuple[str, int]:
         text = "\n".join(p.text for p in doc.paragraphs if p.text)
         return text, 0
 
-def parse_file(path: Path, content_type: str | None) -> ParsedPreview:
+def parse_file(
+    path: Path,
+    content_type: str | None,
+    *,
+    upload_root: str | Path | None = None,
+) -> ParsedPreview:
+    """
+    Parse file and persist:
+      - parsed_preview.json (lightweight preview; **no full text**)
+      - parsed.json (FULL text embedded in JSON)
+    Files are written into data/uploads/<upload_id>/ when upload_root is provided.
+    """
     with span("parse_file", file=str(path), content_type=content_type or "unknown"):
         path = Path(path)
         ext = path.suffix.lower()
@@ -371,5 +398,44 @@ def parse_file(path: Path, content_type: str | None) -> ParsedPreview:
                 text = path.read_text(errors="ignore"); kind = "text"
 
         text = (text or "").strip()
-        return ParsedPreview(kind=kind, pages=pages, text=text,
-                             text_length=len(text), text_preview=text[:1000])
+        preview = ParsedPreview(
+            kind=kind,
+            pages=pages,
+            text=text,
+            text_length=len(text),
+            text_preview=text[:1000]
+        )
+
+        # Work out upload root target
+        root_dir: Optional[Path] = Path(upload_root).resolve() if upload_root else None
+        if root_dir is None:
+            # Best-effort inference: look for .../uploads/<id>/...
+            for parent in path.resolve().parents:
+                if parent.name and parent.parent and parent.parent.name == "uploads":
+                    root_dir = parent
+                    break
+
+        try:
+            if root_dir:
+                # Lightweight preview file
+                preview_payload = {
+                    "kind": preview.kind,
+                    "pages": preview.pages,
+                    "text_preview": preview.text_preview,
+                    "text_length": preview.text_length,
+                }
+                _write_json(root_dir / "parsed_preview.json", preview_payload)
+
+                # Full-fat parsed file: embed the entire text
+                full_payload = {
+                    "kind": preview.kind,
+                    "pages": preview.pages,
+                    "text": text,
+                    "text_length": preview.text_length
+                }
+                _write_json(root_dir / "parsed.json", full_payload)
+        except Exception:
+            # Non-fatal; preserve existing behavior
+            pass
+
+        return preview

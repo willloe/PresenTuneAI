@@ -2,6 +2,8 @@ from fastapi import APIRouter, UploadFile, File, HTTPException, Request, Depends
 from uuid import uuid4
 from pathlib import Path
 from pydantic import BaseModel as PydModel
+from datetime import datetime, timezone
+import json
 
 from app.core.config import settings
 from app.core.telemetry import aspan, span
@@ -28,10 +30,10 @@ async def upload(request: Request, response: Response, file: UploadFile = File(.
         raise HTTPException(400, "Missing filename")
 
     limit = settings.MAX_UPLOAD_MB * 1024 * 1024
-    base_dir: Path = settings.STORAGE_DIR  # expect: data/uploads
+    base_dir: Path = settings.STORAGE_DIR  # expects: data/uploads
     base_dir.mkdir(parents=True, exist_ok=True)
 
-    # Per-upload directory so the PDF and extracted assets live together
+    # Per-upload directory so the source file, parsed JSON, and extracted assets live together
     upload_id = uuid4().hex
     upload_dir = base_dir / upload_id
     upload_dir.mkdir(parents=True, exist_ok=True)
@@ -57,7 +59,7 @@ async def upload(request: Request, response: Response, file: UploadFile = File(.
                 f.write(chunk)
         await file.seek(0)
 
-    # --- Parse text/pages (existing logic)
+    # --- Parse text/pages
     content_type = file.content_type or "application/octet-stream"
     with span("parse_file_endpoint", file=str(dest_path), content_type=content_type):
         raw = parse_file(dest_path, content_type)
@@ -72,6 +74,29 @@ async def upload(request: Request, response: Response, file: UploadFile = File(.
     else:
         parsed = ParsedPreview()
 
+    # Persist parsed text & preview JSON alongside the upload
+    try:
+        # Full text (handy for quick inspection)
+        (upload_dir / "parsed_text.txt").write_text(parsed.text or "", encoding="utf-8")
+
+        # Parsed preview JSON (kind/pages/length/preview)
+        (upload_dir / "parsed_preview.json").write_text(
+            json.dumps(
+                {
+                    "kind": parsed.kind,
+                    "pages": parsed.pages,
+                    "text_length": parsed.text_length,
+                    "text_preview": parsed.text_preview,
+                },
+                ensure_ascii=False,
+                indent=2,
+            ),
+            encoding="utf-8",
+        )
+    except Exception:
+        # Don't fail the request if disk write hiccups
+        pass
+
     # --- Extract images (soft-fail; upload should still succeed)
     assets_dir = upload_dir / "assets"
     new_assets = []
@@ -82,11 +107,11 @@ async def upload(request: Request, response: Response, file: UploadFile = File(.
             upload_id,
             use_pdffigures2=settings.USE_PDFFIGURES2,
         )
+        # NOTE: extract_images() already writes `extracted_images.json` in `assets_dir`
     except Exception:
-        # You can log this with your telemetry/logging if desired
         new_assets = []
 
-    # Merge & persist index.json (idempotent)
+    # Merge & persist index.json for assets (idempotent)
     try:
         existing = load_assets(upload_id)
         by_id = {a.id: a for a in existing}
@@ -95,6 +120,25 @@ async def upload(request: Request, response: Response, file: UploadFile = File(.
         save_assets(upload_id, list(by_id.values()))
     except Exception:
         # Don’t block response if the JSON index has an issue
+        pass
+
+    # Lightweight manifest for the whole upload (source + parsed + assets)
+    try:
+        manifest = {
+            "upload_id": upload_id,
+            "filename": file.filename,
+            "size": size,
+            "content_type": content_type,
+            "source_path": str(dest_path),
+            "parsed_preview_path": str(upload_dir / "parsed_preview.json"),
+            "parsed_text_path": str(upload_dir / "parsed_text.txt"),
+            "assets_dir": str(assets_dir),
+            "assets_index_path": str(assets_dir / "index.json"),            # from save_assets()
+            "extracted_images_index": str(assets_dir / "extracted_images.json"),  # from extract_images()
+            "created_at": datetime.now(timezone.utc).isoformat(),
+        }
+        (upload_dir / "manifest.json").write_text(json.dumps(manifest, indent=2), encoding="utf-8")
+    except Exception:
         pass
 
     # Expose upload_id to the frontend without changing your schema
