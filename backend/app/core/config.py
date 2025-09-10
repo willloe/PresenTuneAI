@@ -74,6 +74,12 @@ class Settings(BaseSettings):
     # ── Observability ────────────────────────────────────────────────────────────
     TIMING_ALLOW_ORIGIN: str = "*"
 
+    # ── NEW: Parsing (GROBID) ───────────────────────────────────────────────────
+    GROBID_ENABLED: bool = True
+    # e.g. "http://grobid:8070" in docker-compose; "http://localhost:8070" locally
+    GROBID_URL: Optional[str] = "http://grobid:8070"
+    GROBID_TIMEOUT: int = 30  # seconds
+
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",
@@ -114,6 +120,25 @@ class Settings(BaseSettings):
             return None
         return v.strip() or None
 
+    # NEW: normalize GROBID_URL (strip/ensure scheme/remove trailing slash)
+    @field_validator("GROBID_URL")
+    @classmethod
+    def _normalize_grobid_url(cls, v: Optional[str]) -> Optional[str]:
+        if not v:
+            return None
+        v = v.strip().rstrip("/")
+        if not (v.startswith("http://") or v.startswith("https://")):
+            v = "http://" + v
+        return v
+
+    # NEW: guard timeout
+    @field_validator("GROBID_TIMEOUT")
+    @classmethod
+    def _positive_timeout(cls, v: int) -> int:
+        if v <= 0:
+            raise ValueError("GROBID_TIMEOUT must be > 0")
+        return v
+
     @model_validator(mode="after")
     def _auth_require_token(self) -> "Settings":
         if self.AUTH_ENABLED and not (self.API_TOKEN and self.API_TOKEN.strip()):
@@ -143,6 +168,13 @@ class Settings(BaseSettings):
         if self.FEATURE_IMAGE_API and prov == "pexels":
             if not (self.PEXELS_API_KEY and self.PEXELS_API_KEY.strip()):
                 raise ValueError("IMAGE_PROVIDER=pexels requires PEXELS_API_KEY to be set.")
+        return self
+
+    # NEW: only require URL if enabled (don’t ping at startup to keep boot fast)
+    @model_validator(mode="after")
+    def _grobid_requirements(self) -> "Settings":
+        if self.GROBID_ENABLED and not self.GROBID_URL:
+            raise ValueError("GROBID_ENABLED=true requires GROBID_URL to be set.")
         return self
 
 
