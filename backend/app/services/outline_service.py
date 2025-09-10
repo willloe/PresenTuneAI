@@ -1,8 +1,10 @@
+# app/services/outline_service.py
 from __future__ import annotations
-import uuid, logging, re
+import uuid, logging, re, json
 from dataclasses import dataclass
-from typing import List
+from typing import List, Dict, Any, Optional
 from datetime import datetime
+from pathlib import Path
 
 import httpx
 from fastapi import HTTPException
@@ -56,6 +58,51 @@ _DEFAULT_HEADINGS = [
     "Milestones", "Risks & Mitigations", "Resources", "Metrics", "Next Steps",
 ]
 
+# ---------- small disk helpers ----------
+def _uploads_root() -> Path:
+    # Expect settings.STORAGE_DIR → data/uploads
+    # If STORAGE_DIR already points to data/uploads, we use it as-is.
+    return Path(settings.STORAGE_DIR)
+
+def _parsed_json_path(upload_id: str) -> Path:
+    return _uploads_root() / upload_id / "parsed.json"
+
+def _safe_load_json(p: Path) -> Optional[Dict[str, Any]]:
+    try:
+        return json.loads(p.read_text(encoding="utf-8"))
+    except Exception:
+        return None
+
+def _atomic_write_json(p: Path, data: Dict[str, Any]) -> None:
+    try:
+        p.parent.mkdir(parents=True, exist_ok=True)
+        tmp = p.with_suffix(p.suffix + ".tmp")
+        tmp.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
+        tmp.replace(p)
+    except Exception:
+        # Non-fatal. We still proceed without blocking the response.
+        pass
+
+def _ensure_slides_target_on_disk(upload_id: Optional[str], slide_count: int, topic: Optional[str]) -> Optional[Dict[str, Any]]:
+    """
+    If we can locate parsed.json, ensure it contains:
+      - slides_target: <int>
+      - topic: <str> (best-effort)
+    Returns the JSON dict we ended up with (or None).
+    """
+    if not upload_id:
+        return None
+    path = _parsed_json_path(upload_id)
+    data = _safe_load_json(path) or {}
+    try:
+        data["slides_target"] = int(slide_count)
+    except Exception:
+        pass
+    if topic and not data.get("topic"):
+        data["topic"] = topic
+    _atomic_write_json(path, data)
+    return data
+
 # ---------- strategies ----------
 class OutlineStrategy:
     async def generate_deck(self, req: OutlineRequest) -> Deck: ...
@@ -72,10 +119,6 @@ class PlaceholderStrategy(OutlineStrategy):
         return f"{_clip(topic)} — {heading}"
 
     def _default_sections(self, slide_id: str) -> List[ListSection]:
-        """
-        Provide a minimal, valid canonical section block.
-        We prefer a primary list so most layouts render nicely.
-        """
         return [
             ListSection(
                 id=f"{slide_id}-l1",
@@ -134,24 +177,129 @@ class PlaceholderStrategy(OutlineStrategy):
                 media=[],
             )
 
+# ---------- agent helpers ----------
+def _agent_outline_to_deck(agent_obj: Any, req: OutlineRequest) -> Deck:
+    """
+    Convert agent outline like:
+      {
+        "slide 1": {"text": {"title": "Problem & Motivation", "bullets": ["point","point"]}},
+        "slide 2": {"text": {"title": "Method", "bullets": ["point","point"]}}
+      }
+    into our Deck/Slide schema.
+    """
+    # Accept a JSON string or a dict
+    if isinstance(agent_obj, str):
+        try:
+            agent_obj = json.loads(agent_obj)
+        except Exception as e:
+            raise HTTPException(502, f"Agent returned non-JSON string: {e}")
+
+    if not isinstance(agent_obj, dict):
+        raise HTTPException(502, "Agent outline is not a JSON object")
+
+    # Sort slides numerically if possible
+    def _key(k: str) -> int:
+        try:
+            return int(re.sub(r"[^\d]+", "", k) or "0")
+        except Exception:
+            return 0
+
+    slides: List[Slide] = []
+    for idx, key in enumerate(sorted(agent_obj.keys(), key=_key)):
+        node = agent_obj.get(key) or {}
+        text = (node.get("text") or {})
+        title = (text.get("title") or f"Slide {idx+1}").strip()
+
+        bullets = text.get("bullets") or []
+        if not isinstance(bullets, list):
+            bullets = [str(bullets)]
+
+        slide_id = uuid.uuid4().hex
+        sections = [
+            ListSection(
+                id=f"{slide_id}-l1",
+                bullets=[str(b).strip() for b in bullets if str(b).strip()],
+                role="primary",
+            )
+        ]
+
+        slides.append(
+            Slide(
+                id=slide_id,
+                title=title,
+                meta=Meta(sections=sections),
+                notes=None,
+                layout="title_bullets_left",
+                media=[],
+            )
+        )
+
+    topic = req.topic or "Presentation"
+    return Deck(
+        version=SCHEMA_VERSION,
+        topic=topic,
+        source=None,
+        slide_count=len(slides),
+        created_at=datetime.utcnow(),
+        slides=slides,
+    )
+
+def _build_agent_payload(req: OutlineRequest, parsed_json: Optional[Dict[str, Any]]) -> Dict[str, Any]:
+    """
+    What we send to the agent. We prefer the parsed.json content (now including slides_target)
+    but we also include topic/text for convenience/backwards-compat.
+    """
+    payload: Dict[str, Any] = {
+        "topic": req.topic,
+        "slide_count": req.slide_count,
+        "text": req.text,  # keep for agents that still expect raw text
+    }
+    if parsed_json is not None:
+        payload["parsed"] = parsed_json
+    else:
+        # minimal parsed shape for agents that expect it
+        payload["parsed"] = {
+            "input": {
+                "text": (req.text or ""),
+                "slides_target": req.slide_count,
+            }
+        }
+    return payload
+
+# ---------- agent strategy ----------
 @dataclass
 class AgentStrategy(OutlineStrategy):
     url: str
     timeout_ms: int = settings.AGENT_TIMEOUT_MS
 
     async def generate_deck(self, req: OutlineRequest) -> Deck:
-        payload = req.model_dump()
+        # Try to enrich parsed.json on disk with slides_target (if we know upload_id)
+        upload_id: Optional[str] = getattr(req, "upload_id", None)
+        parsed_json = _ensure_slides_target_on_disk(upload_id, req.slide_count, req.topic)
+
+        payload = _build_agent_payload(req, parsed_json)
+
         async with httpx.AsyncClient(timeout=self.timeout_ms / 1000) as client:
             async with aspan("agent_outline_request", url=self.url, path="/outline", timeout_ms=self.timeout_ms):
                 r = await client.post(self.url.rstrip("/") + "/outline", json=payload)
             with span("agent_outline_response", status=r.status_code, bytes=len(r.content)):
                 ...
             r.raise_for_status()
+            # The agent might return a JSON object or a JSON-string-encoded outline
             data = r.json()
-        return Deck.model_validate(data)
+
+        # Accept either {"slide 1": {...}} or {"outline": {...}}
+        outline_obj = data.get("outline") if isinstance(data, dict) and "outline" in data else data
+        deck = _agent_outline_to_deck(outline_obj, req)
+        return deck
 
     async def regenerate_slide(self, index: int, req: OutlineRequest) -> Slide:
-        payload = req.model_dump()
+        # Optional: support regen via agent, but convert a single-slide response to our schema.
+        upload_id: Optional[str] = getattr(req, "upload_id", None)
+        parsed_json = _ensure_slides_target_on_disk(upload_id, req.slide_count, req.topic)
+        payload = _build_agent_payload(req, parsed_json)
+        payload["index"] = index
+
         async with httpx.AsyncClient(timeout=self.timeout_ms / 1000) as client:
             async with aspan(
                 "agent_regen_request", url=self.url, path=f"/outline/{index}/regenerate",
@@ -162,7 +310,28 @@ class AgentStrategy(OutlineStrategy):
                 ...
             r.raise_for_status()
             data = r.json()
-        return Slide.model_validate(data)
+
+        # Expect either a one-slide outline or a direct slide description
+        # Normalize to the same structure then reuse the converter
+        if isinstance(data, dict) and "outline" in data:
+            outline_obj = data["outline"]
+        else:
+            outline_obj = data
+
+        # Force it to look like {"slide 1": {...}} for the converter
+        if not isinstance(outline_obj, dict) or any(k for k in outline_obj.keys() if not str(k).lower().startswith("slide")):
+            outline_obj = {f"slide {index+1}": outline_obj}
+
+        deck = _agent_outline_to_deck(outline_obj, req)
+        # Return just the requested slide
+        return deck.slides[0] if deck.slides else Slide(
+            id=uuid.uuid4().hex,
+            title=f"Slide {index+1}",
+            meta=Meta(sections=[ListSection(id="auto", bullets=["(empty)"], role="primary")]),
+            notes=None,
+            layout="title_bullets_left",
+            media=[],
+        )
 
 @dataclass
 class OutlineService:
