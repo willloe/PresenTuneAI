@@ -1663,41 +1663,6 @@
       "style": {}
     },
     {
-      "id": "full_bleed_with_strip_caption",
-      "name": "Full-Bleed Image + Bottom Strip Caption",
-      "supports": {
-        "text_min": 0,
-        "text_max": 2,
-        "images_min": 1,
-        "images_max": 1
-      },
-      "weight": 0.7,
-      "preview_url": "/static/layouts/full_bleed_with_strip_caption.png",
-      "frames": {
-        "images": [
-          {
-            "x": 0,
-            "y": 0,
-            "w": 1280,
-            "h": 720
-          }
-        ],
-        "sections": [
-          {
-            "x": 0,
-            "y": 580,
-            "w": 1280,
-            "h": 120
-          }
-        ]
-      },
-      "style": {
-        "sections": {
-          "align": "center"
-        }
-      }
-    },
-    {
       "id": "title_three_stats_wide",
       "name": "Title + Three Stats (Wide)",
       "supports": {

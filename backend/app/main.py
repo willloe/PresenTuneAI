@@ -76,7 +76,7 @@ def create_app() -> FastAPI:
             "X-Upload-Id",        # ← needed by frontend to read upload id
             "X-Request-Id",
             "X-Response-Time-Ms",
-            "Server-Timing",
+            "Server-Timing"
         ],
     )
 

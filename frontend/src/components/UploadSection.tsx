@@ -8,7 +8,6 @@ type Props = {
   uploadErr: string | null;
   uploadMeta: UploadResponse | null;
   onPick: (e: React.ChangeEvent<HTMLInputElement>) => void;
-  /** NEW: when true we show an overlay + disable interactions */
   uploading?: boolean;
 };
 

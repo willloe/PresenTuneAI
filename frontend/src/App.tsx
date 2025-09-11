@@ -249,7 +249,7 @@ export default function App() {
     clearError();
 
     const body: OutlineRequest = {
-      upload_id: uploadMeta?.uploadId ?? undefined,
+      upload_id: uploadMeta?.uploadId,
       topic,
       slide_count: clamp(count, 1, 15)
     };
