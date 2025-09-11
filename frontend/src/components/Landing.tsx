@@ -9,7 +9,7 @@ import { ArrowRight, Stars, ImageIcon, Sparkles, Shield, Github, Play, CheckCirc
 // - Replace the demoVideoUrl with a real MP4/GIF later.
 // - This is intentionally a single, portable React component for easy drop-in.
 
-const demoVideoUrl = ""; // optional: e.g. "/demo.mp4"
+const demoVideoUrl = "https://www.youtube.com/embed/_3y1nijgXi8?si=6xB8FVYSnWXj2Bix"; // YouTube demo video
 
 const features = [
   {
@@ -779,7 +779,12 @@ export default function Landing() {
               
               <div className="rounded-3xl overflow-hidden aspect-video bg-gradient-to-br from-slate-900 to-slate-800 relative">
                 {demoVideoUrl ? (
-                  <video src={demoVideoUrl} controls autoPlay className="w-full h-full" />
+                  <iframe 
+                    src={demoVideoUrl} 
+                    className="w-full h-full" 
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
+                    allowFullScreen
+                  />
                 ) : (
                   <div className="w-full h-full flex flex-col items-center justify-center text-white/70 relative">
                     {/* Animated background */}
