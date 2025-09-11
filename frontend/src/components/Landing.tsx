@@ -119,15 +119,15 @@ export default function Landing() {
     <div className="min-h-screen w-full bg-[#0B1020] text-white relative overflow-hidden">
       {/* Floating Particles */}
       <FloatingParticles />
-      
+
       {/* Enhanced Animated gradient mesh */}
-      <motion.div 
+      <motion.div
         className="pointer-events-none absolute -top-1/3 left-1/2 -translate-x-1/2 w-[1200px] h-[1200px] rounded-full opacity-40"
-        animate={{ 
+        animate={{
           rotate: 360,
           scale: [1, 1.1, 1],
         }}
-        transition={{ 
+        transition={{
           rotate: { duration: 25, repeat: Infinity, ease: "linear" },
           scale: { duration: 8, repeat: Infinity, ease: "easeInOut" }
         }}
@@ -136,16 +136,16 @@ export default function Landing() {
           filter: "blur(80px)",
         }}
       />
-      
+
       {/* Secondary gradient orb */}
-      <motion.div 
+      <motion.div
         className="pointer-events-none absolute top-1/4 right-1/4 w-[600px] h-[600px] rounded-full opacity-30"
-        animate={{ 
+        animate={{
           rotate: -360,
           x: [0, 50, 0],
           y: [0, -30, 0],
         }}
-        transition={{ 
+        transition={{
           rotate: { duration: 20, repeat: Infinity, ease: "linear" },
           x: { duration: 12, repeat: Infinity, ease: "easeInOut" },
           y: { duration: 8, repeat: Infinity, ease: "easeInOut" }
@@ -707,7 +707,7 @@ export default function Landing() {
               </span>
               <span className="text-white/40">•</span>
               <span className="text-white/60 text-sm">
-                Making presentations magical since 2024
+                Making presentations magical since 2025
               </span>
             </div>
             
