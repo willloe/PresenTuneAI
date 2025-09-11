@@ -6,6 +6,8 @@ import {
   type LayoutItem,
   type EditorBuildResponse,
 } from "./lib/api";
+import { assetFileUrl } from "./lib/assets";
+ import { ensureWebUrl } from "./lib/url";
 import { uploadFile, type UploadResponse } from "./lib/upload";
 import type { Deck } from "./types/deck";
 import { useOutline, type OutlineRequest } from "./hooks/useOutline";
@@ -41,6 +43,22 @@ import { useMediaPlan } from "./hooks/useMediaPlan";
 
 type AnySection = any;
 
+/* ---------------------- helpers ---------------------- */
+// Make any URL browser-loadable. If it's relative (e.g. "/uploads/..."),
+// prefix it with API_BASE; if it's already absolute, leave it alone.
+function toWebUrl(u: string | undefined | null): string | undefined {
+  if (!u) return undefined;
+  try {
+    // new URL(relative, base) also normalizes absolute values
+    return new URL(u, API_BASE).toString();
+  } catch {
+    // very defensive, but keep UI resilient
+    const base = String(API_BASE || "").replace(/\/$/, "");
+    const path = String(u).replace(/^\/+/, "");
+    return `${base}/${path}`;
+  }
+}
+
 function normalizeSectionKind(sec: AnySection): string {
   return String(sec?.kind ?? sec?.type ?? "").toLowerCase();
 }
@@ -54,7 +72,6 @@ function isNonEmptySection(sec: AnySection): boolean {
     const bullets = (sec?.bullets ?? []).map((b: any) => String(b ?? "").trim());
     return bullets.filter(Boolean).length > 0;
   }
-  // Unknown kinds: treat as non-empty if there is any payload besides meta keys
   if (typeof sec === "object" && sec) {
     const keys = Object.keys(sec).filter((k) => !["kind", "type", "role", "id"].includes(k));
     return keys.length > 0;
@@ -80,7 +97,6 @@ function cleanSections(sections?: AnySection[] | null): AnySection[] {
         if (bullets.length === 0) return null;
         return { ...sec, kind: "list", bullets };
       }
-      // passthrough unknown non-empty kinds
       return isNonEmptySection(sec) ? sec : null;
     })
     .filter(Boolean) as AnySection[];
@@ -121,7 +137,7 @@ export default function App() {
   // Upload
   const [uploadMeta, setUploadMeta] = useState<UploadResponse | null>(null);
   const [uploadErr, setUploadErr] = useState<string | null>(null);
-  const [uploading, setUploading] = useState(false); // NEW
+  const [uploading, setUploading] = useState(false);
   const uploadId = uploadMeta?.uploadId ?? null;
 
   // Outline
@@ -144,7 +160,7 @@ export default function App() {
   const [exporting, setExporting] = useState(false);
   const [exportErr, setExportErr] = useState<string | null>(null);
 
-  // Media drawer target (slide + optional slot)
+  // Media drawer target
   const [openLibTarget, setOpenLibTarget] = useState<{ slide: number; slot: number | null } | null>(null);
 
   // Derived
@@ -154,7 +170,7 @@ export default function App() {
   // Toasts
   const { show } = useToast();
 
-  // Slot-aware plan util (only used to register setSlot on changes)
+  // Slot-aware plan util
   const { setSlot } = useMediaPlan();
 
   // Phase orchestration
@@ -175,7 +191,7 @@ export default function App() {
     next,
     setStep,
   } = usePhases({
-    editConfirmed: true, // workbench replaces confirm step
+    editConfirmed: true,
     haveExtract,
     uploadPages: uploadMeta?.parsed?.pages ?? null,
     haveDeck,
@@ -197,7 +213,7 @@ export default function App() {
     return legacyBullets > 0 ? 1 : 0;
   }, []);
 
-  // Cleanup: abort any in-flight per-slide layout requests and pending debounce on unmount
+  // Cleanup
   useEffect(() => {
     return () => {
       Object.values(layoutReqCtrls.current).forEach((c) => c.abort());
@@ -226,7 +242,7 @@ export default function App() {
     setStep(1);
 
     try {
-      setUploading(true); // start busy
+      setUploading(true);
       const meta = await uploadFile(f);
       setUploadMeta(meta);
       setTopic(meta.filename.replace(/\.[^.]+$/, ""));
@@ -236,7 +252,7 @@ export default function App() {
       setUploadErr(msg);
       show({ tone: "danger", title: "Upload failed", description: msg });
     } finally {
-      setUploading(false); // end busy
+      setUploading(false);
       if (input) input.value = "";
     }
   }, [clearError, show, setStep]);
@@ -264,7 +280,7 @@ export default function App() {
     }
   }, [topic, count, uploadMeta?.parsed?.text, generate, clearError, show, setStep]);
 
-  // Suggest a best layout per slide (fallback to local filter) — abortable + debounced
+  // Suggest a best layout per slide — abortable + debounced
   const suggestLayoutsFromDeck = useCallback(async (d: Deck) => {
     const nextSel: Record<string, string> = {};
 
@@ -275,7 +291,6 @@ export default function App() {
         const image_count = Math.max(0, (s.media || []).length);
         const sig = `${text_count}:${image_count}`;
 
-        // Abort any existing per-slide request
         try { layoutReqCtrls.current[slideId]?.abort(); } catch {}
 
         const ctrl = new AbortController();
@@ -283,26 +298,22 @@ export default function App() {
 
         try {
           const { data } = await api.filterLayouts(
-            { components: { text_count, image_count }, top_k: 8 }, // ask for several
+            { components: { text_count, image_count }, top_k: 8 },
             { signal: ctrl.signal, timeoutMs: 5000, retries: 1 }
           );
 
-          // Ignore if superseded
           if (layoutReqCtrls.current[slideId] !== ctrl) return;
 
           const cands = data.candidates ?? [];
           if (cands.length > 0) {
-            // round-robin within this signature
             const idx = layoutRRRef.current[sig] ?? 0;
             nextSel[slideId] = cands[idx % cands.length];
             layoutRRRef.current[sig] = idx + 1;
           } else {
-            // let backend auto-fit if no candidates returned
             nextSel[slideId] = "AUTO";
           }
         } catch {
           if (layoutReqCtrls.current[slideId] !== ctrl) return;
-          // on error, also let backend choose
           nextSel[slideId] = "AUTO";
         } finally {
           if (layoutReqCtrls.current[slideId] === ctrl) delete layoutReqCtrls.current[slideId];
@@ -320,7 +331,6 @@ export default function App() {
     const haveAny = deck.slides.some((s) => !!selection[s.id]);
     if (haveAny) return;
 
-    // clear prior timer if any
     if (layoutSuggestTimerRef.current) {
       clearTimeout(layoutSuggestTimerRef.current);
       layoutSuggestTimerRef.current = null;
@@ -329,7 +339,7 @@ export default function App() {
     layoutSuggestTimerRef.current = window.setTimeout(() => {
       void suggestLayoutsFromDeck(deck);
       layoutSuggestTimerRef.current = null;
-    }, 150); // short debounce to batch state bursts
+    }, 150);
   }, [deck, selection, suggestLayoutsFromDeck]);
 
   const runBuildEditor = useCallback(async () => {
@@ -338,7 +348,7 @@ export default function App() {
     setBuildErr(null);
     setEditorResp(null);
     try {
-      const deckForBuild = sanitizeDeckForBuild(deck); // ← sanitize sections
+      const deckForBuild = sanitizeDeckForBuild(deck);
       const selections = deckForBuild.slides.map((s) => {
         const chosen = selection[s.id];
         return { slide_id: s.id, layout_id: chosen && chosen !== "AUTO" ? chosen : undefined };
@@ -377,10 +387,31 @@ export default function App() {
     }
   }, [deck, selection, theme, show]);
 
-  // Auto-advance to Step 4 when a build succeeds (editorResp appears) while on Step 3
   useEffect(() => {
     if (editorResp && step === 3) setStep(4);
   }, [editorResp, step, setStep]);
+
+  const normalizedReqIds = useRef<Set<string>>(new Set());
+  useEffect(() => {
+    const reqId = meta?.requestId;
+    if (!deck || !reqId || normalizedReqIds.current.has(reqId)) return;
+
+    deck.slides.forEach((s, si) => {
+      if (!Array.isArray(s.media)) return;
+      const next = s.media.map((m: any) => {
+        if (m?.type === "image" && typeof m.url === "string") {
+          const fixed = ensureWebUrl(m.url);
+          return fixed && fixed !== m.url ? { ...m, url: fixed } : m;
+        }
+        return m;
+      });
+      if (JSON.stringify(next) !== JSON.stringify(s.media)) {
+        updateSlide(si, () => ({ ...s, media: next } as any));
+      }
+    });
+
+    normalizedReqIds.current.add(reqId);
+  }, [deck, meta?.requestId, updateSlide]);
 
   const runExport = useCallback(async () => {
     if (!deck) return;
@@ -389,7 +420,7 @@ export default function App() {
     setExportErr(null);
     try {
       const themeMeta = themeKeyToMeta((THEMES as any)[theme] ? (theme as ThemeKey) : "default");
-      const cleanDeck = sanitizeDeckForBuild(deck); // ← sanitize sections
+      const cleanDeck = sanitizeDeckForBuild(deck);
       const body = editorResp?.editor
         ? { editor: { ...editorResp.editor, theme_meta: editorResp.editor.theme_meta ?? themeMeta }, theme }
         : { slides: cleanDeck.slides, theme, theme_meta: themeMeta };
@@ -406,7 +437,7 @@ export default function App() {
     }
   }, [deck, editorResp?.editor, theme, show]);
 
-  // Place/replace at an exact slot index (now includes 'source' metadata)
+  // Place/replace at an exact slot index
   type BackendSource = "asset" | "external";
   type UiSource = "library" | "external" | "generated" | "empty";
 
@@ -421,10 +452,12 @@ export default function App() {
     ) => {
       if (!deck) return;
 
+      const displayUrl = toWebUrl(url) || url;
+
       // --- update deck for backend (send asset|external) ---
       updateSlide(slideIdx, (prev) => {
         const current = Array.isArray(prev.media) ? [...prev.media] : [];
-        const img: any = { type: "image", url, alt: alt ?? prev.title };
+        const img: any = { type: "image", url: displayUrl, alt: alt ?? prev.title };
         if (backendSource) img.source = backendSource;
         if (slotIdx < current.length) current[slotIdx] = img;
         else current.push(img);
@@ -435,16 +468,14 @@ export default function App() {
       const slideId = deck.slides[slideIdx]?.id;
       if (slideId) {
         const uiSource: UiSource =
-          uiSourceOverride ??
-          (backendSource === "asset" ? "library" : "external");
+          uiSourceOverride ?? (backendSource === "asset" ? "library" : "external");
         setSlot(slideId, slotIdx, {
           source: uiSource,
-          url,
+          url: displayUrl,
           alt: alt ?? deck.slides[slideIdx]?.title,
         });
       }
 
-      // any change invalidates prior built editor output
       setEditorResp(null);
     },
     [deck, setSlot, updateSlide]
@@ -466,9 +497,8 @@ export default function App() {
           step={1}
           currentStep={step}
           onNext={next}
-          nextLabel={uploading ? "Parsing…" : "Continue to Outline"} // NEW
-          nextDisabled={uploading || !haveExtract}                     // NEW
-          /* 👇 prevent auto-scroll on first visit to /app */
+          nextLabel={uploading ? "Parsing…" : "Continue to Outline"}
+          nextDisabled={uploading || !haveExtract}
           autoScroll={false}
         >
           <UploadSection uploadErr={uploadErr} uploadMeta={uploadMeta} onPick={onPick} uploading={uploading} />
@@ -537,7 +567,6 @@ export default function App() {
                   const text_count = textBlockCount(s);
                   const image_count = Math.max(0, (s.media || []).length);
 
-                  // If slide empty: local fallback, no network
                   if (text_count === 0 && image_count === 0) {
                     const fallback =
                       layouts?.find((l) => l.id === "title_only")?.id ||
@@ -547,7 +576,6 @@ export default function App() {
                     return;
                   }
 
-                  // Abort any in-flight request for this slide
                   try { layoutReqCtrls.current[slideId]?.abort(); } catch {}
                   const ctrl = new AbortController();
                   layoutReqCtrls.current[slideId] = ctrl;
@@ -557,11 +585,11 @@ export default function App() {
                       { components: { text_count, image_count }, top_k: 1 },
                       { signal: ctrl.signal, timeoutMs: 5000, retries: 1 }
                     );
-                    if (layoutReqCtrls.current[slideId] !== ctrl) return; // superseded
+                    if (layoutReqCtrls.current[slideId] !== ctrl) return;
                     const id = data.candidates?.[0] || layouts?.[0]?.id || "AUTO";
                     setSelection((old) => ({ ...old, [slideId]: id }));
                   } catch (err: any) {
-                    if (err?.name === "AbortError") return; // expected
+                    if (err?.name === "AbortError") return;
                     const id = layouts?.[0]?.id || "AUTO";
                     setSelection((old) => ({ ...old, [slideId]: id }));
                   } finally {
@@ -574,7 +602,7 @@ export default function App() {
                 }
                 requestId={meta?.requestId ?? null}
                 exportStatus={exportInfo ? "Export ready" : undefined}
-                onBuildEditor={runBuildEditor} // Build & Continue (auto-advance via useEffect)
+                onBuildEditor={runBuildEditor}
                 selectionComplete={selectionComplete}
                 building={building}
                 buildErr={buildErr}
@@ -612,8 +640,8 @@ export default function App() {
           if (!openLibTarget) return;
           const { slide, slot } = openLibTarget;
           const idx = slot ?? Number.MAX_SAFE_INTEGER; // append if null
-          // External URL (or extracted image URL)
-          setImageForSlot(slide, idx, url, undefined, "external", "external");
+          const fixed = ensureWebUrl(url) ?? url;
+          setImageForSlot(slide, idx, fixed, undefined, "external", "external");
           setOpenLibTarget(null);
         }}
         onSelectAsset={(asset: any, url, slotIndex) => {
@@ -621,15 +649,15 @@ export default function App() {
           const { slide } = openLibTarget;
           const idx = slotIndex ?? openLibTarget.slot ?? Number.MAX_SAFE_INTEGER;
 
-          // AI images from the in-drawer generator use id="__ai__"
-          const isAI = asset?.id === "__ai__";
+          const isAI = asset?.id === "__ai__"; // AI generator pseudo-asset
 
-          // Backend: AI images are data/external → "external"
-          // UI plan: tag AI as "generated", library assets as "library"
+          const finalUrl = isAI
+            ? (ensureWebUrl(url) ?? url)                                 // AI/external URLs
+            : (uploadId ? assetFileUrl(uploadId, asset.id) : ensureWebUrl(url) ?? url); // library asset → API URL
           setImageForSlot(
             slide,
             idx,
-            url,
+            finalUrl,
             undefined,
             isAI ? "external" : "asset",
             isAI ? "generated" : "library"
