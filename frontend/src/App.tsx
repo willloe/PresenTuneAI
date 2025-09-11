@@ -166,6 +166,7 @@ export default function App() {
   );
   const haveEditor = !!editorResp;
   const haveExport = !!exportInfo;
+  const layoutRRRef = useRef<Record<string, number>>({});
 
   const {
     step,
@@ -272,6 +273,7 @@ export default function App() {
         const slideId = s.id;
         const text_count = textBlockCount(s);
         const image_count = Math.max(0, (s.media || []).length);
+        const sig = `${text_count}:${image_count}`;
 
         // Abort any existing per-slide request
         try { layoutReqCtrls.current[slideId]?.abort(); } catch {}
@@ -281,16 +283,27 @@ export default function App() {
 
         try {
           const { data } = await api.filterLayouts(
-            { components: { text_count, image_count }, top_k: 1 },
+            { components: { text_count, image_count }, top_k: 8 }, // ask for several
             { signal: ctrl.signal, timeoutMs: 5000, retries: 1 }
           );
 
           // Ignore if superseded
           if (layoutReqCtrls.current[slideId] !== ctrl) return;
-          nextSel[slideId] = data.candidates?.[0] || layouts?.[0]?.id || "AUTO";
+
+          const cands = data.candidates ?? [];
+          if (cands.length > 0) {
+            // round-robin within this signature
+            const idx = layoutRRRef.current[sig] ?? 0;
+            nextSel[slideId] = cands[idx % cands.length];
+            layoutRRRef.current[sig] = idx + 1;
+          } else {
+            // let backend auto-fit if no candidates returned
+            nextSel[slideId] = "AUTO";
+          }
         } catch {
           if (layoutReqCtrls.current[slideId] !== ctrl) return;
-          nextSel[slideId] = layouts?.[0]?.id || "AUTO";
+          // on error, also let backend choose
+          nextSel[slideId] = "AUTO";
         } finally {
           if (layoutReqCtrls.current[slideId] === ctrl) delete layoutReqCtrls.current[slideId];
         }
@@ -298,7 +311,7 @@ export default function App() {
     );
 
     setSelection(nextSel);
-  }, [layouts, textBlockCount]);
+  }, [textBlockCount]);
 
   // Debounce the initial suggestions when a new deck arrives
   useEffect(() => {

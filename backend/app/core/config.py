@@ -51,12 +51,20 @@ class Settings(BaseSettings):
     FEATURE_USE_MODEL: bool = False
     AGENT_URL: str = "http://agent:8001"
     AGENT_API_KEY: Optional[str] = None
-    # Shared request timeout used by helper services (ms)
+    # Per-request HTTP client timeout (ms)
     AGENT_TIMEOUT_MS: int = 10_000
 
-    # Runpod-specific (reflected so they can be configured via .env)
+    # Runpod-specific
     RUNPOD_INPUT_MODE: Literal["wrap", "passthrough"] = "wrap"
     RUNPOD_API_KEY: Optional[str] = None
+    # Total time to poll a Runpod job before giving up (seconds)
+    RUNPOD_MAX_WAIT_S: int = 600
+    # Whether to fall back to PlaceholderStrategy on failures/timeouts
+    ALLOW_OUTLINE_FALLBACK: bool = True
+
+    # ── Layout selection ─────────────────────────────────────────────────────────
+    # Server-side auto-layout will consider top-K candidates (round-robin / hashed)
+    LAYOUT_AUTOFIT_TOPK: int = 3
 
     # ── Image enrichment / generation ────────────────────────────────────────────
     FEATURE_IMAGE_API: bool = True
@@ -130,6 +138,26 @@ class Settings(BaseSettings):
     def _normalize_runpod_input_mode(cls, v: str) -> str:
         v = (v or "wrap").strip().lower()
         return "passthrough" if v == "passthrough" else "wrap"
+
+    # NEW: basic guards for timeouts and tunables
+    @field_validator("AGENT_TIMEOUT_MS")
+    @classmethod
+    def _positive_agent_timeout(cls, v: int) -> int:
+        if v <= 0:
+            raise ValueError("AGENT_TIMEOUT_MS must be > 0")
+        return v
+
+    @field_validator("RUNPOD_MAX_WAIT_S")
+    @classmethod
+    def _positive_runpod_wait(cls, v: int) -> int:
+        if v <= 0:
+            raise ValueError("RUNPOD_MAX_WAIT_S must be > 0")
+        return v
+
+    @field_validator("LAYOUT_AUTOFIT_TOPK")
+    @classmethod
+    def _layout_topk_guard(cls, v: int) -> int:
+        return max(1, v)
 
     # NEW: normalize GROBID_URL (strip/ensure scheme/remove trailing slash)
     @field_validator("GROBID_URL")
