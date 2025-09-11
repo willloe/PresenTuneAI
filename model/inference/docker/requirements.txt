@@ -1,0 +1,9 @@
+torch==2.7.1
+transformers>=4.45.0
+safetensors>=0.4.3
+huggingface_hub>=0.26.0
+peft>=0.13.0
+accelerate>=0.34.0
+vllm==0.10.1
+runpod==1.7.1
+requests>=2.32.3
