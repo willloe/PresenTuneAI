@@ -121,6 +121,7 @@ export default function App() {
   // Upload
   const [uploadMeta, setUploadMeta] = useState<UploadResponse | null>(null);
   const [uploadErr, setUploadErr] = useState<string | null>(null);
+  const [uploading, setUploading] = useState(false); // NEW
   const uploadId = uploadMeta?.uploadId ?? null;
 
   // Outline
@@ -224,6 +225,7 @@ export default function App() {
     setStep(1);
 
     try {
+      setUploading(true); // start busy
       const meta = await uploadFile(f);
       setUploadMeta(meta);
       setTopic(meta.filename.replace(/\.[^.]+$/, ""));
@@ -233,6 +235,7 @@ export default function App() {
       setUploadErr(msg);
       show({ tone: "danger", title: "Upload failed", description: msg });
     } finally {
+      setUploading(false); // end busy
       if (input) input.value = "";
     }
   }, [clearError, show, setStep]);
@@ -246,9 +249,9 @@ export default function App() {
     clearError();
 
     const body: OutlineRequest = {
+      upload_id: uploadMeta?.uploadId ?? undefined,
       topic,
-      slide_count: clamp(count, 1, 15),
-      text: uploadMeta?.parsed?.text ?? undefined,
+      slide_count: clamp(count, 1, 15)
     };
     try {
       await generate(body);
@@ -450,11 +453,12 @@ export default function App() {
           step={1}
           currentStep={step}
           onNext={next}
-          nextLabel="Continue to Outline"
+          nextLabel={uploading ? "Parsing…" : "Continue to Outline"} // NEW
+          nextDisabled={uploading || !haveExtract}                     // NEW
           /* 👇 prevent auto-scroll on first visit to /app */
           autoScroll={false}
         >
-          <UploadSection uploadErr={uploadErr} uploadMeta={uploadMeta} onPick={onPick} />
+          <UploadSection uploadErr={uploadErr} uploadMeta={uploadMeta} onPick={onPick} uploading={uploading} />
         </PhaseContainer>
 
         {/* Step 2: Outline Generate */}

@@ -8,7 +8,6 @@ import os
 from pydantic import field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-
 # Backend project root (…/backend)
 BACKEND_ROOT = Path(__file__).resolve().parents[2]
 
@@ -51,8 +50,13 @@ class Settings(BaseSettings):
     # ── Outline / Agent (optional) ───────────────────────────────────────────────
     FEATURE_USE_MODEL: bool = False
     AGENT_URL: str = "http://agent:8001"
+    AGENT_API_KEY: Optional[str] = None
     # Shared request timeout used by helper services (ms)
     AGENT_TIMEOUT_MS: int = 10_000
+
+    # Runpod-specific (reflected so they can be configured via .env)
+    RUNPOD_INPUT_MODE: Literal["wrap", "passthrough"] = "wrap"
+    RUNPOD_API_KEY: Optional[str] = None
 
     # ── Image enrichment / generation ────────────────────────────────────────────
     FEATURE_IMAGE_API: bool = True
@@ -74,7 +78,7 @@ class Settings(BaseSettings):
     # ── Observability ────────────────────────────────────────────────────────────
     TIMING_ALLOW_ORIGIN: str = "*"
 
-    # ── NEW: Parsing (GROBID) ───────────────────────────────────────────────────
+    # ── Parsing (GROBID) ────────────────────────────────────────────────────────
     GROBID_ENABLED: bool = True
     # e.g. "http://grobid:8070" in docker-compose; "http://localhost:8070" locally
     GROBID_URL: Optional[str] = "http://grobid:8070"
@@ -119,6 +123,13 @@ class Settings(BaseSettings):
         if not v:
             return None
         return v.strip() or None
+
+    # Normalize RUNPOD_INPUT_MODE (case-insensitive)
+    @field_validator("RUNPOD_INPUT_MODE", mode="before")
+    @classmethod
+    def _normalize_runpod_input_mode(cls, v: str) -> str:
+        v = (v or "wrap").strip().lower()
+        return "passthrough" if v == "passthrough" else "wrap"
 
     # NEW: normalize GROBID_URL (strip/ensure scheme/remove trailing slash)
     @field_validator("GROBID_URL")
@@ -170,7 +181,7 @@ class Settings(BaseSettings):
                 raise ValueError("IMAGE_PROVIDER=pexels requires PEXELS_API_KEY to be set.")
         return self
 
-    # NEW: only require URL if enabled (don’t ping at startup to keep boot fast)
+    # only require URL if enabled (don’t ping at startup to keep boot fast)
     @model_validator(mode="after")
     def _grobid_requirements(self) -> "Settings":
         if self.GROBID_ENABLED and not self.GROBID_URL:

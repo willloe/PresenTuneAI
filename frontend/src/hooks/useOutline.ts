@@ -4,6 +4,7 @@ import type { Deck, Slide } from "../types/deck";
 import { derivePrimaryBullets, sanitizeSections } from "../components/slide/sections";
 
 export type OutlineRequest = {
+  upload_id?: string;
   topic?: string | null;
   text?: string | null;
   slide_count?: number; // 1..15 (backend clamps)

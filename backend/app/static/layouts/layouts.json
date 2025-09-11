@@ -62,7 +62,7 @@
         "images_min": 0,
         "images_max": 1
       },
-      "weight": 1.0,
+      "weight": 0.80,
       "preview_url": "/static/layouts/title_and_content.png",
       "frames": {
         "title": {
@@ -1671,7 +1671,7 @@
         "images_min": 1,
         "images_max": 1
       },
-      "weight": 0.9,
+      "weight": 0.7,
       "preview_url": "/static/layouts/full_bleed_with_strip_caption.png",
       "frames": {
         "images": [
