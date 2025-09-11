@@ -35,6 +35,7 @@ export function useOutline() {
     setMeta(null);
     try {
       const { data, meta } = await api.outlineWithMeta({
+        upload_id: req.upload_id ?? undefined,   // ← pass it through
         topic: req.topic ?? undefined,
         text: req.text ?? undefined,
         slide_count: req.slide_count,
@@ -55,6 +56,7 @@ export function useOutline() {
   async function regenerate(index: number, req: OutlineRequest) {
     try {
       const { data: slide, meta } = await api.regenerateSlideWithMeta(index, {
+        upload_id: req.upload_id ?? undefined,   // ← pass it here too
         topic: req.topic ?? undefined,
         text: req.text ?? undefined,
         slide_count: req.slide_count,

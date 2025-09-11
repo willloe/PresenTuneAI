@@ -152,6 +152,14 @@ export type ImageGenResponse = {
   used_query?: string | null;
 };
 
+/* -------------------- Outline shared body -------------------- */
+export type OutlineBody = {
+  upload_id?: string;
+  topic?: string;
+  text?: string;
+  slide_count?: number;
+};
+
 /* -------------------- API client -------------------- */
 
 export type LayoutsQuery = { page?: number; page_size?: number };
@@ -164,7 +172,7 @@ export const api = {
     requestWithMeta<HealthResp>("/health", { signal: opts?.signal, timeoutMs: opts?.timeoutMs, retries: opts?.retries }),
 
   // Outline
-  outline: (body: { topic?: string; text?: string; slide_count?: number }, opts?: ApiRequestOpts) =>
+  outline: (body: OutlineBody, opts?: ApiRequestOpts) =>
     request<Deck>("/outline", {
       method: "POST",
       body: JSON.stringify(body),
@@ -172,7 +180,7 @@ export const api = {
       timeoutMs: opts?.timeoutMs,
       retries: opts?.retries,
     }),
-  outlineWithMeta: (body: { topic?: string; text?: string; slide_count?: number }, opts?: ApiRequestOpts) =>
+  outlineWithMeta: (body: OutlineBody, opts?: ApiRequestOpts) =>
     requestWithMeta<Deck>("/outline", {
       method: "POST",
       body: JSON.stringify(body),
@@ -182,7 +190,7 @@ export const api = {
     }),
 
   // Regenerate a specific slide
-  regenerateSlide: (index: number, body: { topic?: string; text?: string; slide_count?: number }, opts?: ApiRequestOpts) =>
+  regenerateSlide: (index: number, body: OutlineBody, opts?: ApiRequestOpts) =>
     request<Slide>(`/outline/${index}/regenerate`, {
       method: "POST",
       body: JSON.stringify(body),
@@ -190,7 +198,7 @@ export const api = {
       timeoutMs: opts?.timeoutMs,
       retries: opts?.retries,
     }),
-  regenerateSlideWithMeta: (index: number, body: { topic?: string; text?: string; slide_count?: number }, opts?: ApiRequestOpts) =>
+  regenerateSlideWithMeta: (index: number, body: OutlineBody, opts?: ApiRequestOpts) =>
     requestWithMeta<Slide>(`/outline/${index}/regenerate`, {
       method: "POST",
       body: JSON.stringify(body),

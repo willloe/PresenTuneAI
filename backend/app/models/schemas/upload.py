@@ -18,6 +18,7 @@ class ParsedPreview(BaseModel):
 
 
 class UploadMeta(BaseModel):
+    upload_id: str = Field(..., serialization_alias="uploadId")
     filename: str
     size: int = Field(..., ge=0, description="bytes")
     content_type: str = "application/octet-stream"
