@@ -103,7 +103,7 @@
       "id": "section_header",
       "name": "Section Header",
       "supports": {
-        "text_min": 1,
+        "text_min": 0,
         "text_max": 2,
         "images_min": 0,
         "images_max": 0
@@ -257,7 +257,7 @@
       "id": "title_only",
       "name": "Title Only",
       "supports": {
-        "text_min": 1,
+        "text_min": 0,
         "text_max": 1,
         "images_min": 0,
         "images_max": 0

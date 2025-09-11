@@ -24,7 +24,7 @@ from app.services.layouts_service import (
 log = logging.getLogger("app")
 
 # ────────────────────────────────────────────────────────────────────────────────
-# File system helpers & HTTP dump (kept)
+# File system helpers & HTTP dump
 # ────────────────────────────────────────────────────────────────────────────────
 
 def _uploads_root() -> Path:
@@ -89,7 +89,7 @@ def _dump_http(service: str, rid: str, direction: str, method: str, url: str,
     return str(fpath)
 
 # ────────────────────────────────────────────────────────────────────────────────
-# Text utilities (kept minimal)
+# Text utilities
 # ────────────────────────────────────────────────────────────────────────────────
 
 _WS = re.compile(r"\s+")
@@ -112,7 +112,7 @@ def _kw_from_title(title: str | None, topic_fallback: str | None) -> str:
     return t or (topic_fallback or "Presentation")
 
 # ────────────────────────────────────────────────────────────────────────────────
-# Server-side Auto-Fit helpers (kept)
+# Server-side Auto-Fit helpers
 # ────────────────────────────────────────────────────────────────────────────────
 
 def _first_layout_id() -> str:
@@ -210,7 +210,7 @@ class PlaceholderStrategy(OutlineStrategy):
         )
 
 # ────────────────────────────────────────────────────────────────────────────────
-# Outline payload helpers — CLEAN & AUTHORITATIVE TEXT RESOLUTION
+# Outline payload helpers
 # ────────────────────────────────────────────────────────────────────────────────
 
 def _load_parsed_for_upload(upload_id: Optional[str]) -> Optional[Dict[str, Any]]:
@@ -220,13 +220,6 @@ def _load_parsed_for_upload(upload_id: Optional[str]) -> Optional[Dict[str, Any]
 
 def _resolve_full_text(upload_id: Optional[str], req_text: Optional[str], topic: Optional[str],
                        parsed_json: Optional[Dict[str, Any]]) -> Tuple[str, str]:
-    """
-    Returns (text, source_tag). Order of authority:
-      1) parsed_json["text"] if present and non-empty
-      2) disk: uploads/<upload_id>/parsed.json["text"] (if parsed_json was None)
-      3) req_text (if provided)
-      4) topic (last resort; may be a filename)
-    """
     # in-memory parsed
     if isinstance(parsed_json, dict):
         t = parsed_json.get("text")
@@ -265,12 +258,11 @@ def _build_agent_payload(req: OutlineRequest, parsed_json: Optional[Dict[str, An
         "upload_id": upload_id,
         "topic": topic,
         "slide_count": slide_count,
-        "text": text,  # ← authoritative full text
+        "text": text,
     }
 
-    # Include parsed snapshot if available (optional, helpful to other agents)
+    # Include parsed snapshot if available (optional)
     if isinstance(parsed_json, dict):
-        # non-destructive hints for downstream consumers
         pj = dict(parsed_json)
         try:
             pj.setdefault("slides_target", slide_count)
@@ -370,7 +362,7 @@ def _agent_outline_to_deck(agent_obj: Any, req: OutlineRequest) -> Deck:
                 slide_count=len(slides), created_at=datetime.utcnow(), slides=slides)
 
 # ────────────────────────────────────────────────────────────────────────────────
-# Agent strategy (unchanged behavior; now receives full text in payload["text"])
+# Agent strategy (logs only initial request + response)
 # ────────────────────────────────────────────────────────────────────────────────
 
 @dataclass
@@ -388,10 +380,10 @@ class AgentStrategy(OutlineStrategy):
         headers = {"Content-Type": "application/json"}
 
         async with httpx.AsyncClient(timeout=self.timeout_ms / 1000) as client:
-            _dump_http("agent", rid, "request", "POST", url, headers, payload)
+            _dump_http("agent", rid, "request", "POST", url, headers, payload)  # initial request
             async with aspan("agent_outline_request", url=self.url, path="/outline", timeout_ms=self.timeout_ms):
                 r = await client.post(url, json=payload)
-            _dump_http("agent", rid, "response", "POST", url, headers, r.text, status=r.status_code)
+            _dump_http("agent", rid, "response", "POST", url, headers, r.text, status=r.status_code)  # final response
 
         with span("agent_outline_response", status=r.status_code, bytes=len(r.content)): ...
         r.raise_for_status()
@@ -410,11 +402,11 @@ class AgentStrategy(OutlineStrategy):
         headers = {"Content-Type": "application/json"}
 
         async with httpx.AsyncClient(timeout=self.timeout_ms / 1000) as client:
-            _dump_http("agent", rid, "request", "POST", url, headers, payload)
+            _dump_http("agent", rid, "request", "POST", url, headers, payload)  # initial request
             async with aspan("agent_regen_request", url=self.url, path=f"/outline/{index}/regenerate",
                              index=index, timeout_ms=self.timeout_ms):
                 r = await client.post(url, json=payload)
-            _dump_http("agent", rid, "response", "POST", url, headers, r.text, status=r.status_code)
+            _dump_http("agent", rid, "response", "POST", url, headers, r.text, status=r.status_code)  # final response
 
         with span("agent_regen_response", status=r.status_code, bytes=len(r.content), index=index): ...
         r.raise_for_status()
@@ -433,7 +425,7 @@ class AgentStrategy(OutlineStrategy):
         )
 
 # ────────────────────────────────────────────────────────────────────────────────
-# Runpod strategy — simplified: always use payload["text"]
+# Runpod strategy — logs initial POST (req+resp) and only the final status response
 # ────────────────────────────────────────────────────────────────────────────────
 
 @dataclass
@@ -470,9 +462,9 @@ class RunpodStrategy(OutlineStrategy):
 
     async def _post_json(self, client: httpx.AsyncClient, body: Dict[str, Any], rid: str) -> Dict[str, Any]:
         headers = self._headers()
-        _dump_http("runpod", rid, "request", "POST", self.url, headers, body)
+        _dump_http("runpod", rid, "request", "POST", self.url, headers, body)  # initial request
         r = await client.post(self.url, headers=headers, json=body)
-        _dump_http("runpod", rid, "response", "POST", self.url, headers, r.text, status=r.status_code)
+        _dump_http("runpod", rid, "response", "POST", self.url, headers, r.text, status=r.status_code)  # initial resp
         with span("runpod_post_response", status=r.status_code, bytes=len(r.content)): ...
         try:
             r.raise_for_status()
@@ -491,23 +483,30 @@ class RunpodStrategy(OutlineStrategy):
         waited = 0.0
         status_url, headers = self._status_url(job_id), self._headers()
         while True:
-            _dump_http("runpod", rid, "request", "GET", status_url, headers, body=None)
             r = await client.get(status_url, headers=headers)
-            _dump_http("runpod", rid, "response", "GET", status_url, headers, r.text, status=r.status_code)
             try:
                 r.raise_for_status()
             except httpx.HTTPStatusError as e:
+                # log the final error response once
+                try:
+                    _dump_http("runpod", rid, "response", "GET", status_url, headers, e.response.text, status=e.response.status_code)
+                except Exception:
+                    pass
                 text = (e.response.text or "")[:400]
                 raise HTTPException(502, f"Runpod status failed: {e.response.status_code} {text}") from e
             js = r.json()
             status = (js.get("status") or "").upper()
             if status in {"COMPLETED", "SUCCEEDED", "SUCCESS"}:
+                # log ONLY the final completed response
+                _dump_http("runpod", rid, "response", "GET", status_url, headers, r.text, status=r.status_code)
                 return js
             if status in {"FAILED", "CANCELLED", "CANCELED", "ERROR"}:
+                _dump_http("runpod", rid, "response", "GET", status_url, headers, r.text, status=r.status_code)
                 raise HTTPException(502, f"Runpod job failed: {js}")
             await asyncio.sleep(self.poll_interval_s)
             waited += self.poll_interval_s
             if waited >= deadline:
+                # nothing to log here (no final HTTP response)
                 raise HTTPException(504, f"Runpod job timed out after {deadline}s")
 
     async def _invoke(self, payload: Dict[str, Any]) -> Any:
@@ -558,6 +557,17 @@ class RunpodStrategy(OutlineStrategy):
 # OutlineService
 # ────────────────────────────────────────────────────────────────────────────────
 
+def _make_title_slide(title: str) -> Slide:
+    # Hard-code title layout — no auto-detection or validation
+    return Slide(
+        id=uuid.uuid4().hex,
+        title=(title or "Presentation").strip() or "Presentation",
+        meta=Meta(sections=[]),
+        notes=None,
+        layout="title_only",
+        media=[],
+    )
+
 @dataclass
 class OutlineService:
     primary: OutlineStrategy
@@ -575,7 +585,10 @@ class OutlineService:
         provider_name = provider.__class__.__name__
         async with aspan("image_enrich_deck", slides=len(deck.slides), provider=provider_name):
             for idx, s in enumerate(deck.slides):
-                if getattr(s, "media", None) and len(s.media) > 0: continue
+                if idx == 0:   # don't add images to the title slide
+                    continue
+                if getattr(s, "media", None) and len(s.media) > 0:
+                    continue
                 kw = _kw_from_title(s.title, deck.topic)
                 async with aspan("image_enrich_slide", idx=idx, kw=kw):
                     try:
@@ -586,15 +599,37 @@ class OutlineService:
         return deck
 
     async def _auto_fit_layouts(self, deck: Deck) -> Deck:
-        if not deck or not getattr(deck, "slides", None): return deck
+        """
+        Assign layouts to non-title slides. We leave slide 0 as-is ("title_only").
+        """
+        if not deck or not getattr(deck, "slides", None):
+            return deck
+
         default_first = _first_layout_id()
-        for s in deck.slides:
+        top_k = max(1, int(getattr(settings, "LAYOUT_AUTOFIT_TOPK", 3) or 3))
+
+        cand_cache: dict[tuple[int, int], list[str]] = {}
+        rr_index: dict[tuple[int, int], int] = {}
+
+        for i, s in enumerate(deck.slides):
+            if i == 0:
+                continue  # never touch the title slide
             try:
                 text_count = _count_text_blocks_server(s)
                 image_count = max(0, len(getattr(s, "media", None) or []))
-                cand = choose_layouts({"text_count": text_count, "image_count": image_count}, top_k=1)
-                chosen = str((cand or [None])[0]) if cand else None
+                key = (text_count, image_count)
+
+                if key not in cand_cache:
+                    cands = choose_layouts({"text_count": text_count, "image_count": image_count}, top_k=top_k)
+                    cand_cache[key] = [str(cid) for cid in (cands or [])]
+                    rr_index[key] = 0
+
+                cands = cand_cache[key]
+                chosen = (cands[rr_index[key] % len(cands)] if cands else None)
+                rr_index[key] += 1 if cands else 0
+
                 s.layout = chosen or _heuristic_layout_id(text_count, image_count, default_first)
+
             except Exception as e:
                 log.warning("autofit failed for slide %s: %s", getattr(s, "id", "?"), e)
                 s.layout = _heuristic_layout_id(
@@ -605,12 +640,22 @@ class OutlineService:
         return deck
 
     async def _auto_fit_slide(self, slide: Slide) -> Slide:
+        """
+        Assign a layout to a single slide. (Never used for title slide.)
+        """
         default_first = _first_layout_id()
         try:
             text_count = _count_text_blocks_server(slide)
             image_count = max(0, len(getattr(slide, "media", None) or []))
-            cand = choose_layouts({"text_count": text_count, "image_count": image_count}, top_k=1)
-            chosen = str((cand or [None])[0]) if cand else None
+            top_k = max(1, int(getattr(settings, "LAYOUT_AUTOFIT_TOPK", 3) or 3))
+            cands = choose_layouts({"text_count": text_count, "image_count": image_count}, top_k=top_k) or []
+
+            chosen = None
+            if cands:
+                sid = str(getattr(slide, "id", "")) or "0"
+                idx = (abs(hash(sid)) % len(cands)) if len(cands) > 0 else 0
+                chosen = str(cands[idx])
+
             slide.layout = chosen or _heuristic_layout_id(text_count, image_count, default_first)
         except Exception:
             slide.layout = _heuristic_layout_id(
@@ -621,14 +666,58 @@ class OutlineService:
         return slide
 
     async def generate_deck(self, req: OutlineRequest) -> Deck:
-        try:
-            async with aspan("outline_generate", strategy=self.primary.__class__.__name__):
-                log.info("[outline] using primary=%s", self.primary.__class__.__name__)
-                deck = await self.primary.generate_deck(req)
-        except Exception as e:
-            log.warning("outline primary failed; falling back (%s: %s)", type(e).__name__, str(e)[:200], exc_info=True)
-            async with aspan("outline_generate_fallback", strategy=self.fallback.__class__.__name__):
-                deck = await self.fallback.generate_deck(req)
+        """
+        Keep total slide count equal to the user's request by asking the model
+        for N-1 slides, then prepending a title slide ("title_only").
+        """
+        desired_total = max(1, min(int(getattr(req, "slide_count", 4) or 4), 15))
+        gen_count = max(0, desired_total - 1)
+
+        if gen_count == 0:
+            topic = (getattr(req, "topic", None) or "Presentation").strip() or "Presentation"
+            deck = Deck(
+                version=SCHEMA_VERSION,
+                topic=topic,
+                source=None,
+                slide_count=1,
+                created_at=datetime.utcnow(),
+                slides=[_make_title_slide(topic)],
+            )
+        else:
+            try:
+                try:
+                    req2 = req.model_copy(update={"slide_count": gen_count})  # pydantic v2
+                except Exception:
+                    try:
+                        req2 = OutlineRequest(**{**req.dict(), "slide_count": gen_count})  # pydantic v1
+                    except Exception:
+                        req2 = OutlineRequest(topic=getattr(req, "topic", None),
+                                              text=getattr(req, "text", None),
+                                              slide_count=gen_count)
+
+                async with aspan("outline_generate", strategy=self.primary.__class__.__name__):
+                    log.info("[outline] using primary=%s", self.primary.__class__.__name__)
+                    deck = await self.primary.generate_deck(req2)
+            except Exception as e:
+                log.warning("outline primary failed; %s", f"{type(e).__name__}: {str(e)[:200]}", exc_info=True)
+                if not getattr(settings, "ALLOW_OUTLINE_FALLBACK", True):
+                    raise
+                async with aspan("outline_generate_fallback", strategy=self.fallback.__class__.__name__):
+                    if hasattr(req, "model_copy"):
+                        req2 = req.model_copy(update={"slide_count": gen_count})
+                    else:
+                        req2 = OutlineRequest(topic=getattr(req, "topic", None),
+                                              text=getattr(req, "text", None),
+                                              slide_count=gen_count)
+                    deck = await self.fallback.generate_deck(req2)
+
+            # Prepend title and clamp to desired_total
+            topic = (getattr(req, "topic", None) or deck.topic or "Presentation").strip() or "Presentation"
+            deck.slides = [_make_title_slide(topic), *deck.slides][:desired_total]
+            deck.slide_count = len(deck.slides)
+            deck.topic = topic
+
+        # Rest of the pipeline unchanged
         deck = await self._enrich_images(deck)
         deck = await self._auto_fit_layouts(deck)
         return deck
@@ -639,7 +728,9 @@ class OutlineService:
                 log.info("[outline] regen using primary=%s", self.primary.__class__.__name__)
                 slide = await self.primary.regenerate_slide(index, req)
         except Exception as e:
-            log.warning("outline regen primary failed; falling back (%s: %s)", type(e).__name__, str(e)[:200], exc_info=True)
+            log.warning("outline regen primary failed; %s", f"{type(e).__name__}: {str(e)[:200]}", exc_info=True)
+            if not getattr(settings, "ALLOW_OUTLINE_FALLBACK", True):
+                raise
             async with aspan("outline_regenerate_fallback", strategy=self.fallback.__class__.__name__, index=index):
                 slide = await self.fallback.regenerate_slide(index, req)
 
@@ -664,10 +755,19 @@ def build_outline_service() -> OutlineService:
         host = urllib.parse.urlparse(settings.AGENT_URL).hostname or ""
         if "api.runpod.ai" in host:
             log.info("[outline] using RunpodStrategy url=%s", settings.AGENT_URL)
-            return OutlineService(primary=RunpodStrategy(url=settings.AGENT_URL, timeout_ms=settings.AGENT_TIMEOUT_MS),
-                                  fallback=PlaceholderStrategy())
+            return OutlineService(
+                primary=RunpodStrategy(
+                    url=settings.AGENT_URL,
+                    timeout_ms=settings.AGENT_TIMEOUT_MS,
+                    poll_interval_s=1.5,
+                    max_wait_s=getattr(settings, "RUNPOD_MAX_WAIT_S", None),
+                ),
+                fallback=PlaceholderStrategy(),
+            )
         log.info("[outline] using AgentStrategy url=%s", settings.AGENT_URL)
-        return OutlineService(primary=AgentStrategy(url=settings.AGENT_URL, timeout_ms=settings.AGENT_TIMEOUT_MS),
-                              fallback=PlaceholderStrategy())
+        return OutlineService(
+            primary=AgentStrategy(url=settings.AGENT_URL, timeout_ms=settings.AGENT_TIMEOUT_MS),
+            fallback=PlaceholderStrategy(),
+        )
     log.info("[outline] using PlaceholderStrategy (no model)")
     return OutlineService(primary=PlaceholderStrategy(), fallback=PlaceholderStrategy())
