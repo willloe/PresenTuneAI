@@ -53,12 +53,12 @@ Expected directory structure:
 ```
 BASE/
 ├── slides/
-│   ├── config1.json
-│   ├── config2.json
+│   ├── acl17.json
+│   ├── acl18.json
 │   └── ...
 └── papers/
-    ├── paper1.txt
-    ├── paper2.txt
+    ├── acl17.json
+    ├── acl18.json
     └── ...
 ```
 
@@ -72,10 +72,8 @@ BASE/
 
 ## Requirements
 
-- Conda environment `together_ft`
-- Python packages for text processing and similarity computation
-- Sufficient disk space for temporary files and indexes
-- Multi-core CPU for parallel processing (12 cores recommended)
+- PresenTuneAI/model/requirements.txt
+
 
 ## Output
 
