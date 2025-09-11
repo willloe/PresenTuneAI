@@ -48,6 +48,51 @@ class Meta(BaseModel):
 
     sections: Optional[List[TextSection]] = None
 
+    @field_validator("sections", mode="before")
+    @classmethod
+    def _drop_empty_and_normalize_sections(cls, v):
+        """
+        Allow slides with zero text by removing empty sections before schema validation.
+        - paragraph: drop if text is empty/whitespace
+        - list: drop if bullets has no non-empty items
+        Also tolerate {"type": "..."} instead of {"kind": "..."}.
+        """
+        if not isinstance(v, list):
+            return []
+        cleaned: list[dict] = []
+        for raw in v:
+            if not isinstance(raw, dict):
+                continue
+            kind = (raw.get("kind") or raw.get("type") or "").strip().lower()
+
+            if kind == "paragraph":
+                text = (raw.get("text") or "").strip()
+                if text:
+                    out = dict(raw)
+                    out["kind"] = "paragraph"
+                    out["text"] = text
+                    cleaned.append(out)
+                # else drop
+
+            elif kind == "list":
+                bullets = [
+                    (str(b) if b is not None else "").strip()
+                    for b in (raw.get("bullets") or [])
+                ]
+                bullets = [b for b in bullets if b]
+                if bullets:
+                    out = dict(raw)
+                    out["kind"] = "list"
+                    out["bullets"] = bullets
+                    cleaned.append(out)
+                # else drop
+
+            else:
+                # Unknown kinds: drop to avoid union mis-match errors
+                continue
+
+        return cleaned
+
 
 # ---- Slide / Deck -------------------------------------------------------------
 
@@ -61,7 +106,8 @@ class Slide(BaseModel):
     notes: Optional[str] = Field(default=None, max_length=4000)
 
     # Layout is advisory here (actual placement happens in /editor/build)
-    layout: Optional[str] = Field(default="title-bullets")
+    # Use the new id that matches the layouts library.
+    layout: Optional[str] = Field(default="title_bullets_left")
 
     # Zero or more images
     media: Optional[List[Media]] = Field(default_factory=list)
@@ -79,34 +125,60 @@ class Slide(BaseModel):
     @model_validator(mode="after")
     def _sync_bullets_and_sections(self) -> "Slide":
         """
-        Keep legacy `bullets[]` and canonical `meta.sections[]` in sync:
-        - If sections has a primary (or first) list, mirror it into bullets.
-        - Else if bullets exist but no list section, create a primary list section.
+        Keep legacy `bullets[]` and canonical `meta.sections[]` in sync.
+
+        Fixes:
+        - Detect dict-shaped list sections (not only ListSection instances).
+        - Only create a list section from legacy bullets when there are *no* sections.
+        - Clear legacy bullets when there is no list section so we don't mirror paragraphs
+          into a phantom list on the server.
         """
         sections = list(self.meta.sections) if (self.meta and self.meta.sections) else []
 
-        # Locate a primary list section (or first list section)
-        list_ix = None
-        for i, sec in enumerate(sections):
+        def _kind(sec) -> str:
+            if isinstance(sec, dict):
+                return str(sec.get("kind", "")).lower()
+            return str(getattr(sec, "kind", "")).lower()
+
+        def _role(sec) -> str:
+            if isinstance(sec, dict):
+                return str(sec.get("role", "")).lower()
+            return str(getattr(sec, "role", "")).lower()
+
+        def _get_bullets(sec) -> list[str]:
+            if isinstance(sec, dict):
+                return list(sec.get("bullets") or [])
             if isinstance(sec, ListSection):
+                return list(sec.bullets or [])
+            return []
+
+        # Find a list section; prefer one marked primary
+        list_ix: Optional[int] = None
+        for i, sec in enumerate(sections):
+            if _kind(sec) == "list":
                 list_ix = i
-                # Prefer the one marked primary
-                if (sec.role or "").lower() == "primary":
-                    list_ix = i
+                if _role(sec) == "primary":
                     break
 
         if list_ix is not None:
-            # Mirror to legacy bullets
-            list_sec: ListSection = sections[list_ix]  # type: ignore[assignment]
-            if list_sec.bullets:
-                object.__setattr__(self, "bullets", list(list_sec.bullets))
+            # Mirror list bullets into legacy bullets; if list is empty but legacy bullets exist, push them back
+            list_sec = sections[list_ix]
+            bullets = [b.strip() for b in _get_bullets(list_sec) if b and str(b).strip()]
+
+            if bullets:
+                object.__setattr__(self, "bullets", list(bullets))
             elif self.bullets:
                 # Sections list is empty but legacy bullets present → use them
-                list_sec.bullets = list(self.bullets)
+                if isinstance(list_sec, ListSection):
+                    list_sec.bullets = list(self.bullets)
+                else:
+                    # dict-shaped section
+                    list_sec["bullets"] = list(self.bullets)
 
         else:
-            # No list section present; if legacy bullets exist, create a primary list section
-            if self.bullets:
+            # No list section present:
+            # Only create a list section from legacy bullets if there are *no sections at all*.
+            if self.bullets and not sections:
                 sections.append(
                     ListSection(
                         id=f"{self.id}-l1",
@@ -114,8 +186,11 @@ class Slide(BaseModel):
                         role="primary",
                     )
                 )
+            else:
+                # We have paragraphs/other sections: clear legacy bullets to avoid phantom list duplication
+                object.__setattr__(self, "bullets", None)
 
-        # Write back sections (if we assembled any)
+        # Write back sections (if any)
         if self.meta is None:
             object.__setattr__(self, "meta", Meta(sections=sections if sections else None))
         else:

@@ -19,7 +19,7 @@ class EditorSlide(BaseModel):
     name: str
     background: dict = Field(default_factory=dict)
     layers: List[EditorLayer]
-    meta: dict = {}
+    meta: dict = Field(default_factory=dict)
 
 
 class EditorDoc(BaseModel):
@@ -28,5 +28,6 @@ class EditorDoc(BaseModel):
     version: str = "1.0"
     page: dict
     theme: str = "default"
+    theme_meta: Optional[dict] = None
     slides: List[EditorSlide]
-    meta: dict = {}
+    meta: dict = Field(default_factory=dict)

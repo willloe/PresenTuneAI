@@ -1,8 +1,8 @@
 # Data Models (Canonical)
 
-This document defines the JSON/TypeScript models used by PresenTuneAI. All coordinates are **pixel-based** in an editor canvas whose default page size is **1280×720** (16:9).
+This document defines the JSON/TypeScript models used by PresenTuneAI. All coordinates are **pixel-based** in an editor canvas whose default page size is **1280×720** (16:9). The sections here **only add information** to the earlier document—no breaking changes.
 
-> Quick map of the flow: **Deck (outline)** → **EditorDoc (exact canvas layers)** → **PPTX export**
+> Flow: **Deck (outline)** → **EditorDoc (exact canvas layers)** → **PPTX export**
 
 ---
 
@@ -13,7 +13,13 @@ The **Deck** is the extracted/outlined content before exact positioning.
 ### TypeScript
 
 ```ts
-export type Media = { type: "image"; url: string; alt?: string; source?: string; asset_id?: string };
+export type Media = {
+  type: "image";
+  url: string;
+  alt?: string;
+  source?: "external" | "asset";   // NEW: provenance hint used by exporter
+  asset_id?: string;               // when sourced from /v1/assets
+};
 
 export type TextSection =
   | { id: string; kind: "paragraph"; text: string; role?: "primary" | "secondary" | string }
@@ -54,8 +60,10 @@ export type Deck = {
           { "id": "l1", "kind": "list", "bullets": ["Form teams", "Pick a problem"], "role": "primary" }
         ]
       },
-      "bullets": ["Form teams", "Pick a problem"],   // legacy mirror
-      "media": [{ "type": "image", "url": "https://picsum.photos/seed/s1/800/400", "alt": "teams" }]
+      "bullets": ["Form teams", "Pick a problem"],
+      "media": [
+        { "type": "image", "url": "https://picsum.photos/seed/s1/800/400", "alt": "teams", "source": "external" }
+      ]
     }
   ]
 }
@@ -177,6 +185,14 @@ export type EditorLayer =
       source: { type?: "external"|"asset"; url?: string; asset_id?: string };
       fit?: "cover" | "contain" | "fill";  // default "cover"
       z?: number;
+    }
+  | {
+      // NEW: basic rectangle shape support (exporter supports fill+stroke)
+      id: string;
+      kind: "shape";
+      frame: EditorFrame;
+      style?: { fill?: string; stroke?: string; strokeWidth?: number };
+      z?: number;
     };
 
 export type EditorSlide = {
@@ -193,6 +209,7 @@ export type EditorDoc = {
   page: { width: number; height: number; unit?: "px" };
   theme: string;
   slides: EditorSlide[];
+  theme_meta?: Record<string, any>; // NEW: forwarded into exporter to theme fonts/colors
   meta?: Record<string, any>;
 };
 ```
@@ -210,22 +227,144 @@ export type EditorDoc = {
 
 ---
 
-## 4) ExportResponse
+## 4) Export model
 
-The export endpoint returns location and stats of the generated file.
+### Request/Response
 
 ```ts
+export type ExportRequest =
+  | { slides: Slide[]; theme?: string; theme_meta?: Record<string, any> }
+  | { editor: EditorDoc; theme?: string; theme_meta?: Record<string, any> };
+
 export type ExportResponse = {
-  path: string;          // relative path served by /v1/export/{filename}
-  format: "pptx"|"txt";
+  path: string;            // filename written by the backend
+  download_url?: string;   // NEW: absolute URL to GET /v1/export/{filename}
+  format: "pptx" | "txt";
   theme: string;
   bytes: number;
 };
 ```
 
-**Export behavior summary** (see `api.md` for details):
+**Export behavior summary**:
 - Slide size equals `EditorDoc.page` (px) converted to **EMU** using 96 dpi (1 in = 96 px = 72 pt; 1 in = 914400 EMU).  
 - Text uses style mapping with `pt = px * 0.75`, word-wrap on, alignment mapped to PPTX.  
 - Images use `fit`: `cover` crops equally; `contain` letterboxes; `fill` stretches.  
 - Backgrounds: solid color fill only (for now).  
 - Fallback: `.txt` written if `python-pptx` is unavailable.
+
+---
+
+## 5) Assets model (media library)
+
+**New:** when the extractor emits images, they are written to `STORAGE_DIR/<upload_id>/assets/` and indexed in an `index.json`. The API serves metadata and files for the Media Library.
+
+```ts
+export type Asset = {
+  id: string;
+  filename: string;
+  rel_path: string;     // file path relative to project root (or absolute)
+  width?: number;
+  height?: number;
+  ext?: string;         // ".png", ".jpg", …
+  checksum?: string;    // optional
+  caption?: string | null;
+};
+
+export type AssetList = { items: Asset[]; count: number };
+```
+
+Endpoints:
+
+- `GET /v1/assets?upload_id=…` → `{ items, count }`
+- `GET /v1/assets/{id}` → `Asset`
+- `GET /v1/assets/{id}/file?upload_id=…` → binary image
+
+The frontend uses `assetFileUrl(uploadId, assetId)` to build an `<img src>` compatible URL.
+
+---
+
+## 6) Theme meta (frontend → exporter)
+
+The exporter accepts `theme_meta` (fonts/colors) either from the explicit ExportRequest or forwarded from `EditorDoc.theme_meta`. Minimal example:
+
+```json
+{
+  "fonts": { "heading": "Inter", "body": "Inter", "weightHeading": 700, "weightBody": 400 },
+  "colors": {
+    "appBg": "#111827",
+    "surface": "#ffffff",
+    "text": "#111111",
+    "mutedText": "#475569",
+    "border": "#E5E7EB",
+    "accent": "#2563EB",
+    "accentContrast": "#ffffff",
+    "accentSoft": "#DBEAFE"
+  }
+}
+```
+
+These defaults are safe; missing keys are backfilled in the exporter.
+
+---
+## 2025-09-09 – Models Addendum
+
+### Text Sections (canonical)
+
+`Slide.meta.sections` is the canonical text model and can be **omitted** or **empty** for title‑only slides.
+
+#### `ParagraphSection`
+```ts
+kind: "paragraph"
+id: string         // client generated
+text: string       // may be empty ("") for placeholder paragraphs
+role?: string
+```
+
+> The minimum length for `ParagraphSection.text` is now **0** to allow temporary empty paragraphs in the editor UI.
+
+#### `ListSection`
+```ts
+kind: "list"
+id: string
+bullets: string[]  // server trims empty entries
+role?: string
+```
+
+### Legacy bullets mirroring
+
+- If a primary `ListSection` exists, its bullets are mirrored to legacy `Slide.bullets` for backward compatibility.
+- If there are **no** sections but legacy `bullets` exist, the server synthesizes a primary `ListSection`.
+- If there are paragraphs (or other sections) and **no** list section, legacy `bullets` is **cleared** server‑side to avoid drift.
+
+### Media
+
+```ts
+type Media = {
+  type: "image",
+  url?: string,           // HttpUrl (can be data: URL for in‑memory images)
+  alt?: string,
+  source?: "asset" | "external", // backend literal
+  asset_id?: string
+}
+```
+
+> The UI may also track `source` as `"library" | "generated" | "external" | "empty"` in its internal plan, but the **backend accepts only** `"asset"` or `"external"`.
+
+### Slide
+
+```ts
+id: string
+title: string
+bullets?: string[]          // legacy mirror
+notes?: string
+layout?: string             // advisory; used by /editor/build
+media?: Media[]
+meta?: { sections?: (ParagraphSection | ListSection)[] }
+```
+
+Title‑only slides are valid: `meta.sections` can be `null`/`[]`, and there is **no requirement** to include a paragraph or list.
+
+### Deck
+
+- `slide_count` is normalized server‑side to `len(slides)`.
+- `version` is set from `SCHEMA_VERSION`.

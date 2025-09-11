@@ -2,6 +2,34 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.4.2]
+- Image generation API (`/images/generate`, `/images/provider`) with providers: stub/pexels/openai.
+- Layout library v2 loader with JSON auto-reload + slot-aware scoring.
+- Auto-fit treats a non-empty **title** as one text block.
+- Editor Build now accepts `theme_meta`; Export accepts `theme_meta` with or without editor doc.
+- Media Library Drawer integrates in-drawer AI generation and provider pill.
+- Media items now include `source: "asset" | "external"` for backend validation.
+- Slides may have no text sections (`meta.sections: null`).
+
+
+## [0.4.1] - 2025-09-03
+### Added
+- **Assets / Media Library API docs**: `/assets` endpoints documented (list, meta, file). Store tolerates missing/corrupt `index.json` and writes atomically.
+- **Storage layout** section in API docs: explains `STORAGE_DIR` (uploads), canonical exports directory, and Docker volume bindings.
+- **Export discovery & normalization** details: server now searches known roots by filename and normalizes artifacts into `/app/data/exports`; stable `download_url` added to export response.
+- **Client integration notes**: Finalize step auto‑exports when an EditorDoc exists; Google Slides integration described.
+
+### Changed
+- Expanded `/layouts` documentation with normalization rules and examples; clarified scoring in `/layouts/filter`.
+- `/editor/build` docs: clarified mapping rules for text/images and policy behavior; emphasized optional `Idempotency-Key` and TTL.
+- Kept all prior content; additions are **strictly additive**, no removals.
+
+### Fixed
+- Simple slides exporter now places **multiple images** (2–6) using an auto grid when the editor doc is not supplied; previously only the first image was rendered in some cases.
+- Download buttons are disabled while `exporting=true` to prevent 404s from premature clicks.
+
+---
+
 ## [0.4.0] - 2025-08-19
 ### Added
 - **Layout library is JSON-backed** with hot reload via `GET /layouts?reload=true`; loader normalizes `supports` and `frames` (coalesces `img0..N` → `images[]`, coerces single `bullets` → list).

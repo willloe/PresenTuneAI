@@ -6,12 +6,58 @@ import { usePhases } from "../hooks/usePhases";
 import { openInGoogleSlides } from "../integrations/externalEditor";
 import { ensureGoogleDriveToken } from "../integrations/oauth/google";
 import { getConfig } from "../config";
+import Celebrate from "./ui/Celebrate";
+
+import { themeKeyToMeta, type ThemeMeta } from "../theme/meta";
+import { THEMES, type ThemeKey } from "../theme/themes";
+import Button from "./ui/Button";
 
 type Props = {
   editorResp: EditorBuildResponse | null;
+  onOpenWorkbench?: () => void;
 };
 
-export default function FinalizeSection({ editorResp }: Props) {
+/** Merge + hydrate ThemeMeta without duplicate object keys */
+function ensureThemeMeta(metaIn: any, themeKey: ThemeKey | string): ThemeMeta {
+  const safeKey: ThemeKey = (THEMES as any)[themeKey] ? (themeKey as ThemeKey) : "default";
+  const base = themeKeyToMeta(safeKey);
+
+  const inFonts = (metaIn?.fonts ?? {}) as Partial<ThemeMeta["fonts"]>;
+  const inColors = (metaIn?.colors ?? {}) as Partial<ThemeMeta["colors"]>;
+
+  // Start from base → override with incoming → then ensure sensible fallbacks
+  let fonts: ThemeMeta["fonts"] = {
+    ...(base.fonts || {}),
+    ...(inFonts || {}),
+  } as ThemeMeta["fonts"];
+  fonts.heading ||= "Inter, ui-sans-serif, system-ui";
+  fonts.body ||= "Inter, ui-sans-serif, system-ui";
+  fonts.weightHeading ||= 700;
+  fonts.weightBody ||= 400;
+  if (fonts.letterSpacing === undefined) fonts.letterSpacing = "0em";
+
+  let colors: ThemeMeta["colors"] = {
+    ...(base.colors || {}),
+    ...(inColors || {}),
+  } as ThemeMeta["colors"];
+  colors.appBg ||= "#0f172a";
+  colors.surface ||= "#ffffff";
+  colors.text ||= "#111827";
+  colors.mutedText ||= "#6B7280";
+  colors.border ||= "#E5E7EB";
+  colors.accent ||= "#111827";
+  colors.accentContrast ||= "#ffffff";
+  colors.accentSoft ||= "#F3F4F6";
+
+  return {
+    ...base,
+    ...(metaIn ?? {}),
+    fonts,
+    colors,
+  };
+}
+
+export default function FinalizeSection({ editorResp, onOpenWorkbench }: Props) {
   const { setStep } = usePhases();
   const { ready, theme, exporting, exportErr, exportInfo, downloadUrl, lastExport, runExport } =
     useExport({ editorResp });
@@ -19,7 +65,16 @@ export default function FinalizeSection({ editorResp }: Props) {
   const [opening, setOpening] = useState<null | "google">(null);
   const [googleConfigured, setGoogleConfigured] = useState<boolean>(true);
 
-  // ---- detect if Google is configured
+  // subtle ring + celebration when export becomes available
+  const [celebrate, setCelebrate] = useState(false);
+  useEffect(() => {
+    if (exportInfo) {
+      setCelebrate(true);
+      const t = setTimeout(() => setCelebrate(false), 1300);
+      return () => clearTimeout(t);
+    }
+  }, [exportInfo]);
+
   useEffect(() => {
     (async () => {
       try {
@@ -31,15 +86,22 @@ export default function FinalizeSection({ editorResp }: Props) {
     })();
   }, []);
 
-  // ---- build a lightweight fingerprint for the current editor build
-  const autoExportKey = useMemo(() => {
+  // Normalize editor + hydrate theme_meta with defaults
+  const normalizedEditor = useMemo(() => {
     const ed = editorResp?.editor;
+    if (!ed) return null;
+    const safeKey: ThemeKey = (THEMES as any)[ed.theme] ? (ed.theme as ThemeKey) : "default";
+    const safeMeta = ensureThemeMeta(ed.theme_meta, safeKey);
+    return { ...ed, theme_meta: safeMeta };
+  }, [editorResp?.editor]);
+
+  const autoExportKey = useMemo(() => {
+    const ed = normalizedEditor;
     if (!ed) return null;
     const ids = (ed.slides || []).map((s) => s.id || "").join(",");
     return `${theme}|${(ed.slides || []).length}|${ids}`;
-  }, [editorResp?.editor, theme]);
+  }, [normalizedEditor, theme]);
 
-  // ---- run export automatically once per unique editor build
   const autoRanForKey = useRef<string | null>(null);
   useEffect(() => {
     if (!ready || exporting || !autoExportKey) return;
@@ -49,22 +111,19 @@ export default function FinalizeSection({ editorResp }: Props) {
       try {
         await runExport();
       } catch {
-        // allow retry if user re-enters or re-builds
         autoRanForKey.current = null;
       }
     })();
   }, [ready, exporting, autoExportKey, runExport]);
 
-  const slidesCount = editorResp?.editor?.slides?.length ?? 0;
+  const slidesCount = normalizedEditor?.slides?.length ?? 0;
   const statusLabel = useMemo(
     () => (ready ? `Editor: ✓ built ${slidesCount} slide${slidesCount === 1 ? "" : "s"}` : "Editor: not ready"),
     [ready, slidesCount]
   );
 
-  const exportBtnLabel = exporting ? "Exporting…" : exportInfo ? "Re-export" : "Export";
-
-  function rebuildEditor() {
-    setStep?.(4);
+  function openWorkbenchStep() {
+    setStep?.(3);
   }
 
   async function copyUrl(text: string) {
@@ -75,7 +134,6 @@ export default function FinalizeSection({ editorResp }: Props) {
     } catch {}
   }
 
-  // --- Google helper flow ---
   async function fetchExportBlob(url: string): Promise<Blob> {
     const r = await fetch(url, { credentials: "include" });
     if (!r.ok) throw new Error(`Download failed: ${r.status}`);
@@ -83,17 +141,18 @@ export default function FinalizeSection({ editorResp }: Props) {
   }
   async function getGoogleAccessToken(): Promise<string | null> {
     try {
-      return await ensureGoogleDriveToken(); // scope: drive.file
+      return await ensureGoogleDriveToken();
     } catch (e) {
       console.error(e);
       return null;
     }
   }
-  // ---------------------------
 
   return (
     <div className="space-y-3">
-      {/* Status bar */}
+      {/* celebration overlay – simple, respects reduced motion inside the component */}
+      <Celebrate fire={celebrate} />
+
       <div className="flex items-center justify-between rounded-xl border bg-white p-3 text-sm">
         <div className="flex items-center gap-3 flex-wrap">
           <span className={ready ? "text-green-700" : "text-gray-700"}>{statusLabel}</span>
@@ -104,27 +163,38 @@ export default function FinalizeSection({ editorResp }: Props) {
               <span className="text-gray-400">•</span>
               <button
                 className="text-amber-700 underline underline-offset-2 hover:no-underline"
-                onClick={rebuildEditor}
+                onClick={openWorkbenchStep}
               >
-                {editorResp.warnings.length} warning{editorResp.warnings.length === 1 ? "" : "s"} — Review in Step 4
+                {editorResp.warnings.length} warning{editorResp.warnings.length === 1 ? "" : "s"} — Review in
+                Workbench
               </button>
             </>
           )}
         </div>
 
-        <button
-          onClick={runExport}
-          disabled={exporting || !ready}
-          className={`rounded-xl px-4 py-2 text-white ${
-            exporting || !ready ? "bg-gray-400 cursor-not-allowed" : "bg-black hover:opacity-90"
-          }`}
-          title={!ready ? "Build the editor doc first (Step 4)" : "Export deck"}
-        >
-          {exportBtnLabel}
-        </button>
+        <div className="flex items-center gap-2">
+          {normalizedEditor && (
+            <Button
+              variant="outline"
+              onClick={onOpenWorkbench}
+              title="Open the editor workbench"
+              className="px-3 py-1"
+            >
+              Open Workbench
+            </Button>
+          )}
+          <Button
+            variant="solid"
+            onClick={runExport}
+            disabled={exporting || !ready}
+            title={!ready ? "Build the editor doc first" : "Export deck"}
+            className="px-4 py-2"
+          >
+            {exporting ? "Exporting…" : exportInfo ? "Re-export" : "Export"}
+          </Button>
+        </div>
       </div>
 
-      {/* Build result/debug */}
       <div className="rounded-xl border p-3 bg-gray-50 text-sm">
         <div className="font-medium mb-1">Editor build result</div>
         {editorResp ? (
@@ -135,8 +205,8 @@ export default function FinalizeSection({ editorResp }: Props) {
             {editorResp.warnings?.length ? (
               <div className="text-amber-700">
                 Warnings: {editorResp.warnings.length} —{" "}
-                <button className="underline underline-offset-2 hover:no-underline" onClick={rebuildEditor}>
-                  Review in Step 4
+                <button className="underline underline-offset-2 hover:no-underline" onClick={openWorkbenchStep}>
+                  Review in Workbench
                 </button>
               </div>
             ) : (
@@ -152,13 +222,13 @@ export default function FinalizeSection({ editorResp }: Props) {
         )}
       </div>
 
-      {editorResp?.editor && (
+      {normalizedEditor && (
         <div
-          className="themed-card p-3 anim-in"
+          className={`themed-card p-3 anim-in ${celebrate ? "ring-2 ring-black/30" : ""}`}
           style={{ fontFamily: "var(--font-body)", letterSpacing: "var(--font-tracking)" }}
         >
           <EditorPreview
-            doc={editorResp.editor}
+            doc={normalizedEditor}
             cols={2}
             minFontPx={12}
             showFrames={false}
@@ -168,13 +238,12 @@ export default function FinalizeSection({ editorResp }: Props) {
         </div>
       )}
 
-      {/* Current export result (immediate) */}
       <div className="mt-2 flex items-center gap-3 flex-wrap">
         {exportErr && (
           <>
             <span className="text-sm text-red-600">{exportErr}</span>
-            <button className="text-sm underline underline-offset-2" onClick={rebuildEditor}>
-              Rebuild editor (Step 4)
+            <button className="text-sm underline underline-offset-2" onClick={openWorkbenchStep}>
+              Rebuild in Workbench
             </button>
           </>
         )}
@@ -199,7 +268,6 @@ export default function FinalizeSection({ editorResp }: Props) {
         )}
       </div>
 
-      {/* Latest successful export (persists across refresh) */}
       {lastExport && (
         <div className="rounded-xl border bg-white p-3">
           <div className="flex flex-wrap items-center gap-3">
@@ -225,18 +293,19 @@ export default function FinalizeSection({ editorResp }: Props) {
               Download
             </a>
 
-            <button
-              className="inline-flex items-center text-xs rounded-md border px-2 py-1 hover:bg-gray-50 disabled:opacity-50"
+            <Button
+              variant="outline"
+              size="xs"
               disabled={exporting || !lastExport.url}
               onClick={() => lastExport.url && copyUrl(lastExport.url)}
               title={exporting ? "Export in progress…" : "Copy download URL"}
             >
               {copied ? "Copied!" : "Copy URL"}
-            </button>
+            </Button>
 
-            {/* Open in Google Slides */}
-            <button
-              className="inline-flex items-center text-xs rounded-md border px-2 py-1 hover:bg-gray-50 disabled:opacity-50"
+            <Button
+              variant="outline"
+              size="xs"
               disabled={exporting || !lastExport.url || opening !== null || !googleConfigured}
               title={
                 exporting
@@ -265,7 +334,7 @@ export default function FinalizeSection({ editorResp }: Props) {
               }}
             >
               {opening === "google" ? "Opening…" : "Open in Google Slides"}
-            </button>
+            </Button>
           </div>
         </div>
       )}

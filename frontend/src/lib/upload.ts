@@ -1,3 +1,4 @@
+// lib/upload.ts
 import { API_BASE } from "./api";
 
 export type ParsedPreview = {
@@ -9,14 +10,12 @@ export type ParsedPreview = {
 };
 
 export type UploadResponse = {
+  uploadId?: string;
   filename: string;
   size: number;
   content_type: string;
   path?: string | null;
   parsed: ParsedPreview;
-
-  // NEW: optional uploadId (from response header)
-  uploadId?: string;
 };
 
 export async function uploadFile(file: File): Promise<UploadResponse> {
@@ -25,7 +24,6 @@ export async function uploadFile(file: File): Promise<UploadResponse> {
   fd.append("file", file);
 
   const res = await fetch(`${base}/upload`, { method: "POST", body: fd });
-
   if (!res.ok) {
     let detail = "";
     try {
@@ -37,8 +35,16 @@ export async function uploadFile(file: File): Promise<UploadResponse> {
     throw new Error(`${res.status} ${res.statusText}${detail ? ` — ${detail}` : ""}`);
   }
 
-  const json = (await res.json()) as Omit<UploadResponse, "uploadId">;
-  const uploadId = res.headers.get("X-Upload-Id") ?? undefined;
+  // ⬇️ parse JSON first; many browsers need Access-Control-Expose-Headers to read custom headers.
+  const json = (await res.json()) as UploadResponse;
+  const uploadIdFromJson = json.uploadId;
+  const uploadIdFromHeader = res.headers.get("X-Upload-Id") ?? undefined;
+
+  const uploadId = uploadIdFromJson ?? uploadIdFromHeader;
+  if (!uploadId) {
+    // Hard fail once so we don’t proceed to outline without it
+    throw new Error("Upload succeeded but ‘uploadId’ is missing from response.");
+  }
 
   return { ...json, uploadId };
 }

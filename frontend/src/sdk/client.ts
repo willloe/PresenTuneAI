@@ -21,11 +21,13 @@ export type Slide = Deck["slides"][number];
 
 // Normalize nullable fields to the shape lib/api expects
 function normalize(req: OutlineRequest): {
+  upload_id?: string;
   topic?: string;
   text?: string;
   slide_count?: number;
 } {
   return {
+    upload_id: (req as any).upload_id ?? undefined,
     topic: req.topic ?? undefined,
     text: req.text ?? undefined,
     slide_count: req.slide_count,

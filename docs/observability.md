@@ -153,3 +153,43 @@ A lightweight background task removes old files under `STORAGE_DIR` based on `EN
 - **Request ID propagation:** `X-Request-Id` header on responses; also echoed in error bodies.  
 - **Server-Timing:** timings aggregated for sub-operations (e.g., editor build, export).  
 - **Correlation guidance:** copy the request ID into bug reports; grep logs by it.
+
+---
+
+## Addendum: New Spans & Debugging Aids (2025-09-03)
+
+### New/Notable spans
+- **image_enrich_deck** — image suggestion pass during outline (when enabled).
+- **export_ready** — export finished; includes filename and size.
+- **export_download** / **export_download_miss** — download route hits/misses.
+- **upload_parse** — document text + asset extraction.
+- **layouts.filter** — layout recommender (server-side filter route).
+
+All of these appear in the `Server-Timing` header and in structured logs.
+
+### Debug endpoints
+- **`GET /v1/export/_debug/list`** — Show candidate export directories and their contents.
+
+### Frontend surfacing
+- The header shows **schema version** and **backend health**.
+- The Preview pane surfaces the **Request ID** so you can match the request with logs.
+
+### Example: instrument image fetching
+```py
+from app.core.telemetry import span
+
+def _fetch_image_png_bytes(url: str) -> bytes|None:
+    with span("export_fetch_image", url=url):
+        ...
+```
+
+### Tip: background fills that survive imports
+The exporter sets the true slide background **and** inserts a back-most rectangle that fills the
+slide. Many importers (e.g., Google Slides) honor the rectangle even when they ignore the slide
+background fill.
+
+- **Server-Timing** spans via `aspan(...)`:
+  - `outline_generate`, `outline_regenerate`
+  - `agent_outline_request`, `agent_regen_request`
+  - `image_enrich_deck`, `image_enrich_slide`
+- Logs include strategy and counts; image provider class is emitted on enrich.

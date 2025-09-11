@@ -3,6 +3,7 @@ import type { ApiMeta } from "../lib/api";
 import SlideCard from "./slide/SlideCard";
 import ExportBanner from "./preview/ExportBanner";
 import DeckStats from "./preview/DeckStats";
+import Button from "./ui/Button";
 
 type Props = {
   deck: Deck | null;
@@ -28,8 +29,14 @@ type Props = {
   onGenerateImage?: (index: number) => void;
 
   // Media library plumbing
-  uploadId?: string | null;                 // ← USE this now
+  uploadId?: string | null;
   onOpenMediaLibrary?: (index: number) => void;
+
+  // NEW (optional): slot-aware open
+  onOpenMediaLibrarySlot?: (slideIndex: number, slotIndex: number) => void;
+
+  // NEW (optional): slide_id -> required slots for chosen layout
+  imageSlotsNeededBySlide?: Record<string, number>;
 };
 
 export default function Preview({
@@ -49,8 +56,10 @@ export default function Preview({
   onSetImage,
   onRemoveImage,
   onGenerateImage,
-  uploadId,                                  // ← using it
+  uploadId,
   onOpenMediaLibrary,
+  onOpenMediaLibrarySlot,
+  imageSlotsNeededBySlide,
 }: Props) {
   const pretty = (s: string) => s.replace(/[_-]+/g, " ").replace(/\s+/g, " ").trim();
   if (!slides.length) return null;
@@ -76,39 +85,57 @@ export default function Preview({
       </div>
 
       <ul className="space-y-3">
-        {slides.map((s, i) => (
-          <li key={s.id ?? i} className="space-y-2">
-            <SlideCard
-              slide={s}
-              index={i}
-              total={slides.length}
-              loading={loading}
-              regenIndex={regenIndex}
-              showImages={showImages}
-              onRegenerate={onRegenerate}
-              onUpdate={(idx, next) => onUpdateSlide(idx, next)}
-              layoutName={layoutNameBySlide?.[s.id]}
-              onReorder={onReorder}
-              // Legacy single-image hooks
-              onSetImage={onSetImage}
-              onRemoveImage={onRemoveImage}
-              onGenerateImage={onGenerateImage}
-              onOpenMediaLibrary={onOpenMediaLibrary}
-            />
+        {slides.map((s, i) => {
+          const have = Math.max(0, s.media?.length || 0);
+          const need = imageSlotsNeededBySlide?.[s.id] ?? 0;
+          const deficit = Math.max(0, need - have);
 
-            {/* Show library button only if we can actually open & load assets */}
-            {onOpenMediaLibrary && !!uploadId && (
-              <div className="flex gap-2 pl-2">
-                <button
-                  className="rounded-lg border px-3 py-1 text-sm hover:bg-gray-50"
-                  onClick={() => onOpenMediaLibrary(i)}
-                >
-                  Add from Library
-                </button>
+          return (
+            <li key={s.id ?? i} className="space-y-2">
+              <SlideCard
+                slide={s}
+                index={i}
+                total={slides.length}
+                loading={loading}
+                regenIndex={regenIndex}
+                showImages={showImages}
+                onRegenerate={onRegenerate}
+                onUpdate={(idx, next) => onUpdateSlide(idx, next)}
+                layoutName={layoutNameBySlide?.[s.id]}
+                onReorder={onReorder}
+                // Legacy single-image hooks
+                onSetImage={onSetImage}
+                onRemoveImage={onRemoveImage}
+                onGenerateImage={onGenerateImage}
+                onOpenMediaLibrary={onOpenMediaLibrary}
+              />
+
+              <div className="flex items-center gap-2 pl-2 flex-wrap">
+                {onOpenMediaLibrary && !!uploadId && (
+                  <Button size="xs" onClick={() => onOpenMediaLibrary(i)}>
+                    Add from Library
+                  </Button>
+                )}
+
+                {onOpenMediaLibrarySlot && !!uploadId && deficit > 0 && (
+                  <Button
+                    size="xs"
+                    onClick={() => onOpenMediaLibrarySlot(i, have /* next empty slot */)}
+                    title="Fill the next empty image slot for this slide"
+                  >
+                    Fill next image slot ({deficit} needed)
+                  </Button>
+                )}
+
+                {deficit > 0 && (
+                  <span className="text-xs rounded-full bg-gray-100 px-2 py-0.5">
+                    Needs {deficit} more image{deficit > 1 ? "s" : ""}
+                  </span>
+                )}
               </div>
-            )}
-          </li>
-        ))}
+            </li>
+          );
+        })}
       </ul>
     </section>
   );

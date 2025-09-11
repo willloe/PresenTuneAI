@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { THEME_KEYS, THEMES, type ThemeKey } from "../theme/themes";
 import Modal from "./ui/Modal";
+import Button from "./ui/Button";
 
 type SettingsProps = {
   open: boolean;
@@ -94,31 +95,31 @@ export default function Settings({
           </div>
 
           <div className="mt-2 flex gap-3" role="group" aria-label="Theme mode">
-            <button
+            <Button
               onClick={() => {
                 setThemeMode("preset");
                 const next = THEME_KEYS.includes(theme as ThemeKey) ? (theme as ThemeKey) : THEME_KEYS[0];
                 setPreset(next);
                 setTheme(next);
               }}
-              className={`rounded-lg border px-3 py-1 text-sm ${themeMode === "preset" ? "bg-black text-white" : "hover:bg-gray-50"}`}
+              className={themeMode === "preset" ? "bg-black text-white" : "hover:bg-gray-50"}
               aria-pressed={themeMode === "preset"}
               type="button"
             >
               Presets
-            </button>
-            <button
+            </Button>
+            <Button
               onClick={() => {
                 setThemeMode("custom");
                 setCustomTheme(isCustomTheme ? theme : "");
                 setTheme(isCustomTheme ? theme : "");
               }}
-              className={`rounded-lg border px-3 py-1 text-sm ${themeMode === "custom" ? "bg-black text-white" : "hover:bg-gray-50"}`}
+              className={themeMode === "custom" ? "bg-black text-white" : "hover:bg-gray-50"}
               aria-pressed={themeMode === "custom"}
               type="button"
             >
               Custom
-            </button>
+            </Button>
           </div>
 
           {themeMode === "preset" && (
@@ -126,20 +127,20 @@ export default function Settings({
               {THEME_KEYS.map((t) => {
                 const tok = THEMES[t];
                 return (
-                  <button
+                  <Button
                     key={t}
                     onClick={() => {
                       setPreset(t);
                       setTheme(t);
                     }}
-                    className={`rounded-full border px-3 py-1 text-sm capitalize flex items-center gap-2 ${preset === t ? "bg-black text-white" : "hover:bg-gray-50"}`}
+                    className={`capitalize flex items-center gap-2 ${preset === t ? "bg-black text-white" : "hover:bg-gray-50"}`}
                     title={t}
                     type="button"
                     aria-pressed={preset === t}
                   >
                     <span className="inline-block h-3 w-3 rounded-full" style={{ background: tok.colors.accent }} />
                     {t}
-                  </button>
+                  </Button>
                 );
               })}
             </div>
@@ -191,6 +192,7 @@ export default function Settings({
           <code
             className="block truncate rounded-lg bg-gray-50 px-2 py-1 text-sm border"
             aria-describedby={apiBaseHelpId}
+            aria-live="polite"
           >
             {apiBase}
           </code>

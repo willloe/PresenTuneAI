@@ -47,3 +47,21 @@ export type OutlineRequest = {
   text?: string | null;
   slide_count?: number; // 1..15 (backend clamps)
 };
+
+/**
+ * Derive layout-filter component counts from a slide.
+ * Uses canonical meta.sections for text; falls back to legacy bullets as a single text block.
+ */
+export function deriveComponentsForFilter(
+  slide: Slide
+): { text_count: number; image_count: number } {
+  const sections = slide.meta?.sections;
+  const text_count =
+    Array.isArray(sections) && sections.length
+      ? sections.length
+      : (slide.bullets?.length ?? 0) > 0
+      ? 1
+      : 0;
+  const image_count = Array.isArray(slide.media) ? slide.media.length : 0;
+  return { text_count, image_count };
+}

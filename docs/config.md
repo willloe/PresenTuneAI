@@ -140,3 +140,117 @@ TIMING_ALLOW_ORIGIN=*
 - `ENABLE_RETENTION`, `RETENTION_DAYS`, `RETENTION_SWEEP_MINUTES` affect `/export/{filename}` availability.  
 - `FEATURE_IMAGE_API`, `IMAGE_PROVIDER` (`stub|pexels`), and provider keys.  
 - Static assets: `app/static/layouts/layouts.json` must exist (see deploy notes).
+
+---
+
+## New & Expanded (Week 2)
+
+### Upload IDs & Media Library
+
+- `POST /v1/upload` now returns an **`X-Upload-Id`** response header. The frontend uses this ID to:
+  - Fetch extracted images via the **Assets API** (see below).
+  - Persist a per‑upload media library drawer.
+
+> **CORS note:** if your UI is on a different origin, add `X-Upload-Id` to the CORS `expose_headers` list in `app/main.py` so the browser can read it.
+
+#### Assets API
+- `GET  /v1/assets?upload_id={id}` → `{ items: Asset[], count }`
+- `GET  /v1/assets/{asset_id}` → `Asset`
+- `GET  /v1/assets/{asset_id}/file?upload_id={id}` → image bytes (content type is inferred by extension).
+
+`Asset` fields (server may add more): `id`, `filename`, `rel_path`, `width`, `height`, `ext`, `checksum`, `caption`.
+
+The index is stored at:  
+`{STORAGE_DIR}/{upload_id}/assets/index.json`  
+Reads are tolerant to missing/corrupt files; writes are **atomic** to avoid partial states.
+
+### Storage layout & exports
+
+- `STORAGE_DIR` still points at **uploads** (default `data/uploads`).
+- **Exports** are written next to uploads under a sibling folder:  
+  **`{DATA_ROOT}/exports` where `DATA_ROOT = parent(STORAGE_DIR)`**.  
+  Example with default: uploads → `data/uploads`, exports → `data/exports`.
+
+Why: keeps uploads ephemeral / sweepable while letting you persist exported PPTX files separately.
+
+Retention worker currently sweeps **only under `STORAGE_DIR`**; exports are **not** deleted by retention.
+
+### Export response
+
+`POST /v1/export` now also returns a **`download_url`** computed from the filename the exporter produced. The file is normalized into the canonical exports folder and is downloadable via:
+
+```
+GET /v1/export/{filename}
+```
+
+A tiny debug helper is available in non‑prod builds:
+
+```
+GET /v1/export/_debug/list
+```
+
+### Google Slides integration (optional)
+
+The UI can upload the exported PPTX to Google Drive and open it in **Google Slides**. To enable:
+
+- Provide a **frontend runtime config** (served as `/app-config.json`) with:
+  - `GOOGLE_CLIENT_ID` (OAuth 2.0 Web client)  
+- The integration requests `drive.file` and uses the browser OAuth flow. If `GOOGLE_CLIENT_ID` is missing the button is disabled.
+
+### Layout library notes (clarification)
+
+- You can run entirely with the built‑in minimal library. To override, place your JSON at:  
+  `backend/app/static/layouts/layouts.json` and (optionally) thumbnails under the same folder.  
+- Hot‑reload at runtime: `GET /v1/layouts?reload=true`.
+
+### Quick endpoint additions (recap)
+
+- `GET  /v1/assets …` (see above)
+- `GET  /v1/export/_debug/list` (debug only)
+- `POST /v1/editor/build` supports an `Idempotency-Key` header
+
+### Example: Upload → list assets with curl
+
+```bash
+API=http://localhost:8000/v1
+# Upload
+curl -i -F "file=@/path/to/file.pdf" $API/upload | tee /tmp/upload_headers.txt
+UPLOAD_ID=$(awk -F': ' '/X-Upload-Id/ {print $2}' /tmp/upload_headers.txt | tr -d '
+')
+# List assets
+curl -s "$API/assets?upload_id=$UPLOAD_ID" | jq .count
+```
+
+
+---
+## 2025-09-09 – Config Addendum
+
+### Feature Flags
+- `FEATURE_USE_MODEL` (bool): Use the external agent for outline/regeneration when `true` and `AGENT_URL` is set.
+- `FEATURE_IMAGE_API` (bool, default **true**): If enabled, the outline service enriches slides that lack media with a provider image based on the slide title.
+
+### Image Providers
+- `IMAGE_PROVIDER`: `"stub"` (default), `"pexels"`, or `"openai"`.
+- `PEXELS_API_KEY`: required for `"pexels"`.
+- `OPENAI_API_KEY`: required for `"openai"`.
+- `IMAGE_OPENAI_MODEL`: e.g., `"gpt-image-1"`.
+- `IMAGE_OPENAI_STYLE`: an optional style hint (`"photo"`, `"illustration"`, `"diagram"`, `"icon"`).
+
+### Agent
+- `AGENT_URL`: base URL for the outline agent.
+- `AGENT_TIMEOUT_MS`: request timeout (ms) for agent calls.
+
+### Layouts
+- Library file path: `app/static/layouts/layouts.json`  
+  The server **normalizes** JSON as follows:
+  - `supports`: accept either explicit `{text_min,max,images_min,max}` or compact `{text_count,image_count}`.
+  - `frames`: accept single objects or arrays for `sections` and `images`; keys like `img0`, `img1` are collected into `images[]`.
+  - legacy `frames.bullets` is mapped to `frames.sections`.
+- Dev hot‑reload: `/layouts` rechecks file mtime and reloads when changed.
+- Scoring: `/layouts/filter` penalizes out‑of‑range counts and mismatched section‑slot counts; slides with **only a title** are treated as `text_count = 0`.
+
+### Idempotency
+- `/editor/build` honors `Idempotency-Key` to de‑duplicate identical build requests.
+
+### Auth
+- When `AUTH_ENABLED` is `true`, all API routes are behind `require_token` (unchanged).

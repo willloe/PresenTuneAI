@@ -53,6 +53,8 @@ Thumbs.db
 # App data / uploads (keep folder, ignore contents)
 backend/data/uploads/**
 !backend/data/uploads/.gitkeep
+backend/data/exports/**
+backend/data/http_logs/**
 
 # Docker (optional – if you generate locals)
 .docker/

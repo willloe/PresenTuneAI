@@ -27,7 +27,7 @@ from app.api.v1.endpoints.editor import router as editor_router
 from app.api.v1.endpoints.ops import router as ops_router
 from app.api.v1.endpoints.schema import router as schema_router
 from app.api.v1.endpoints.assets import router as assets_router
-
+from app.api.v1.endpoints.images import router as images_router
 # background worker
 from app.workers.retention import retention_loop
 
@@ -76,7 +76,7 @@ def create_app() -> FastAPI:
             "X-Upload-Id",        # ← needed by frontend to read upload id
             "X-Request-Id",
             "X-Response-Time-Ms",
-            "Server-Timing",
+            "Server-Timing"
         ],
     )
 
@@ -127,6 +127,7 @@ def create_app() -> FastAPI:
     api.include_router(export_router)
     api.include_router(schema_router)
     api.include_router(ops_router)
+    api.include_router(images_router)
     api.include_router(layouts_router)
     api.include_router(editor_router)
     api.include_router(assets_router)

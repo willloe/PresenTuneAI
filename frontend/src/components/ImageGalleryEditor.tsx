@@ -1,4 +1,5 @@
 import { useState } from "react";
+import Button from "./ui/Button";
 
 export type MediaItem = { type: "image"; url: string; alt?: string };
 
@@ -84,76 +85,56 @@ export default function ImageGalleryEditor({
                       aria-label={`Image ${i + 1} alt text`}
                     />
                     <div className="flex items-center gap-2">
-                      <button
-                        className="rounded px-2 py-1 text-xs bg-black text-white"
-                        onClick={commitInlineEdit}
-                        type="button"
-                      >
+                      <Button size="xs" variant="solid" onClick={commitInlineEdit} type="button">
                         Save
-                      </button>
-                      <button
-                        className="rounded px-2 py-1 text-xs border"
-                        onClick={() => setEditing(null)}
-                        type="button"
-                      >
+                      </Button>
+                      <Button size="xs" onClick={() => setEditing(null)} type="button">
                         Cancel
-                      </button>
+                      </Button>
                     </div>
                   </div>
                 ) : null}
 
                 {/* Actions */}
                 <div className="p-2 flex items-center gap-2 flex-wrap border-t">
-                  <button
-                    className="text-xs underline disabled:opacity-40"
+                  <Button
+                    size="xs"
                     onClick={() => onMove(i, Math.max(0, i - 1))}
                     disabled={i === 0}
-                    type="button"
                     title="Move left"
                     aria-label={`Move image ${i + 1} earlier`}
                   >
                     ↑
-                  </button>
-                  <button
-                    className="text-xs underline disabled:opacity-40"
+                  </Button>
+                  <Button
+                    size="xs"
                     onClick={() => onMove(i, Math.min(items.length - 1, i + 1))}
                     disabled={i === items.length - 1}
-                    type="button"
                     title="Move right"
                     aria-label={`Move image ${i + 1} later`}
                   >
                     ↓
-                  </button>
+                  </Button>
 
-                  <button
-                    className="text-xs underline"
-                    onClick={() => setEditing({ index: i, url: m.url, alt: m.alt ?? "" })}
-                    type="button"
-                    title="Replace URL / edit alt"
-                  >
+                  <Button size="xs" onClick={() => setEditing({ index: i, url: m.url, alt: m.alt ?? "" })} type="button">
                     Edit
-                  </button>
+                  </Button>
 
                   {onAIGenerate && (
-                    <button
-                      className="text-xs underline"
-                      onClick={() => onAIGenerate(i)}
-                      type="button"
-                      title="AI-generate replacement"
-                    >
+                    <Button size="xs" onClick={() => onAIGenerate(i)} type="button" title="AI-generate replacement">
                       AI Generate
-                    </button>
+                    </Button>
                   )}
 
-                  <button
-                    className="text-xs text-red-600 underline"
+                  <Button
+                    size="xs"
+                    variant="danger"
                     onClick={() => onRemove(i)}
                     type="button"
-                    title="Remove"
                     aria-label={`Remove image ${i + 1}`}
                   >
                     Remove
-                  </button>
+                  </Button>
                 </div>
               </div>
             );
@@ -170,8 +151,7 @@ export default function ImageGalleryEditor({
           className="flex-1 border rounded px-2 py-2 outline-none focus:ring"
           aria-label="New image URL"
         />
-        <button
-          className="rounded px-3 py-2 bg-black text-white disabled:opacity-50"
+        <Button
           onClick={() => {
             const url = newUrl.trim();
             if (!url) return;
@@ -181,16 +161,11 @@ export default function ImageGalleryEditor({
           type="button"
         >
           Add Image
-        </button>
+        </Button>
         {onAIGenerate && (
-          <button
-            className="rounded px-3 py-2 border"
-            onClick={() => onAIGenerate()}
-            type="button"
-            title="AI-generate new image"
-          >
+          <Button onClick={() => onAIGenerate()} type="button" title="AI-generate new image">
             AI Generate
-          </button>
+          </Button>
         )}
       </div>
     </div>
